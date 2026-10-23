@@ -142,16 +142,16 @@ object PromptComposer {
         sb.append(".")
 
         if (clothing.isNotEmpty()) {
-            sb.append(" The character is wearing ").append(joinNatural(clothing)).append(".")
+            sb.append(" The character is wearing ").append(clothing).append(".")
         }
         if (pose.isNotEmpty()) {
-            sb.append(" The character is ").append(joinNatural(pose)).append(".")
+            sb.append(" The character is ").append(pose).append(".")
         }
         if (scene.isNotEmpty()) {
-            sb.append(" The scene is ").append(joinNatural(scene)).append(".")
+            sb.append(" The scene is ").append(scene).append(".")
         }
         if (mood.isNotEmpty()) {
-            sb.append(" The character has ").append(joinNatural(mood)).append(".")
+            sb.append(" The character has ").append(mood).append(".")
         }
 
         sb.append(" ").append(styleSentence(style))
@@ -318,7 +318,7 @@ object PromptComposer {
         return joinNatural(selected.map { moodWord(it) })
     }
 
-    private fun stylePhrase(ordered: List<String>, used: MutableSet<String>): String {
+    private fun stylePhrase(ordered: List<String>, used: MutableSet<String>): List<String> {
         val styles = ordered.filter { it in STYLE }
         used.addAll(styles)
         return styles.map { styleWord(it) }
