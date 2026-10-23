@@ -2,6 +2,7 @@
 
 日本語の自然言語を、**PixAI DiT 向けの英語プロンプト**と **Danbooru タグ**に変換する Android アプリの企画・調査リポジトリ。
 
+- **GitHub**: <https://github.com/shiokunn/prompter>（private）
 - **企画書**: [`PLAN.md`](PLAN.md)
 - **確定要件**: [`research/DECISIONS.md`](research/DECISIONS.md)
 - **PixAI DiT 調査**: [`research/PIXAI_DIT.md`](research/PIXAI_DIT.md)
@@ -56,9 +57,12 @@ gh auth login
 3. Termux で実機にインストール
 
 ```bash
-unzip prompter-debug-apk.zip
+# GitHub CLI で最新の Artifact を取得する場合
+gh run download -n prompter-debug-apk
 adb install -r app-debug.apk
 ```
+
+ブラウザからダウンロードした場合は ZIP を展開してからインストールする。
 
 ## 調査の再現
 
