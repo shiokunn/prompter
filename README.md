@@ -8,20 +8,25 @@
 - **PixAI DiT 調査**: [`research/PIXAI_DIT.md`](research/PIXAI_DIT.md)
 - **オンデバイスモデル選定**: [`research/MODEL_SELECTION.md`](research/MODEL_SELECTION.md)
 - **辞書スパイク**: [`research/SPIKE.md`](research/SPIKE.md)
+- **M1 評価レポート**: [`research/M1_REPORT.md`](research/M1_REPORT.md)
+- **M1 fresh holdout**: [`research/M1_FINAL_REPORT.md`](research/M1_FINAL_REPORT.md)
 - **プロトタイプ**: [`tools/spike_match.py`](tools/spike_match.py)
 
 ## 状況
 
 - 2026-10-23: 要件確定。開発環境と GitHub Actions の骨格を準備。
 - 2026-10-23: 初回 CI 成功。`app-debug.apk`（約29.7MB）を Artifact から取得できることを確認。
-- 次の作業: 上位5,000タグの別名生成パイプライン（M1）→ アプリ骨格の実装（M2）。
+- 2026-10-23: **M1 辞書パイプライン GO**。fresh holdout test 100件で
+  Recall 0.5194 / Precision 0.7617 / Invalid 0.000%。
+- 次の作業: アプリ骨格（Compose UI / Room / Trie / オフライン PixAI プロンプト合成）の M2。
 - `app/` は CI の疎通確認用の最小 Compose 画面。APK は GitHub Actions でビルドする。
 
 ## 要約
 
 - 主対象は **PixAI DiT（Tsubaki.3 / Tsubaki.2）**。DiT はタグ列より **英語の自然文** が向く。
 - 既定出力は `Subject + Action + Scene + Mood + Style` の英文。タグモードも併設。
-- オフライン辞書（14万タグ、SQLite 17MB）+ ML Kit 翻訳で下書きできる。
+- M1 のオフライン辞書は上位5,000タグ + 別名14,587件（SQLite 2.18MB）。
+  将来は14万タグ規模へ拡張し、ML Kit 翻訳と組み合わせる。
 - AI 補完は **OpenAI API 互換（既定: OpenRouter）** を任意 ON（BYOK）。
 - AI を使わない人向けに **Gemma 4 E2B（2.58GB）** の任意ダウンロードを用意。
 - APK は GitHub Actions でビルドし、Termux から `adb install` する。
@@ -46,6 +51,9 @@ gh auth login
 
 # ローカルの Gradle 設定確認
 ./gradlew --version
+
+# M1 辞書マッチャの回帰テスト
+python3 -m unittest tools.test_m1 -v
 ```
 
 ## APK のビルド（GitHub Actions）

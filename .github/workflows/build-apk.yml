@@ -6,6 +6,7 @@ on:
     branches: [main]
     paths:
       - "app/**"
+      - "tools/**"
       - "build.gradle.kts"
       - "settings.gradle.kts"
       - "gradle.properties"
@@ -44,6 +45,9 @@ jobs:
         uses: gradle/actions/setup-gradle@v6
         with:
           gradle-version: "9.5.0"
+
+      - name: Run M1 matcher tests
+        run: python3 -m unittest tools.test_m1 -v
 
       - name: Build debug APK
         run: |

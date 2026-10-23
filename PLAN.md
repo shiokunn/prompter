@@ -822,7 +822,7 @@ Return only canonical Danbooru tags for the requested image.
 | Phase | 期間 | 内容 | 完了条件 |
 |---|---:|---|---|
 | M0 調査スパイク | 完了 | データ取得、簡易マッチャー、DB サイズ測定、PixAI/モデル調査 | 調査ファイルが揃う |
-| **M1 辞書パイプライン** | 2〜3日 | 別名生成、逆翻訳検証、SQLite ビルド、評価セット | 上位5,000タグの DB と評価レポート |
+| **M1 辞書パイプライン** | 完了 | 別名生成、逆翻訳検証、SQLite ビルド、評価セット | 上位5,000タグの DB と評価レポート。fresh holdout で Recall 0.519 / Precision 0.762 / Invalid 0% |
 | **M2 アプリ骨格** | 4〜5日 | Compose、Room、Trie、PixAI オフライン合成、CI | 日本語→PixAI 自然文がオフラインで動く |
 | **M3 エディタ / プリセット** | 5日 | 自然文/タグ切替、チップ、重み、並び替え、コピー/共有、履歴 | 受け入れ基準1〜3 |
 | **M4 OpenRouter AI** | 3〜4日 | OpenAI 互換クライアント、JSON Schema、モデル選択、検証、キャッシュ | AI モードが実機で動く |
