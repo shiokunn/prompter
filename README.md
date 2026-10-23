@@ -83,6 +83,14 @@ adb install -r app-debug.apk
 
 現在の APK は `0.2.0-m1`（versionCode 2、debug 署名）。M1 の辞書と M2 のオフライン変換 UI を含む。
 
+旧ビルドの debug APK が既に入っている場合、GitHub Actions の debug 署名がビルドごとに変わり
+`INSTALL_FAILED_UPDATE_INCOMPATIBLE` になることがある。その場合は一度アンインストールしてから入れる。
+
+```bash
+adb uninstall com.prompter.app
+adb install Prompter-0.2.0-m1-debug.apk
+```
+
 ## 調査の再現
 
 ```bash
