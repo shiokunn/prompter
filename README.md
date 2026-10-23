@@ -10,6 +10,7 @@
 - **辞書スパイク**: [`research/SPIKE.md`](research/SPIKE.md)
 - **M1 評価レポート**: [`research/M1_REPORT.md`](research/M1_REPORT.md)
 - **M1 fresh holdout**: [`research/M1_FINAL_REPORT.md`](research/M1_FINAL_REPORT.md)
+- **M2 実装レポート**: [`research/M2_REPORT.md`](research/M2_REPORT.md)
 - **プロトタイプ**: [`tools/spike_match.py`](tools/spike_match.py)
 
 ## 状況
@@ -18,8 +19,11 @@
 - 2026-10-23: 初回 CI 成功。`app-debug.apk`（約29.7MB）を Artifact から取得できることを確認。
 - 2026-10-23: **M1 辞書パイプライン GO**。fresh holdout test 100件で
   Recall 0.5194 / Precision 0.7617 / Invalid 0.000%。
-- 次の作業: アプリ骨格（Compose UI / Room / Trie / オフライン PixAI プロンプト合成）の M2。
-- `app/` は CI の疎通確認用の最小 Compose 画面。APK は GitHub Actions でビルドする。
+- 2026-10-23: **M2 コア完了**。Compose UI、Kotlin トライ、オフライン PixAI 自然文合成を実装。
+  GitHub Actions で Python テスト、Kotlin 単体テスト（Robolectric 含む）、APK ビルドが成功。
+- APK: `/storage/emulated/0/Download/Prompter/Prompter-0.2.0-m1-debug.apk`
+  （SHA-256 `90f73f361ff62fdf8ec62dfc910df7338b9691a8a37487f158e42391843f68b7`）。
+- 次の作業: M3 の履歴・お気に入り（Room）、ML Kit 翻訳フォールバック、タグ重み/ネガティブ。
 
 ## 要約
 
@@ -27,6 +31,8 @@
 - 既定出力は `Subject + Action + Scene + Mood + Style` の英文。タグモードも併設。
 - M1 のオフライン辞書は上位5,000タグ + 別名14,587件（SQLite 2.18MB）。
   将来は14万タグ規模へ拡張し、ML Kit 翻訳と組み合わせる。
+- M2 で **Compose UI + Kotlin トライ + オフライン自然文合成** を実装済み。
+  日本語入力から PixAI 向け英文（80〜150語）とタグ列を同時に生成できる。
 - AI 補完は **OpenAI API 互換（既定: OpenRouter）** を任意 ON（BYOK）。
 - AI を使わない人向けに **Gemma 4 E2B（2.58GB）** の任意ダウンロードを用意。
 - APK は GitHub Actions でビルドし、Termux から `adb install` する。
@@ -54,6 +60,9 @@ gh auth login
 
 # M1 辞書マッチャの回帰テスト
 python3 -m unittest tools.test_m1 -v
+
+# Kotlin 単体テスト（Android SDK が必要。Termux では CI に任せる）
+./gradlew testDebugUnitTest
 ```
 
 ## APK のビルド（GitHub Actions）
@@ -71,6 +80,8 @@ adb install -r app-debug.apk
 ```
 
 ブラウザからダウンロードした場合は ZIP を展開してからインストールする。
+
+現在の APK は `0.2.0-m1`（versionCode 2、debug 署名）。M1 の辞書と M2 のオフライン変換 UI を含む。
 
 ## 調査の再現
 

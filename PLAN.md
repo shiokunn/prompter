@@ -1,13 +1,15 @@
 # Prompter — 日本語→PixAI DiT プロンプト変換 Android アプリ 企画書
 
 - 最終更新: 2026-10-23
-- ステータス: **要件確定 / 実装準備**
+- ステータス: **M1 完了 / M2 コア完了 / M3 準備**
 - 作業ディレクトリ: `~/prompter`
 - 関連調査:
   - [`research/DECISIONS.md`](research/DECISIONS.md) — 確定した要件
   - [`research/PIXAI_DIT.md`](research/PIXAI_DIT.md) — PixAI DiT のプロンプト仕様
   - [`research/MODEL_SELECTION.md`](research/MODEL_SELECTION.md) — 4B 以下のオンデバイスモデル選定
   - [`research/SPIKE.md`](research/SPIKE.md) — 辞書・マッチングの実測
+  - [`research/M1_FINAL_REPORT.md`](research/M1_FINAL_REPORT.md) — fresh holdout の M1 評価
+  - [`research/M2_REPORT.md`](research/M2_REPORT.md) — M2 アプリ骨格の実装
 
 ---
 
@@ -823,7 +825,7 @@ Return only canonical Danbooru tags for the requested image.
 |---|---:|---|---|
 | M0 調査スパイク | 完了 | データ取得、簡易マッチャー、DB サイズ測定、PixAI/モデル調査 | 調査ファイルが揃う |
 | **M1 辞書パイプライン** | 完了 | 別名生成、逆翻訳検証、SQLite ビルド、評価セット | 上位5,000タグの DB と評価レポート。fresh holdout で Recall 0.519 / Precision 0.762 / Invalid 0% |
-| **M2 アプリ骨格** | 4〜5日 | Compose、Room、Trie、PixAI オフライン合成、CI | 日本語→PixAI 自然文がオフラインで動く |
+| **M2 アプリ骨格** | コア完了 | Compose、Trie、PixAI オフライン合成、CI、Kotlin/Robolectric テスト。Room/履歴は M3 | 日本語→PixAI 自然文がオフラインで動く（APK `0.2.0-m1`） |
 | **M3 エディタ / プリセット** | 5日 | 自然文/タグ切替、チップ、重み、並び替え、コピー/共有、履歴 | 受け入れ基準1〜3 |
 | **M4 OpenRouter AI** | 3〜4日 | OpenAI 互換クライアント、JSON Schema、モデル選択、検証、キャッシュ | AI モードが実機で動く |
 | **M5 ML Kit / タグ和訳** | 3〜4日 | ML Kit、英語→タグ正規化、タグ→日本語、オフライン強化 | 辞書外の表現も変換できる |
