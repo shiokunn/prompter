@@ -1,0 +1,28 @@
+# Downloaded research data (reproducible via research/SPIKE.md)
+research/data/
+research/*.sqlite
+research/*.sqlite.gz
+
+# Android / Gradle
+.gradle/
+build/
+app/build/
+local.properties
+*.apk
+*.aab
+*.keystore
+*.jks
+
+# IDE / OS
+.idea/
+.DS_Store
+*.iml
+
+# Kotlin / Python
+.kotlin/
+__pycache__/
+*.pyc
+
+# Secrets
+.env
+*.secret
