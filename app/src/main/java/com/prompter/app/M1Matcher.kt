@@ -519,7 +519,7 @@ class M1Matcher private constructor(
             "red" to "red", "blue" to "blue", "white" to "white",
             "black" to "black", "brown" to "brown", "green" to "green",
             "purple" to "purple", "pink" to "pink", "orange" to "orange",
-            "yellow" to "yellow", "grey" to "grey", "silver" to "silver",
+            "yellow" to "yellow", "grey" to "grey", "silver" to "grey",
             "gold" to "yellow", "aqua" to "aqua",
         )
 

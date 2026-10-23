@@ -31,6 +31,7 @@ object PromptComposer {
         "jacket", "veil", "mask", "eyepatch", "bandages", "hairband",
         "hair_ornament", "hair_ribbon", "thigh_strap", "cape", "capelet",
         "cloak", "helmet", "armor", "breastplate", "shoulder_armor",
+        "serafuku", "one-piece_swimsuit", "school_swimsuit",
     )
 
     private val CLOTHING_SUFFIXES = listOf(
@@ -46,6 +47,22 @@ object PromptComposer {
         "_eyepatch", "_bandages", "_collar", "_leash", "_handcuffs",
         "_chain", "_rope", "_blindfold", "_gag", "_footwear",
     )
+
+    private val NO_ARTICLE = setOf(
+        "thighhighs", "pantyhose", "socks", "boots", "shoes", "sandals",
+        "gloves", "wings", "earrings", "panties", "underwear", "pants",
+        "shorts", "japanese_clothes", "armor", "shoulder_armor", "bandages",
+        "high_heels", "loafers", "sneakers", "footwear", "handcuffs",
+    )
+
+    private val NO_ARTICLE_SUFFIXES = listOf(
+        "_thighhighs", "_pantyhose", "_socks", "_boots", "_shoes", "_sandals",
+        "_gloves", "_wings", "_earrings", "_panties", "_pants", "_shorts",
+        "_high_heels", "_loafers", "_sneakers", "_footwear", "_handcuffs",
+        "_armor",
+    )
+
+    private val VOWELS = setOf('a', 'e', 'i', 'o', 'u')
 
     private val POSE = setOf(
         "standing", "sitting", "lying", "on_back", "on_stomach", "seiza",
@@ -119,10 +136,14 @@ object PromptComposer {
         val used = mutableSetOf<String>()
 
         val subject = subjectPhrase(set, used)
+        val plural = isPluralSubject(set)
+        val pronoun = pronounFor(set)
+        val subjectLabel = if (plural) "They" else "The character"
+        val subjectVerb = if (plural) "are" else "is"
         val hair = hairPhrase(ordered, set, used)
         val eyes = eyePhrase(ordered, used)
         val clothing = clothingPhrase(ordered, set, used)
-        val pose = posePhrase(ordered, set, used)
+        val pose = posePhrase(ordered, set, used, pronoun)
         val scene = scenePhrase(ordered, set, used)
         val mood = moodPhrase(ordered, set, used)
         val style = stylePhrase(ordered, used)
@@ -142,16 +163,19 @@ object PromptComposer {
         sb.append(".")
 
         if (clothing.isNotEmpty()) {
-            sb.append(" The character is wearing ").append(clothing).append(".")
+            sb.append(" ").append(subjectLabel).append(" ").append(subjectVerb)
+                .append(" wearing ").append(clothing).append(".")
         }
         if (pose.isNotEmpty()) {
-            sb.append(" The character is ").append(pose).append(".")
+            sb.append(" ").append(subjectLabel).append(" ").append(subjectVerb)
+                .append(" ").append(pose).append(".")
         }
         if (scene.isNotEmpty()) {
-            sb.append(" The scene is ").append(scene).append(".")
+            sb.append(" The scene is set ").append(scene).append(".")
         }
         if (mood.isNotEmpty()) {
-            sb.append(" The character has ").append(mood).append(".")
+            sb.append(" ").append(subjectLabel).append(" ")
+                .append(if (plural) "have" else "has").append(" ").append(mood).append(".")
         }
 
         sb.append(" ").append(styleSentence(style))
@@ -187,20 +211,26 @@ object PromptComposer {
             "4girls" in set -> "four girls"
             "3girls" in set -> "three girls"
             "2girls" in set -> "two girls"
+            "2boys" in set -> "two boys"
             "multiple_girls" in set -> "multiple girls"
             "1girl" in set && "1boy" in set -> "a girl and a boy"
             "1girl" in set -> "a girl"
             "1boy" in set -> "a boy"
             else -> "a character"
         }
-        used.addAll(listOf("1girl", "1boy", "2girls", "3girls", "4girls", "5girls", "6+girls", "multiple_girls"))
+        used.addAll(
+            listOf(
+                "1girl", "1boy", "2girls", "2boys", "3girls", "4girls",
+                "5girls", "6+girls", "multiple_girls",
+            ),
+        )
         if ("hetero" in set) {
             used.add("hetero")
             return "a girl and a boy"
         }
-        if ("yuri" in set && (count.endsWith("girls") || count == "multiple girls")) {
+        if ("yuri" in set && count.endsWith("girls")) {
             used.add("yuri")
-            return if (count == "two girls") "two women" else count
+            return count.replace("girls", "women")
         }
         val solo = "solo" in set
         if (solo) used.add("solo")
@@ -210,6 +240,22 @@ object PromptComposer {
             solo && count == "a character" -> "a solo character"
             else -> count
         }
+    }
+
+    private fun isPluralSubject(set: Set<String>): Boolean =
+        set.any {
+            it in setOf(
+                "2girls", "2boys", "3girls", "4girls", "5girls", "6+girls",
+                "multiple_girls", "hetero",
+            )
+        } || ("1girl" in set && "1boy" in set) ||
+            ("yuri" in set && set.any { it in setOf("2girls", "3girls", "multiple_girls") })
+
+    private fun pronounFor(set: Set<String>): String = when {
+        isPluralSubject(set) -> "their"
+        "1boy" in set && "1girl" !in set -> "his"
+        "1girl" in set -> "her"
+        else -> "their"
     }
 
     private fun hairPhrase(ordered: List<String>, set: Set<String>, used: MutableSet<String>): String {
@@ -265,21 +311,30 @@ object PromptComposer {
                 other != tag && (other.endsWith("_$tag") || other.endsWith(tag))
             }
             val representedByAlternative = when (tag) {
-                "swimsuit" -> "bikini" in set || "one-piece_swimsuit" in set
+                "swimsuit" -> "bikini" in set || "one-piece_swimsuit" in set || "school_swimsuit" in set
                 "japanese_clothes" -> "kimono" in set || "yukata" in set
                 "footwear" -> candidates.any { it.endsWith("_footwear") }
                 "armor" -> candidates.any { it.endsWith("_armor") }
-                "uniform" -> "school_uniform" in set || "military_uniform" in set
+                "uniform" -> "school_uniform" in set || "military_uniform" in set || "serafuku" in set
+                "school_uniform" -> "serafuku" in set
                 else -> false
             }
             !representedBySpecific && !representedByAlternative
         }.distinct()
-        used.addAll(filtered)
+        // Parents that are represented by a more specific tag are still
+        // consumed; otherwise they would show up again in "additional details".
+        used.addAll(candidates)
         return joinNatural(filtered.map { clothingWord(it) })
     }
 
-    private fun posePhrase(ordered: List<String>, set: Set<String>, used: MutableSet<String>): String {
-        val selected = ordered.filter { it in POSE }.filter { tag ->
+    private fun posePhrase(
+        ordered: List<String>,
+        set: Set<String>,
+        used: MutableSet<String>,
+        pronoun: String,
+    ): String {
+        val all = ordered.filter { it in POSE }
+        val selected = all.filter { tag ->
             when (tag) {
                 "holding" -> "holding_weapon" !in set && "holding_sword" !in set
                 "lying" -> "on_back" !in set && "on_stomach" !in set
@@ -287,12 +342,13 @@ object PromptComposer {
                 else -> true
             }
         }
-        used.addAll(selected)
-        return joinNatural(selected.map { poseWord(it) })
+        used.addAll(all)
+        return joinNatural(selected.map { poseWord(it, pronoun) })
     }
 
     private fun scenePhrase(ordered: List<String>, set: Set<String>, used: MutableSet<String>): String {
-        val selected = ordered.filter { it in SCENE }.filter { tag ->
+        val all = ordered.filter { it in SCENE }
+        val selected = all.filter { tag ->
             when (tag) {
                 "chair" -> "on_chair" !in set
                 "bed" -> "on_bed" !in set
@@ -300,13 +356,14 @@ object PromptComposer {
                 "sky" -> "starry_sky" !in set
                 else -> true
             }
-        }
-        used.addAll(selected)
+        }.sortedWith(compareBy<String> { sceneRank(it) })
+        used.addAll(all)
         return joinNatural(selected.map { sceneWord(it) })
     }
 
     private fun moodPhrase(ordered: List<String>, set: Set<String>, used: MutableSet<String>): String {
-        val selected = ordered.filter { it in MOOD }.filter { tag ->
+        val all = ordered.filter { it in MOOD }
+        val selected = all.filter { tag ->
             when (tag) {
                 "smile" -> "light_smile" !in set && "grin" !in set
                 "closed_eyes" -> "half-closed_eyes" !in set
@@ -314,7 +371,7 @@ object PromptComposer {
                 else -> true
             }
         }
-        used.addAll(selected)
+        used.addAll(all)
         return joinNatural(selected.map { moodWord(it) })
     }
 
@@ -376,21 +433,24 @@ object PromptComposer {
         else -> natural(tag)
     }
 
-    private fun clothingWord(tag: String): String = when (tag) {
-        "japanese_clothes" -> "Japanese clothing"
-        "one-piece_swimsuit" -> "a one-piece swimsuit"
-        "school_swimsuit" -> "a school swimsuit"
-        "sailor_collar" -> "a sailor collar"
-        "hair_ribbon" -> "a hair ribbon"
-        "hair_ornament" -> "a hair ornament"
-        "thigh_strap" -> "a thigh strap"
-        "shoulder_armor" -> "shoulder armor"
-        else -> natural(tag)
+    private fun clothingWord(tag: String): String {
+        val word = when (tag) {
+            "japanese_clothes" -> "Japanese clothing"
+            "one-piece_swimsuit" -> "a one-piece swimsuit"
+            "school_swimsuit" -> "a school swimsuit"
+            "sailor_collar" -> "a sailor collar"
+            "hair_ribbon" -> "a hair ribbon"
+            "hair_ornament" -> "a hair ornament"
+            "thigh_strap" -> "a thigh strap"
+            "shoulder_armor" -> "shoulder armor"
+            else -> natural(tag)
+        }
+        return withArticle(tag, word)
     }
 
-    private fun poseWord(tag: String): String = when (tag) {
-        "on_back" -> "lying on her back"
-        "on_stomach" -> "lying on her stomach"
+    private fun poseWord(tag: String, pronoun: String): String = when (tag) {
+        "on_back" -> "lying on $pronoun back"
+        "on_stomach" -> "lying on $pronoun stomach"
         "seiza" -> "sitting in seiza"
         "looking_at_viewer" -> "looking at the viewer"
         "looking_away" -> "looking away"
@@ -403,16 +463,16 @@ object PromptComposer {
         "holding_sword" -> "holding a sword"
         "holding" -> "holding something"
         "arms_up" -> "with arms raised"
-        "arms_behind_back" -> "with arms behind her back"
+        "arms_behind_back" -> "with arms behind $pronoun back"
         "crossed_arms" -> "with crossed arms"
-        "hand_on_hip" -> "with a hand on her hip"
-        "hands_on_hips" -> "with hands on her hips"
+        "hand_on_hip" -> "with a hand on $pronoun hip"
+        "hands_on_hips" -> "with hands on $pronoun hips"
         "v_arms" -> "making a V-sign with both arms"
-        "arm_support" -> "supporting herself with one arm"
+        "arm_support" -> "with one arm supporting the body"
         "interlocked_fingers" -> "with interlocked fingers"
         "partially_unzipped" -> "with clothing partially unzipped"
         "head_tilt" -> "with a slight head tilt"
-        "turning_head" -> "turning her head"
+        "turning_head" -> "turning $pronoun head"
         "leaning_forward" -> "leaning forward"
         "leaning_back" -> "leaning back"
         else -> natural(tag)
@@ -497,6 +557,13 @@ object PromptComposer {
         else -> natural(tag)
     }
 
+    private fun sceneRank(tag: String): Int = when {
+        tag == "indoors" || tag == "outdoors" -> 0
+        tag.startsWith("on_") -> 1
+        tag in setOf("night", "day", "sunset", "sunrise", "rain", "snow") -> 3
+        else -> 2
+    }
+
     private fun moodWord(tag: String): String = when (tag) {
         "light_smile" -> "a light smile"
         "smile" -> "a smile"
@@ -527,6 +594,19 @@ object PromptComposer {
         "playful" -> "a playful expression"
         "melancholic" -> "a melancholic expression"
         else -> natural(tag)
+    }
+
+    private fun withArticle(tag: String, word: String): String {
+        if (word.startsWith("a ") || word.startsWith("an ")) return word
+        if (!needsArticle(tag)) return word
+        val first = word.firstOrNull()?.lowercaseChar()
+        val article = if (first != null && first in VOWELS) "an" else "a"
+        return "$article $word"
+    }
+
+    private fun needsArticle(tag: String): Boolean {
+        if (tag in NO_ARTICLE) return false
+        return NO_ARTICLE_SUFFIXES.none { tag.endsWith(it) }
     }
 
     private fun natural(tag: String): String =

@@ -49,6 +49,11 @@ jobs:
       - name: Run M1 matcher tests
         run: python3 -m unittest tools.test_m1 -v
 
+      - name: Run Kotlin unit tests
+        run: |
+          chmod +x gradlew
+          ./gradlew testDebugUnitTest --stacktrace
+
       - name: Build debug APK
         run: |
           chmod +x gradlew
