@@ -85,13 +85,14 @@ python3 -m unittest tools.test_m1 -v
 
 ## 検証結果
 
-- GitHub Actions run: <https://github.com/shiokunn/prompter/actions/runs/39962415633>
+- GitHub Actions run: <https://github.com/shiokunn/prompter/actions/runs/39963113758>
 - `Run M1 matcher tests`: 成功
 - `Run Kotlin unit tests`: 成功
 - `Build debug APK`: 成功
 - APK: 約31MB、`assets/promptdb.sqlite`（2,289,664 bytes）を同梱
 - 共有ストレージ: `/storage/emulated/0/Download/Prompter/Prompter-0.2.0-m1-debug.apk`
-- SHA-256: `90f73f361ff62fdf8ec62dfc910df7338b9691a8a37487f158e42391843f68b7`
+- SHA-256: `fe5fd796a68ee382f9d9199ffb2b0b57a6a365f713a188ad1e13f54a95bce503`
+- debug keystore は GitHub Actions の cache に保存し、次回以降の debug APK 更新で同じ署名を使う
 
 ## 未完了・既知の制約
 

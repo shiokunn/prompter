@@ -22,7 +22,7 @@
 - 2026-10-23: **M2 コア完了**。Compose UI、Kotlin トライ、オフライン PixAI 自然文合成を実装。
   GitHub Actions で Python テスト、Kotlin 単体テスト（Robolectric 含む）、APK ビルドが成功。
 - APK: `/storage/emulated/0/Download/Prompter/Prompter-0.2.0-m1-debug.apk`
-  （SHA-256 `90f73f361ff62fdf8ec62dfc910df7338b9691a8a37487f158e42391843f68b7`）。
+  （SHA-256 `fe5fd796a68ee382f9d9199ffb2b0b57a6a365f713a188ad1e13f54a95bce503`）。
 - 次の作業: M3 の履歴・お気に入り（Room）、ML Kit 翻訳フォールバック、タグ重み/ネガティブ。
 
 ## 要約
