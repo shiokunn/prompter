@@ -46,6 +46,12 @@ jobs:
         with:
           gradle-version: "9.5.0"
 
+      - name: Cache debug keystore
+        uses: actions/cache@v4
+        with:
+          path: ~/.android/debug.keystore
+          key: prompter-debug-keystore-v1
+
       - name: Run M1 matcher tests
         run: python3 -m unittest tools.test_m1 -v
 
