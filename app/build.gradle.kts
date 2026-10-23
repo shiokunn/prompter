@@ -29,6 +29,10 @@ android {
         // PromptDb uses AssetManager.openFd() to detect a changed asset.
         noCompress += "sqlite"
     }
+
+    testOptions {
+        unitTests.isIncludeAndroidResources = true
+    }
 }
 
 dependencies {
@@ -39,4 +43,5 @@ dependencies {
     implementation("androidx.activity:activity-compose:1.13.0")
     debugImplementation("androidx.compose.ui:ui-tooling")
     testImplementation("junit:junit:4.13.2")
+    testImplementation("org.robolectric:robolectric:4.17")
 }
