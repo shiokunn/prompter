@@ -52,12 +52,30 @@ class OpenRouterClient(
     ): AiPromptResult {
         val system = SYSTEM_PROMPT
         val user = buildUserPrompt(input, offlineTags, unmatched)
-        val content = try {
-            request(apiKey, model, system, user, useJsonSchema = true)
+        return try {
+            requestAndParse(apiKey, model, system, user, useJsonSchema = true)
         } catch (error: OpenRouterException) {
-            if (!error.canRetryWithoutSchema) throw error
-            request(apiKey, model, system, user, useJsonSchema = false)
+            // Retry with json_object when structured output is unsupported, or
+            // when a free-router model returned null/malformed content.
+            if (error.statusCode != null && !error.canRetryWithoutSchema) throw error
+            requestAndParse(apiKey, model, system, user, useJsonSchema = false)
         }
+    }
+
+    private fun requestAndParse(
+        apiKey: String,
+        model: String,
+        systemPrompt: String,
+        userPrompt: String,
+        useJsonSchema: Boolean,
+    ): AiPromptResult {
+        val content = request(
+            apiKey = apiKey,
+            model = model,
+            systemPrompt = systemPrompt,
+            userPrompt = userPrompt,
+            useJsonSchema = useJsonSchema,
+        )
         return parseResult(content)
     }
 
@@ -94,7 +112,18 @@ class OpenRouterClient(
     }
 
     internal fun parseResult(content: String): AiPromptResult {
-        val json = JSONObject(extractJson(content))
+        val jsonText = extractJson(content)
+        if (jsonText.isBlank() || jsonText.equals("null", ignoreCase = true)) {
+            throw OpenRouterException("AIがJSONを返しませんでした。再試行してください。")
+        }
+        val json = try {
+            JSONObject(jsonText)
+        } catch (_: Exception) {
+            throw OpenRouterException(
+                "AIの応答をJSONとして解析できませんでした。再試行してください。",
+                responseBody = content,
+            )
+        }
         val prompt = json.optString("pixai_prompt").trim()
         if (prompt.isEmpty()) {
             throw OpenRouterException("AIが自然文を返しませんでした。")
@@ -178,7 +207,14 @@ class OpenRouterClient(
     }
 
     private fun extractContent(response: String): String {
-        val root = JSONObject(response)
+        val root = try {
+            JSONObject(response)
+        } catch (_: Exception) {
+            throw OpenRouterException(
+                "OpenRouterの応答を解析できませんでした。",
+                responseBody = response,
+            )
+        }
         val choices = root.optJSONArray("choices")
             ?: throw OpenRouterException("OpenRouterの応答にchoicesがありません。")
         if (choices.length() == 0) {
@@ -187,17 +223,21 @@ class OpenRouterClient(
         val message = choices.optJSONObject(0)?.optJSONObject("message")
             ?: throw OpenRouterException("OpenRouterの応答形式が想定外です。")
         val raw = message.opt("content")
-        val content = when (raw) {
-            is String -> raw
-            is JSONArray -> buildString {
-                for (i in 0 until raw.length()) {
-                    append(raw.optJSONObject(i)?.optString("text").orEmpty())
+        val content = if (raw == null || raw === JSONObject.NULL) {
+            ""
+        } else {
+            when (raw) {
+                is String -> raw
+                is JSONArray -> buildString {
+                    for (i in 0 until raw.length()) {
+                        append(raw.optJSONObject(i)?.optString("text").orEmpty())
+                    }
                 }
+                else -> raw.toString()
             }
-            else -> raw?.toString().orEmpty()
         }
-        if (content.isBlank()) {
-            throw OpenRouterException("OpenRouterが空の応答を返しました。")
+        if (content.isBlank() || content.trim().equals("null", ignoreCase = true)) {
+            throw OpenRouterException("OpenRouterが空の応答を返しました。再試行してください。")
         }
         return content
     }

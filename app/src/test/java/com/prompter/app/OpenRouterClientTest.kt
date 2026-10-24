@@ -98,6 +98,38 @@ class OpenRouterClientTest {
     }
 
     @Test
+    fun retriesWithJsonObjectWhenContentIsNull() {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody("""{"choices":[{"message":{"content":null}}]}"""),
+        )
+        val content = JSONObject()
+            .put("pixai_prompt", "An anime-style illustration.")
+            .put("tags", JSONArray().put("1girl"))
+            .toString()
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody(chatResponse(content)),
+        )
+
+        val result = OpenRouterClient(server.url("/").toString()).refine(
+            apiKey = "test-key",
+            model = "openrouter/free",
+            input = "少女",
+            offlineTags = listOf("1girl"),
+            unmatched = "",
+        )
+        assertEquals(listOf("1girl"), result.tags)
+
+        val first = JSONObject(server.takeRequest().body.readUtf8())
+        val second = JSONObject(server.takeRequest().body.readUtf8())
+        assertEquals("json_schema", first.getJSONObject("response_format").getString("type"))
+        assertEquals("json_object", second.getJSONObject("response_format").getString("type"))
+    }
+
+    @Test
     fun mapsUnauthorizedErrorsWithoutLeakingTheKey() {
         server.enqueue(
             MockResponse()
