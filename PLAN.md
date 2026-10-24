@@ -1,7 +1,7 @@
 # Prompter — 日本語→PixAI DiT プロンプト変換 Android アプリ 企画書
 
 - 最終更新: 2026-10-24
-- ステータス: **M1 完了 / M2 コア完了 / M3 実装完了 / M4 実装完了（実キー・実機確認待ち）**
+- ステータス: **M1 完了 / M2 コア完了 / M3 実装完了 / M4 実装完了（実通信確認済み、既定 `openrouter/free`）**
 - 作業ディレクトリ: `~/prompter`
 - 関連調査:
   - [`research/DECISIONS.md`](research/DECISIONS.md) — 確定した要件
@@ -640,19 +640,21 @@ AI 補完
 
 ### 7.2 既定モデル候補
 
-2026-10-23 時点の OpenRouter カタログより。モデルは設定で変更できる。
+2026-10-24 時点の OpenRouter カタログより。モデルは設定で変更できる。
 
 | 用途 | モデル ID | 入力/出力（$ / 1M） | 備考 |
 |---|---|---:|---|
-| **既定（バランス）** | `google/gemini-3.1-flash-lite` | 0.25 / 1.50 | 構造化出力対応、1M context |
+| **既定（無料自動）** | `openrouter/free` | 0 / 0 | 無料モデル自動ルーター。structured outputs対応。無料枠のレート制限は選択先依存 |
+| **バランス** | `google/gemini-3.1-flash-lite` | 0.25 / 1.50 | 構造化出力対応、1M context |
 | **安価** | `google/gemini-2.5-flash-lite` | 0.10 / 0.40 | 構造化出力対応。コスト最小 |
 | **高品質** | `openai/gpt-5.6-luna` | 0.20 / 1.20 | 構造化出力対応 |
 | **高品質（別系統）** | `anthropic/claude-haiku-5.5` | 0.10 / 0.50 | 構造化出力はモデル依存 |
-| **無料テスト** | `google/gemma-4-31b-it:free` | 0 / 0 | レート制限あり。構造化出力非対応。テスト用 |
 
-- 既定は `google/gemini-3.1-flash-lite`。
-- 無料モデルは品質・レート・利用規約が変動するため、既定にしない。
-- モデル一覧はハードコードせず、`GET /models` から取得する。失敗時は上記の推奨リストを表示。
+- 既定は `openrouter/free`。品質重視なら `google/gemini-3.1-flash-lite` を選ぶ。
+- `google/gemma-4-31b-it:free` は無料枠のレート制限が厳しいため、M4ではプリセットから外した。
+  必要な場合はモデルIDを直接入力して利用できる。
+- 無料モデルは品質・レート・利用規約が変動する。`openrouter/free` は単一モデルより制限を避けやすいが、無料枠自体の制限は残る。
+- モデル一覧の自動取得はM4では未実装。プリセット＋直接入力で対応し、`GET /models` はM7で追加する。
 
 ### 7.3 プロンプト設計（PixAI DiT）
 
@@ -829,7 +831,7 @@ Return only canonical Danbooru tags for the requested image.
 | **M1 辞書パイプライン** | 完了 | 別名生成、逆翻訳検証、SQLite ビルド、評価セット | 上位5,000タグの DB と評価レポート。fresh holdout で Recall 0.519 / Precision 0.762 / Invalid 0% |
 | **M2 アプリ骨格** | コア完了 | Compose、Trie、PixAI オフライン合成、CI、Kotlin/Robolectric テスト | 日本語→PixAI 自然文がオフラインで動く（APK `0.2.0-m1`） |
 | **M3 エディタ / 履歴** | 実装完了 | 自然文/タグ切替、タグチップ、重み、並び替え、削除、コピー、履歴・お気に入り（SQLite） | 編集・履歴がテスト済み（APK `0.3.0-m3`、実機確認待ち） |
-| **M4 OpenRouter AI** | 実装完了 | OpenAI 互換クライアント、設定画面、Keystore、JSON Schema、フォールバック、タグ検証、キャッシュ | AI補完がモックテスト済み（APK `0.4.0-m4`、実キー・実機確認待ち） |
+| **M4 OpenRouter AI** | 実装完了 | OpenAI 互換クライアント、設定画面、Keystore、JSON Schema、フォールバック、タグ検証、キャッシュ、既定 `openrouter/free` | 実通信確認済み（ユーザー環境、APK `0.4.1-m4`、CIはモック） |
 | **M5 ML Kit / タグ和訳** | 3〜4日 | ML Kit、英語→タグ正規化、タグ→日本語、オフライン強化 | 辞書外の表現も変換できる |
 | **M6 ローカル LLM** | 5〜7日 | LiteRT-LM、E2B ダウンロード、GPU/CPU、E4B 任意、ベンチ | 機内モードで E2B が動く |
 | **M7 統合・仕上げ** | 3〜4日 | 選択メニュー、共有、オンボーディング、設定、署名、リリース | 実機で1週間使える |

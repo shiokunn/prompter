@@ -25,11 +25,12 @@
   GitHub Actions で Python テスト、Kotlin 単体テスト（Robolectric 含む）、APK ビルドが成功。
 - 2026-10-24: **M3 実装完了（実機確認待ち）**。タグチップの削除・並び替え・重み付け、履歴・お気に入りを実装。
   共有ボタンは削除し、コピー中心のUIに変更。
-- 2026-10-24: **M4 実装完了（実キー・実機確認待ち）**。OpenRouter AI補完、設定画面、Keystore暗号化、
-  JSON Schema、タグ検証、キャッシュを実装。
-- APK: `/storage/emulated/0/Download/Prompter/Prompter-0.4.0-m4-debug.apk`
-  （SHA-256 `d75dce08a2ab12349bfcc64ccf3a4c4480599e3007733dbc61f69dab6ccbe5d3`）。
-- 次の作業: 実機でAPIキーを設定してAI補完を確認、またはM5 ML Kit翻訳フォールバック。
+- 2026-10-24: **M4 実装完了（実通信確認済み、既定 `openrouter/free`）**。OpenRouter AI補完、設定画面、
+  Keystore暗号化、JSON Schema、タグ検証、キャッシュを実装。Gemma 4 31Bの無料プリセットは
+  レート制限が厳しいため、無料モデル自動ルーター `openrouter/free` に置き換えた。
+- APK: `/storage/emulated/0/Download/Prompter/Prompter-0.4.1-m4-debug.apk`
+  （SHA-256 `4262ac3a379c740503e54d8c050f094eb07ce25b6959e5fa8c4c9dca98ab9c14`）。
+- 次の作業: 新APKで `openrouter/free` の品質・レートを確認、またはM5 ML Kit翻訳フォールバック。
 
 ## 要約
 
@@ -43,6 +44,7 @@
   履歴は端末内のSQLiteに保存し、変換結果をすぐ呼び出せる。
 - M4 で **OpenRouter AI補完** を追加。設定画面でBYOKのAPIキーを登録し、
   オフライン結果を「AIで整える」ことができる。キーはAndroid Keystoreで暗号化して保存する。
+  既定モデルは無料モデル自動ルーター `openrouter/free`。Gemma 4 31Bはレート制限のためプリセットから外した。
 - AI 補完は **OpenAI API 互換（既定: OpenRouter）** を任意 ON（BYOK）。
 - AI を使わない人向けに **Gemma 4 E2B（2.58GB）** の任意ダウンロードを用意。
 - APK は GitHub Actions でビルドし、Termux から `adb install` する。
@@ -91,7 +93,7 @@ adb install -r app-debug.apk
 
 ブラウザからダウンロードした場合は ZIP を展開してからインストールする。
 
-現在の APK は `0.4.0-m4`（versionCode 4、debug 署名）。M1 の辞書、M2 のオフライン変換、M3 のタグ編集・履歴、M4 のAI補完を含む。
+現在の APK は `0.4.1-m4`（versionCode 5、debug 署名）。M1 の辞書、M2 のオフライン変換、M3 のタグ編集・履歴、M4 のAI補完を含む。
 
 旧ビルドの debug APK が既に入っている場合、CIは debug keystore をキャッシュして再利用するため
 通常は上書きインストールできる。キャッシュが消えた場合だけ
@@ -99,7 +101,7 @@ adb install -r app-debug.apk
 
 ```bash
 adb uninstall com.prompter.app
-adb install Prompter-0.4.0-m4-debug.apk
+adb install Prompter-0.4.1-m4-debug.apk
 ```
 
 ### AI補完の使い方
@@ -109,7 +111,12 @@ adb install Prompter-0.4.0-m4-debug.apk
 3. 日本語を入力して **変換する**
 4. 結果の下にある **AIで整える** を押す
 
-APIキーはチャット・リポジトリ・APK・履歴には保存しない。実キーでの動作確認は未実施。
+既定モデルは無料モデル自動ルーター `openrouter/free`。設定で
+`google/gemini-3.1-flash-lite` などの有料モデルにも変更できる。
+旧既定のGemini 3.1 Flash Lite、または旧無料プリセットのGemmaを保存している場合は、
+初回起動時に一度だけ `openrouter/free` へ移行する（カスタムモデルは維持）。
+APIキーはチャット・リポジトリ・APK・履歴には保存しない。
+実キーでのOpenRouter通信はユーザー環境で確認済み（CIはモックHTTPで検証）。
 
 ## 調査の再現
 

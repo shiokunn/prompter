@@ -1,9 +1,9 @@
 # M4 — OpenRouter AI補完
 
 - 日付: 2026-10-24
-- 状態: **実装完了（実キー・実機確認待ち）**
+- 状態: **実装完了（ユーザー環境で実通信確認済み。自動テストはモック）**
 - 対象: `app/src/main/java/com/prompter/app/` / `app/src/test/java/com/prompter/app/`
-- APK: `Prompter-0.4.0-m4-debug.apk`（versionCode 4）
+- APK: `Prompter-0.4.1-m4-debug.apk`（versionCode 5）
 
 ## 目的
 
@@ -18,11 +18,13 @@ APIキーはBYOKとし、アプリ・履歴・ログ・APK・CIのどこにも�
 - OpenRouter APIキーを入力（既存キーは表示しない。変更する場合だけ再入力）。
 - API Base URLを変更可能。既定は `https://openrouter.ai/api/v1`。
 - モデルIDを直接入力できる。プリセット:
-  - 既定: `google/gemini-3.1-flash-lite`
+  - 既定: `openrouter/free`（無料モデル自動ルーター）
+  - バランス: `google/gemini-3.1-flash-lite`
   - 低コスト: `google/gemini-2.5-flash-lite`
   - 高品質: `openai/gpt-5.6-luna`
-  - 無料テスト: `google/gemma-4-31b-it:free`
-- モデルIDは2026-10-24時点のOpenRouter `/api/v1/models` で存在を確認済み。
+- `google/gemma-4-31b-it:free` は無料枠のレート制限が厳しいためプリセットから外した。モデルIDの直接入力では利用できる。
+- 旧既定のGemini 3.1 Flash Lite、または旧無料プリセットのGemmaを保存している場合は、初回起動時に一度だけ `openrouter/free` へ移行する。カスタムモデルは維持する。
+- モデルIDは2026-10-24時点のOpenRouter `/api/v1/models` で存在を確認済み。`openrouter/free` もstructured outputs対応。
 - APIキー削除は確認ダイアログ付き。
 
 ### キーの保存
@@ -92,7 +94,7 @@ python3 -m unittest tools.test_m1 -v
 ./gradlew assembleDebug --stacktrace
 ```
 
-Kotlinテストは合計22件:
+Kotlinテストは合計25件:
 
 - 既存13件（`PromptComposerTest` / `M1MatcherTest` / `TagEditingTest` / `HistoryStoreTest`）
 - `AiPromptValidatorTest`（4件）
@@ -107,33 +109,39 @@ Kotlinテストは合計22件:
   - MarkdownフェンスのJSON抽出
 - `AiCacheTest`（1件）
   - 保存・取得・キー分離・クリア
+- `AiSettingsTest`（3件）
+  - 既定が無料ルーターであること
+  - 旧既定モデルの一回限りの移行
+  - カスタムモデルの維持
 
 ## 検証結果
 
-- GitHub Actions run: <https://github.com/shiokunn/prompter/actions/runs/40050801700>
+- GitHub Actions run: <https://github.com/shiokunn/prompter/actions/runs/40052200048>
 - `Run M1 matcher tests`: 成功
 - `Run Kotlin unit tests`: 成功
 - `Build debug APK`: 成功
 - APK: 約31MB
-- 共有ストレージ: `/storage/emulated/0/Download/Prompter/Prompter-0.4.0-m4-debug.apk`
-- SHA-256: `d75dce08a2ab12349bfcc64ccf3a4c4480599e3007733dbc61f69dab6ccbe5d3`
+- 共有ストレージ: `/storage/emulated/0/Download/Prompter/Prompter-0.4.1-m4-debug.apk`
+- SHA-256: `4262ac3a379c740503e54d8c050f094eb07ce25b6959e5fa8c4c9dca98ab9c14`
 - debug署名。debug keystore cacheが残っている限り上書きインストール可能。
+- ユーザー環境で実機インストール・OpenRouter実通信に成功したとの報告あり。CIでは実キーを使わずMockWebServerで検証している。
 
 ## 未完了・既知の制約
 
-- **実キーでのOpenRouter実通信は未実施**。APIキーがないため、クライアントはMockWebServerで検証した。
-- **実機（arrows Alpha）へのインストール・AI設定画面の確認は未実施**（adb未接続）。
+- 実キーでの実通信はユーザー環境で確認済みだが、CIには実キーを置かずMockWebServerで検証している。
+- 当環境からadb接続できないため、実機UIの自動確認は未実施。ユーザー環境でのインストール・実通信は確認済み。
 - ストリーミング、トークン数・料金表示、接続テスト、モデル自動取得は未実装。
 - AIタグは同梱する上位5,003タグの範囲でしか検証できない。それ以外の正しいDanbooruタグも除去される。
 - 自然文の語数が範囲外でも警告のみで採用する。
 - OpenRouter側のモデレーションはアプリでは制御できない。特に `openai/gpt-5.6-luna` はモデレーション有効。成人向けタグ自体はアプリ内でフィルタしない。
+- `openrouter/free` は無料モデルを自動選択するため、品質・速度・モデレーション・レート制限は選択先に依存する。単一のGemma 4 31Bより制限を避けやすいが、無料枠自体の制限は残る。
 - カスタムBase URLはHTTPSのみ許可。
 - APIキーはリクエスト中はメモリ上に存在する。ログ・保存領域には残さない。
 
 ## 次の作業
 
-1. APKを実機にインストールし、設定画面でAPIキーを登録する。
-2. 既定モデル `google/gemini-3.1-flash-lite` で「AIで整える」を実行し、自然文・タグ・履歴を確認する。
-3. 無料モデル `google/gemma-4-31b-it:free` で `json_object` フォールバックを確認する。
+1. 新しいAPKを実機に上書きインストールする。APIキーと履歴は引き継がれ、旧既定モデルは `openrouter/free` へ移行する。
+2. 既定モデル `openrouter/free` で「AIで整える」を実行し、自然文・タグ・履歴を確認する。
+3. 設定から `google/gemini-3.1-flash-lite` などの有料モデルへ切り替えられることを確認する。
 4. APIキー削除後にAIボタンが設定導線へ戻ることを確認する。
 5. M5のML Kit翻訳フォールバックへ進む。
