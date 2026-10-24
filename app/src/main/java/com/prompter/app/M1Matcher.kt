@@ -58,6 +58,8 @@ class M1Matcher private constructor(
         )
     }
 
+    fun isKnownTag(tag: String): Boolean = tag in allTags
+
     fun match(input: String): List<TagMatch> {
         val text = normalize(input)
         val matches = mutableListOf<TagMatch>()

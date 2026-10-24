@@ -16,6 +16,8 @@ class PromptEngine(context: Context) {
     val tagCount: Int = matcher.tagCount
     val aliasCount: Int = matcher.aliasCount
 
+    fun isKnownTag(tag: String): Boolean = matcher.isKnownTag(tag)
+
     fun convert(input: String): ConversionResult {
         val conversion = matcher.convert(input)
         val tagText = conversion.tags.joinToString(", ")

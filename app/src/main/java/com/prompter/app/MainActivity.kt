@@ -89,16 +89,32 @@ private fun PrompterApp() {
     var historyStore by remember { mutableStateOf<HistoryStore?>(null) }
     var historyItems by remember { mutableStateOf<List<HistoryItem>>(emptyList()) }
     var currentHistoryId by remember { mutableStateOf<Long?>(null) }
+    var aiSettings by remember { mutableStateOf<AiSettings?>(null) }
+    var aiCache by remember { mutableStateOf<AiCache?>(null) }
+    var apiKeyConfigured by remember { mutableStateOf(false) }
+    var aiModel by remember { mutableStateOf(AiDefaults.MODEL) }
+    var aiBaseUrl by remember { mutableStateOf(AiDefaults.BASE_URL) }
     var showHistory by rememberSaveable { mutableStateOf(false) }
+    var showSettings by rememberSaveable { mutableStateOf(false) }
     var onlyFavorites by rememberSaveable { mutableStateOf(false) }
     var loading by remember { mutableStateOf(false) }
+    var aiLoading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
+    var aiError by remember { mutableStateOf<String?>(null) }
+    var aiNotice by remember { mutableStateOf<String?>(null) }
+    var naturalPromptOverride by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(Unit) {
         loading = true
         try {
             engine = withContext(Dispatchers.IO) { PromptEngine(context) }
             historyStore = withContext(Dispatchers.IO) { HistoryStore(context) }
+            val loadedAiSettings = withContext(Dispatchers.IO) { AiSettings(context) }
+            aiSettings = loadedAiSettings
+            aiCache = withContext(Dispatchers.IO) { AiCache(context) }
+            apiKeyConfigured = withContext(Dispatchers.IO) { loadedAiSettings.hasApiKey() }
+            aiModel = loadedAiSettings.model
+            aiBaseUrl = loadedAiSettings.baseUrl
         } catch (t: Throwable) {
             error = "初期化に失敗しました: ${t.message}"
         } finally {
@@ -121,11 +137,17 @@ private fun PrompterApp() {
     }
 
     val editedTagText = remember(editableTags) { formatTagText(editableTags) }
-    val editedPixaiPrompt = remember(editableTags) {
-        PromptComposer.compose(editableTags.map { it.tag })
+    val editedPixaiPrompt = remember(editableTags, naturalPromptOverride) {
+        naturalPromptOverride ?: PromptComposer.compose(editableTags.map { it.tag })
     }
 
-    LaunchedEffect(editableTags, currentHistoryId, historyStore) {
+    LaunchedEffect(
+        editableTags,
+        currentHistoryId,
+        historyStore,
+        editedPixaiPrompt,
+        editedTagText,
+    ) {
         val id = currentHistoryId ?: return@LaunchedEffect
         val store = historyStore ?: return@LaunchedEffect
         if (editableTags.isEmpty()) return@LaunchedEffect
@@ -148,8 +170,11 @@ private fun PrompterApp() {
         scope.launch {
             loading = true
             error = null
+            aiError = null
+            aiNotice = null
             try {
                 val converted = withContext(Dispatchers.Default) { current.convert(input) }
+                naturalPromptOverride = null
                 result = converted
                 editableTags = converted.tags.map { EditableTag(it) }
                 currentHistoryId = null
@@ -183,6 +208,9 @@ private fun PrompterApp() {
         )
         editableTags = tags
         currentHistoryId = item.id
+        naturalPromptOverride = item.pixaiPrompt
+        aiError = null
+        aiNotice = null
         showHistory = false
     }
 
@@ -214,6 +242,156 @@ private fun PrompterApp() {
         }
     }
 
+    fun refreshAiSettings() {
+        val settings = aiSettings ?: return
+        scope.launch {
+            apiKeyConfigured = withContext(Dispatchers.IO) { settings.hasApiKey() }
+            aiModel = settings.model
+            aiBaseUrl = settings.baseUrl
+        }
+    }
+
+    fun saveAiSettings(apiKey: String, model: String, baseUrl: String) {
+        val settings = aiSettings ?: return
+        scope.launch {
+            try {
+                withContext(Dispatchers.IO) {
+                    if (apiKey.isNotBlank()) settings.setApiKey(apiKey)
+                    settings.model = model
+                    settings.baseUrl = baseUrl
+                }
+                refreshAiSettings()
+                aiError = null
+                showSettings = false
+            } catch (t: Throwable) {
+                aiError = "AI設定の保存に失敗しました: ${t.message}"
+            }
+        }
+    }
+
+    fun deleteAiKey() {
+        val settings = aiSettings ?: return
+        scope.launch {
+            withContext(Dispatchers.IO) { settings.clearApiKey() }
+            refreshAiSettings()
+            aiError = null
+            aiNotice = null
+            showSettings = false
+        }
+    }
+
+    fun refineWithAi() {
+        val current = result ?: return
+        val currentEngine = engine ?: return
+        val settings = aiSettings ?: return
+        if (!apiKeyConfigured) {
+            showSettings = true
+            return
+        }
+        if (editableTags.isEmpty()) return
+
+        val sourceInput = input
+        val offlineTags = editableTags.map { it.tag }
+        val historyId = currentHistoryId
+        scope.launch {
+            aiLoading = true
+            aiError = null
+            aiNotice = null
+            try {
+                val (apiKey, model, baseUrl) = withContext(Dispatchers.IO) {
+                    Triple(settings.getApiKey(), settings.model, settings.baseUrl)
+                }
+                if (apiKey.isNullOrBlank()) {
+                    throw OpenRouterException(
+                        "APIキーを読み込めませんでした。設定で再登録してください。",
+                    )
+                }
+
+                val cache = aiCache
+                val cacheKey = cache?.key(
+                    baseUrl = baseUrl,
+                    model = model,
+                    input = sourceInput,
+                    offlineTags = offlineTags,
+                    unmatched = current.unmatched,
+                )
+                val cached = if (cache != null && cacheKey != null) {
+                    withContext(Dispatchers.IO) { cache.get(cacheKey) }
+                } else {
+                    null
+                }
+                val fromCache = cached != null
+                val aiResult = cached ?: withContext(Dispatchers.IO) {
+                    OpenRouterClient(baseUrl).refine(
+                        apiKey = apiKey,
+                        model = model,
+                        input = sourceInput,
+                        offlineTags = offlineTags,
+                        unmatched = current.unmatched,
+                    )
+                }
+                if (!fromCache && cache != null && cacheKey != null) {
+                    withContext(Dispatchers.IO) { cache.put(cacheKey, aiResult) }
+                }
+
+                val validation = AiPromptValidator.validate(aiResult) { tag ->
+                    currentEngine.isKnownTag(tag)
+                }
+                if (validation.prompt.isBlank()) {
+                    throw OpenRouterException("AIが空の自然文を返しました。")
+                }
+
+                val tags = validation.tags.ifEmpty { offlineTags }
+                val editable = tags.map { EditableTag(it) }
+                val tagText = formatTagText(editable)
+                result = ConversionResult(
+                    pixaiPrompt = validation.prompt,
+                    tagText = tagText,
+                    tags = tags,
+                    unmatched = current.unmatched,
+                )
+                editableTags = editable
+                naturalPromptOverride = validation.prompt
+
+                aiNotice = buildString {
+                    append(if (fromCache) "キャッシュから反映" else "AIで更新")
+                    append(" / ${validation.wordCount}語")
+                    if (!validation.wordCountOk) {
+                        append("（目標80〜150語）")
+                    }
+                    if (validation.removedTags.isNotEmpty()) {
+                        append(" / 辞書外タグ${validation.removedTags.size}件を除去")
+                    }
+                    if (validation.tags.isEmpty()) {
+                        append(" / 有効タグがないためオフラインタグを使用")
+                    }
+                }
+
+                val store = historyStore
+                if (store != null) {
+                    if (historyId != null) {
+                        withContext(Dispatchers.IO) {
+                            store.update(historyId, validation.prompt, tagText)
+                        }
+                    } else {
+                        currentHistoryId = withContext(Dispatchers.IO) {
+                            store.add(
+                                input = sourceInput,
+                                pixaiPrompt = validation.prompt,
+                                tagText = tagText,
+                                unmatched = current.unmatched,
+                            )
+                        }
+                    }
+                }
+            } catch (t: Throwable) {
+                aiError = t.message ?: "AI補完に失敗しました。"
+            } finally {
+                aiLoading = false
+            }
+        }
+    }
+
     fun cycleWeight(index: Int) {
         if (index !in editableTags.indices) return
         val next = editableTags.toMutableList()
@@ -232,6 +410,8 @@ private fun PrompterApp() {
 
     fun removeTag(index: Int) {
         if (index !in editableTags.indices) return
+        naturalPromptOverride = null
+        aiNotice = null
         editableTags = editableTags.filterIndexed { i, _ -> i != index }
     }
 
@@ -249,6 +429,18 @@ private fun PrompterApp() {
         return
     }
 
+    if (showSettings) {
+        SettingsScreen(
+            hasApiKey = apiKeyConfigured,
+            initialModel = aiModel,
+            initialBaseUrl = aiBaseUrl,
+            onBack = { showSettings = false },
+            onSave = ::saveAiSettings,
+            onDeleteKey = ::deleteAiKey,
+        )
+        return
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -262,6 +454,9 @@ private fun PrompterApp() {
                     }
                 },
                 actions = {
+                    TextButton(onClick = { showSettings = true }) {
+                        Text("設定")
+                    }
                     TextButton(onClick = { showHistory = true }) {
                         Text("履歴")
                     }
@@ -303,6 +498,10 @@ private fun PrompterApp() {
                         result = null
                         editableTags = emptyList()
                         currentHistoryId = null
+                        naturalPromptOverride = null
+                        aiError = null
+                        aiNotice = null
+                        error = null
                     },
                 )
             }
@@ -314,7 +513,7 @@ private fun PrompterApp() {
             item {
                 Button(
                     onClick = ::convert,
-                    enabled = input.isNotBlank() && engine != null && !loading,
+                    enabled = input.isNotBlank() && engine != null && !loading && !aiLoading,
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     Text(if (loading) "変換中…" else "変換する")
@@ -374,6 +573,18 @@ private fun PrompterApp() {
                                 onCycleWeight = ::cycleWeight,
                                 onMove = ::moveTag,
                                 onRemove = ::removeTag,
+                            )
+                        }
+                        item {
+                            AiCard(
+                                hasApiKey = apiKeyConfigured,
+                                model = aiModel,
+                                loading = aiLoading,
+                                error = aiError,
+                                notice = aiNotice,
+                                enabled = editableTags.isNotEmpty() && !aiLoading,
+                                onOpenSettings = { showSettings = true },
+                                onRefine = ::refineWithAi,
                             )
                         }
                         if (res.unmatched.isNotBlank()) {
@@ -468,6 +679,76 @@ private fun OutputCard(title: String, subtitle: String, text: String) {
                     text = text,
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.padding(top = 10.dp),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun AiCard(
+    hasApiKey: Boolean,
+    model: String,
+    loading: Boolean,
+    error: String?,
+    notice: String?,
+    enabled: Boolean,
+    onOpenSettings: () -> Unit,
+    onRefine: () -> Unit,
+) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text("AI補完（任意）", style = MaterialTheme.typography.titleMedium)
+            Text(
+                "オフライン結果をOpenRouterのモデルで整えます。",
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(top = 4.dp),
+            )
+            if (!hasApiKey) {
+                Text(
+                    "OpenRouter APIキーを設定すると使えます。キーは端末内で暗号化して保存します。",
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(top = 8.dp),
+                )
+                TextButton(
+                    onClick = onOpenSettings,
+                    modifier = Modifier.padding(top = 4.dp),
+                ) {
+                    Text("AI設定を開く")
+                }
+            } else {
+                Text(
+                    "モデル: $model",
+                    style = MaterialTheme.typography.labelSmall,
+                    modifier = Modifier.padding(top = 8.dp),
+                )
+                Button(
+                    onClick = onRefine,
+                    enabled = enabled && !loading,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp),
+                ) {
+                    Text(if (loading) "AIで整え中…" else "AIで整える")
+                }
+            }
+            if (loading) {
+                CircularProgressIndicator(modifier = Modifier.padding(top = 8.dp))
+            }
+            error?.let {
+                Text(
+                    text = it,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(top = 8.dp),
+                )
+            }
+            notice?.let {
+                Text(
+                    text = it,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 8.dp),
                 )
             }
         }
