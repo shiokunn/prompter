@@ -56,6 +56,22 @@ class AiSettingsTest {
         }
     }
 
+    @Test
+    fun backendDefaultsToCloudAndPersistsLocal() {
+        val context = RuntimeEnvironment.getApplication()
+        val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        prefs.edit().clear().commit()
+        try {
+            val settings = AiSettings(context)
+            assertEquals(AiBackend.CLOUD, settings.backend)
+
+            settings.backend = AiBackend.LOCAL
+            assertEquals(AiBackend.LOCAL, AiSettings(context).backend)
+        } finally {
+            prefs.edit().clear().commit()
+        }
+    }
+
     private companion object {
         const val PREFS_NAME = "prompter_ai_settings"
     }

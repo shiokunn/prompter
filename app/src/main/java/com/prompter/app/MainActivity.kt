@@ -53,6 +53,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.util.Locale
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -94,6 +95,13 @@ private fun PrompterApp() {
     var apiKeyConfigured by remember { mutableStateOf(false) }
     var aiModel by remember { mutableStateOf(AiDefaults.MODEL) }
     var aiBaseUrl by remember { mutableStateOf(AiDefaults.BASE_URL) }
+    var aiBackend by remember { mutableStateOf(AiBackend.CLOUD) }
+    var localModelStatus by remember {
+        mutableStateOf(LocalModelStatus(LocalModelState.NOT_DOWNLOADED))
+    }
+    var localEngineLoaded by remember { mutableStateOf(false) }
+    val localModelManager = remember { LocalModelManager(context.applicationContext) }
+    val localLlm = remember { LocalLlmEngine(context.applicationContext) }
     var showHistory by rememberSaveable { mutableStateOf(false) }
     var showSettings by rememberSaveable { mutableStateOf(false) }
     var onlyFavorites by rememberSaveable { mutableStateOf(false) }
@@ -124,6 +132,8 @@ private fun PrompterApp() {
             apiKeyConfigured = withContext(Dispatchers.IO) { loadedAiSettings.hasApiKey() }
             aiModel = loadedAiSettings.model
             aiBaseUrl = loadedAiSettings.baseUrl
+            aiBackend = loadedAiSettings.backend
+            localModelStatus = withContext(Dispatchers.IO) { localModelManager.status() }
             val loadedTranslator = withContext(Dispatchers.IO) {
                 runCatching { MlKitTextTranslator() }.getOrNull()
             }
@@ -147,9 +157,36 @@ private fun PrompterApp() {
 
     DisposableEffect(Unit) {
         onDispose {
+            localLlm.close()
             translator?.close()
             engine?.close()
             historyStore?.close()
+        }
+    }
+
+    LaunchedEffect(localModelStatus.state) {
+        when (localModelStatus.state) {
+            LocalModelState.DOWNLOADING -> {
+                while (true) {
+                    delay(1000)
+                    val next = withContext(Dispatchers.IO) { localModelManager.status() }
+                    localModelStatus = next
+                    if (next.state != LocalModelState.DOWNLOADING) break
+                }
+            }
+
+            LocalModelState.NEEDS_VERIFICATION -> {
+                localModelStatus = localModelStatus.copy(state = LocalModelState.VERIFYING)
+                localModelStatus = withContext(Dispatchers.IO) { localModelManager.verify() }
+            }
+
+            else -> Unit
+        }
+    }
+
+    LaunchedEffect(showSettings) {
+        if (showSettings) {
+            localModelStatus = withContext(Dispatchers.IO) { localModelManager.status() }
         }
     }
 
@@ -338,10 +375,16 @@ private fun PrompterApp() {
             apiKeyConfigured = withContext(Dispatchers.IO) { settings.hasApiKey() }
             aiModel = settings.model
             aiBaseUrl = settings.baseUrl
+            aiBackend = settings.backend
         }
     }
 
-    fun saveAiSettings(apiKey: String, model: String, baseUrl: String) {
+    fun saveAiSettings(
+        apiKey: String,
+        model: String,
+        baseUrl: String,
+        backend: AiBackend,
+    ) {
         val settings = aiSettings ?: return
         scope.launch {
             try {
@@ -349,6 +392,7 @@ private fun PrompterApp() {
                     if (apiKey.isNotBlank()) settings.setApiKey(apiKey)
                     settings.model = model
                     settings.baseUrl = baseUrl
+                    settings.backend = backend
                 }
                 refreshAiSettings()
                 aiError = null
@@ -370,8 +414,40 @@ private fun PrompterApp() {
         }
     }
 
-    fun downloadTranslationModels() {
-        val current = translator
+    fun downloadLocalModel() {
+        scope.launch {
+            localModelStatus = withContext(Dispatchers.IO) { localModelManager.startDownload() }
+        }
+    }
+
+    fun cancelLocalModelDownload() {
+        scope.launch {
+            localModelStatus = withContext(Dispatchers.IO) { localModelManager.cancelDownload() }
+        }
+    }
+
+    fun verifyLocalModel() {
+        scope.launch {
+            localModelStatus = localModelStatus.copy(state = LocalModelState.VERIFYING)
+            localModelStatus = withContext(Dispatchers.IO) { localModelManager.verify() }
+        }
+    }
+
+    fun deleteLocalModel() {
+        localLlm.close()
+        localEngineLoaded = false
+        scope.launch {
+            localModelStatus = withContext(Dispatchers.IO) { localModelManager.deleteModel() }
+        }
+    }
+
+    fun unloadLocalEngine() {
+        localLlm.close()
+        localEngineLoaded = false
+        aiNotice = "ローカルLLMのエンジンを解放しました"
+    }
+
+    fun downloadTranslationModels() {        val current = translator
         if (current == null) {
             translationError = "ML Kit翻訳を初期化できませんでした。辞書のみで動作します。"
             return
@@ -400,7 +476,12 @@ private fun PrompterApp() {
         val current = result ?: return
         val currentEngine = engine ?: return
         val settings = aiSettings ?: return
-        if (!apiKeyConfigured) {
+        val backend = aiBackend
+        if (backend == AiBackend.CLOUD && !apiKeyConfigured) {
+            showSettings = true
+            return
+        }
+        if (backend == AiBackend.LOCAL && !localModelStatus.isReady) {
             showSettings = true
             return
         }
@@ -413,19 +494,27 @@ private fun PrompterApp() {
             aiError = null
             aiNotice = null
             try {
-                val (apiKey, model, baseUrl) = withContext(Dispatchers.IO) {
-                    Triple(settings.getApiKey(), settings.model, settings.baseUrl)
+                val cloud = if (backend == AiBackend.CLOUD) {
+                    withContext(Dispatchers.IO) {
+                        Triple(settings.getApiKey(), settings.model, settings.baseUrl)
+                    }
+                } else {
+                    null
                 }
-                if (apiKey.isNullOrBlank()) {
-                    throw OpenRouterException(
-                        "APIキーを読み込めませんでした。設定で再登録してください。",
-                    )
-                }
-
                 val cache = aiCache
+                val cacheBase = if (backend == AiBackend.LOCAL) {
+                    "local://litertlm"
+                } else {
+                    checkNotNull(cloud).third
+                }
+                val cacheModel = if (backend == AiBackend.LOCAL) {
+                    LocalModelSpec.CACHE_KEY
+                } else {
+                    checkNotNull(cloud).second
+                }
                 val cacheKey = cache?.key(
-                    baseUrl = baseUrl,
-                    model = model,
+                    baseUrl = cacheBase,
+                    model = cacheModel,
                     input = sourceInput,
                     offlineTags = offlineTags,
                     unmatched = current.unmatched,
@@ -436,14 +525,33 @@ private fun PrompterApp() {
                     null
                 }
                 val fromCache = cached != null
-                val aiResult = cached ?: withContext(Dispatchers.IO) {
-                    OpenRouterClient(baseUrl).refine(
-                        apiKey = apiKey,
-                        model = model,
-                        input = sourceInput,
-                        offlineTags = offlineTags,
-                        unmatched = current.unmatched,
-                    )
+                var loadMillis = 0L
+                var generateMillis = 0L
+                val aiResult = cached ?: if (backend == AiBackend.LOCAL) {
+                    val generation = withContext(Dispatchers.IO) {
+                        localLlm.generate(sourceInput, offlineTags, current.unmatched)
+                    }
+                    localEngineLoaded = localLlm.isLoaded
+                    loadMillis = generation.loadMillis
+                    generateMillis = generation.generateMillis
+                    generation.result
+                } else {
+                    val cloudSettings = checkNotNull(cloud)
+                    val apiKey = cloudSettings.first
+                    if (apiKey.isNullOrBlank()) {
+                        throw OpenRouterException(
+                            "APIキーを読み込めませんでした。設定で再登録してください。",
+                        )
+                    }
+                    withContext(Dispatchers.IO) {
+                        OpenRouterClient(cloudSettings.third).refine(
+                            apiKey = apiKey,
+                            model = cloudSettings.second,
+                            input = sourceInput,
+                            offlineTags = offlineTags,
+                            unmatched = current.unmatched,
+                        )
+                    }
                 }
                 if (!fromCache && cache != null && cacheKey != null) {
                     withContext(Dispatchers.IO) { cache.put(cacheKey, aiResult) }
@@ -453,6 +561,9 @@ private fun PrompterApp() {
                     currentEngine.isKnownTag(tag)
                 }
                 if (validation.prompt.isBlank()) {
+                    if (backend == AiBackend.LOCAL) {
+                        throw LocalLlmException("ローカルLLMが空の自然文を返しました。")
+                    }
                     throw OpenRouterException("AIが空の自然文を返しました。")
                 }
 
@@ -471,10 +582,22 @@ private fun PrompterApp() {
                 translationNotice = null
 
                 aiNotice = buildString {
-                    append(if (fromCache) "キャッシュから反映" else "AIで更新")
+                    append(
+                        when {
+                            fromCache -> "キャッシュから反映"
+                            backend == AiBackend.LOCAL -> "ローカルLLMで更新"
+                            else -> "AIで更新"
+                        },
+                    )
                     append(" / ${validation.wordCount}語")
                     if (!validation.wordCountOk) {
                         append("（目標80〜150語）")
+                    }
+                    if (backend == AiBackend.LOCAL && !fromCache) {
+                        append(" / 生成${formatDuration(generateMillis)}")
+                        if (loadMillis > 0L) {
+                            append("（読み込み${formatDuration(loadMillis)}）")
+                        }
                     }
                     if (validation.removedTags.isNotEmpty()) {
                         append(" / 辞書外タグ${validation.removedTags.size}件を除去")
@@ -508,8 +631,13 @@ private fun PrompterApp() {
                     }
                 }
             } catch (t: Throwable) {
-                aiError = t.message ?: "AI補完に失敗しました。"
+                aiError = if (backend == AiBackend.LOCAL) {
+                    "ローカルLLMで失敗しました: ${t.message ?: "不明なエラー"}"
+                } else {
+                    t.message ?: "AI補完に失敗しました。"
+                }
             } finally {
+                localEngineLoaded = localLlm.isLoaded
                 aiLoading = false
             }
         }
@@ -557,13 +685,21 @@ private fun PrompterApp() {
             hasApiKey = apiKeyConfigured,
             initialModel = aiModel,
             initialBaseUrl = aiBaseUrl,
+            initialBackend = aiBackend,
             translationReady = translationReady,
             translationDownloading = translationDownloading,
             translationError = translationError,
+            localModelStatus = localModelStatus,
+            localEngineLoaded = localEngineLoaded,
             onBack = { showSettings = false },
             onSave = ::saveAiSettings,
             onDeleteKey = ::deleteAiKey,
             onDownloadTranslation = ::downloadTranslationModels,
+            onDownloadLocalModel = ::downloadLocalModel,
+            onCancelLocalModelDownload = ::cancelLocalModelDownload,
+            onVerifyLocalModel = ::verifyLocalModel,
+            onDeleteLocalModel = ::deleteLocalModel,
+            onUnloadLocalEngine = ::unloadLocalEngine,
         )
         return
     }
@@ -675,8 +811,10 @@ private fun PrompterApp() {
                         item { NoMatchCard(res.unmatched) }
                         item {
                             AiCard(
+                                backend = aiBackend,
                                 hasApiKey = apiKeyConfigured,
                                 model = aiModel,
+                                localModelStatus = localModelStatus,
                                 loading = aiLoading,
                                 error = aiError,
                                 notice = aiNotice,
@@ -699,8 +837,10 @@ private fun PrompterApp() {
                         item { EmptyTagsCard() }
                         item {
                             AiCard(
+                                backend = aiBackend,
                                 hasApiKey = apiKeyConfigured,
                                 model = aiModel,
+                                localModelStatus = localModelStatus,
                                 loading = aiLoading,
                                 error = aiError,
                                 notice = aiNotice,
@@ -750,8 +890,10 @@ private fun PrompterApp() {
                         }
                         item {
                             AiCard(
+                                backend = aiBackend,
                                 hasApiKey = apiKeyConfigured,
                                 model = aiModel,
+                                localModelStatus = localModelStatus,
                                 loading = aiLoading,
                                 error = aiError,
                                 notice = aiNotice,
@@ -788,6 +930,9 @@ private fun PrompterApp() {
         }
     }
 }
+
+private fun formatDuration(millis: Long): String =
+    String.format(Locale.US, "%.1f秒", millis / 1000.0)
 
 @Composable
 private fun IntroCard() {
@@ -887,8 +1032,10 @@ private fun AiNoTagsCard() {
 
 @Composable
 private fun AiCard(
+    backend: AiBackend,
     hasApiKey: Boolean,
     model: String,
+    localModelStatus: LocalModelStatus,
     loading: Boolean,
     error: String?,
     notice: String?,
@@ -896,40 +1043,105 @@ private fun AiCard(
     onOpenSettings: () -> Unit,
     onRefine: () -> Unit,
 ) {
+    val local = backend == AiBackend.LOCAL
+    val localStateLabel = when (localModelStatus.state) {
+        LocalModelState.NOT_DOWNLOADED -> "未ダウンロード"
+        LocalModelState.DOWNLOADING -> "ダウンロード中"
+        LocalModelState.NEEDS_VERIFICATION -> "検証待ち"
+        LocalModelState.VERIFYING -> "検証中"
+        LocalModelState.READY -> "準備完了"
+        LocalModelState.ERROR -> "エラー"
+    }
     Card(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text("AI補完（任意）", style = MaterialTheme.typography.titleMedium)
             Text(
-                "オフライン結果をOpenRouterのモデルで整えます。",
+                if (local) "ローカルLLM補完（任意）" else "AI補完（任意）",
+                style = MaterialTheme.typography.titleMedium,
+            )
+            Text(
+                if (local) {
+                    "オフライン結果を端末内のGemma 4 E2Bで整えます。機内モードでも使えます。"
+                } else {
+                    "オフライン結果をOpenRouterのモデルで整えます。"
+                },
                 style = MaterialTheme.typography.bodySmall,
                 modifier = Modifier.padding(top = 4.dp),
             )
-            if (!hasApiKey) {
-                Text(
-                    "OpenRouter APIキーを設定すると使えます。キーは端末内で暗号化して保存します。",
-                    style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.padding(top = 8.dp),
-                )
-                TextButton(
-                    onClick = onOpenSettings,
-                    modifier = Modifier.padding(top = 4.dp),
-                ) {
-                    Text("AI設定を開く")
+            when {
+                local && !localModelStatus.isReady -> {
+                    Text(
+                        "モデルの状態: $localStateLabel。設定から約2.59GBのモデルを準備してください。",
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(top = 8.dp),
+                    )
+                    localModelStatus.error?.let { message ->
+                        Text(
+                            text = message,
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.padding(top = 6.dp),
+                        )
+                    }
+                    TextButton(
+                        onClick = onOpenSettings,
+                        modifier = Modifier.padding(top = 4.dp),
+                    ) {
+                        Text("AI設定を開く")
+                    }
                 }
-            } else {
-                Text(
-                    "モデル: $model",
-                    style = MaterialTheme.typography.labelSmall,
-                    modifier = Modifier.padding(top = 8.dp),
-                )
-                Button(
-                    onClick = onRefine,
-                    enabled = enabled && !loading,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 8.dp),
-                ) {
-                    Text(if (loading) "AIで整え中…" else "AIで整える")
+
+                local -> {
+                    Text(
+                        "モデル: ${LocalModelSpec.DISPLAY_NAME} / CPU",
+                        style = MaterialTheme.typography.labelSmall,
+                        modifier = Modifier.padding(top = 8.dp),
+                    )
+                    Button(
+                        onClick = onRefine,
+                        enabled = enabled && !loading,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 8.dp),
+                    ) {
+                        Text(
+                            if (loading) {
+                                "ローカルLLMで整え中…"
+                            } else {
+                                "ローカルLLMで整える"
+                            },
+                        )
+                    }
+                }
+
+                !hasApiKey -> {
+                    Text(
+                        "OpenRouter APIキーを設定すると使えます。キーは端末内で暗号化して保存します。",
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(top = 8.dp),
+                    )
+                    TextButton(
+                        onClick = onOpenSettings,
+                        modifier = Modifier.padding(top = 4.dp),
+                    ) {
+                        Text("AI設定を開く")
+                    }
+                }
+
+                else -> {
+                    Text(
+                        "モデル: $model",
+                        style = MaterialTheme.typography.labelSmall,
+                        modifier = Modifier.padding(top = 8.dp),
+                    )
+                    Button(
+                        onClick = onRefine,
+                        enabled = enabled && !loading,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 8.dp),
+                    ) {
+                        Text(if (loading) "AIで整え中…" else "AIで整える")
+                    }
                 }
             }
             if (loading) {

@@ -14,6 +14,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -29,6 +30,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -36,20 +38,30 @@ fun SettingsScreen(
     hasApiKey: Boolean,
     initialModel: String,
     initialBaseUrl: String,
+    initialBackend: AiBackend,
     translationReady: Boolean,
     translationDownloading: Boolean,
     translationError: String?,
+    localModelStatus: LocalModelStatus,
+    localEngineLoaded: Boolean,
     onBack: () -> Unit,
-    onSave: (apiKey: String, model: String, baseUrl: String) -> Unit,
+    onSave: (apiKey: String, model: String, baseUrl: String, backend: AiBackend) -> Unit,
     onDeleteKey: () -> Unit,
     onDownloadTranslation: () -> Unit,
+    onDownloadLocalModel: () -> Unit,
+    onCancelLocalModelDownload: () -> Unit,
+    onVerifyLocalModel: () -> Unit,
+    onDeleteLocalModel: () -> Unit,
+    onUnloadLocalEngine: () -> Unit,
 ) {
     var apiKey by remember { mutableStateOf("") }
     var model by remember { mutableStateOf(initialModel) }
     var baseUrl by remember { mutableStateOf(initialBaseUrl) }
+    var backend by remember { mutableStateOf(initialBackend) }
     var showKey by remember { mutableStateOf(false) }
     var localError by remember { mutableStateOf<String?>(null) }
     var confirmDelete by remember { mutableStateOf(false) }
+    var confirmDeleteModel by remember { mutableStateOf(false) }
 
     fun save() {
         val normalizedBaseUrl = AiDefaults.normalizeBaseUrl(baseUrl)
@@ -58,15 +70,15 @@ fun SettingsScreen(
             !AiDefaults.isValidBaseUrl(normalizedBaseUrl) -> {
                 localError = "Base URLは https:// で始まるURLを入力してください。"
             }
-            trimmedModel.isEmpty() -> {
+            backend == AiBackend.CLOUD && trimmedModel.isEmpty() -> {
                 localError = "モデルIDを入力してください。"
             }
-            !hasApiKey && apiKey.isBlank() -> {
+            backend == AiBackend.CLOUD && !hasApiKey && apiKey.isBlank() -> {
                 localError = "OpenRouterのAPIキーを入力してください。"
             }
             else -> {
                 localError = null
-                onSave(apiKey.trim(), trimmedModel, normalizedBaseUrl)
+                onSave(apiKey.trim(), trimmedModel, normalizedBaseUrl, backend)
             }
         }
     }
@@ -93,63 +105,9 @@ fun SettingsScreen(
             item {
                 Card(modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(16.dp)) {
-                        Text("OpenRouter APIキー", style = MaterialTheme.typography.titleMedium)
+                        Text("AIバックエンド", style = MaterialTheme.typography.titleMedium)
                         Text(
-                            if (hasApiKey) {
-                                "設定済みです。変更しない場合は空欄のまま保存してください。"
-                            } else {
-                                "AI補完を使うにはOpenRouterのAPIキーが必要です。"
-                            },
-                            style = MaterialTheme.typography.bodySmall,
-                            modifier = Modifier.padding(top = 4.dp),
-                        )
-                        OutlinedTextField(
-                            value = apiKey,
-                            onValueChange = {
-                                apiKey = it
-                                localError = null
-                            },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = 12.dp),
-                            label = {
-                                Text(
-                                    if (hasApiKey) "新しいAPIキー（変更する場合のみ）" else "APIキー",
-                                )
-                            },
-                            placeholder = {
-                                Text(if (hasApiKey) "設定済み" else "sk-or-v1-...")
-                            },
-                            singleLine = true,
-                            visualTransformation = if (showKey) {
-                                VisualTransformation.None
-                            } else {
-                                PasswordVisualTransformation()
-                            },
-                            trailingIcon = {
-                                TextButton(onClick = { showKey = !showKey }) {
-                                    Text(if (showKey) "隠す" else "表示")
-                                }
-                            },
-                        )
-                        if (hasApiKey) {
-                            TextButton(
-                                onClick = { confirmDelete = true },
-                                modifier = Modifier.padding(top = 4.dp),
-                            ) {
-                                Text("APIキーを削除")
-                            }
-                        }
-                    }
-                }
-            }
-
-            item {
-                Card(modifier = Modifier.fillMaxWidth()) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text("モデル", style = MaterialTheme.typography.titleMedium)
-                        Text(
-                            "OpenRouterのモデルIDを指定できます。",
+                            "クラウドのOpenRouterか、端末内で動くGemma 4 E2Bを選べます。",
                             style = MaterialTheme.typography.bodySmall,
                             modifier = Modifier.padding(top = 4.dp),
                         )
@@ -158,29 +116,150 @@ fun SettingsScreen(
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                             verticalArrangement = Arrangement.spacedBy(4.dp),
                         ) {
-                            AiDefaults.PRESETS.forEach { preset ->
+                            AiBackend.entries.forEach { entry ->
                                 FilterChip(
-                                    selected = model == preset.model,
+                                    selected = backend == entry,
                                     onClick = {
-                                        model = preset.model
+                                        backend = entry
                                         localError = null
                                     },
-                                    label = { Text(preset.label) },
+                                    label = { Text(entry.label) },
                                 )
                             }
                         }
-                        OutlinedTextField(
-                            value = model,
-                            onValueChange = {
-                                model = it
-                                localError = null
+                        Text(
+                            if (backend == AiBackend.LOCAL) {
+                                "ローカルLLM使用時はOpenRouterのAPIキーは不要です。"
+                            } else {
+                                "クラウド使用時はOpenRouterのAPIキーが必要です。"
                             },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = 8.dp),
-                            label = { Text("モデルID") },
-                            singleLine = true,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = 8.dp),
                         )
+                    }
+                }
+            }
+
+            if (backend == AiBackend.CLOUD) {
+                item {
+                    Card(modifier = Modifier.fillMaxWidth()) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Text("OpenRouter APIキー", style = MaterialTheme.typography.titleMedium)
+                            Text(
+                                if (hasApiKey) {
+                                    "設定済みです。変更しない場合は空欄のまま保存してください。"
+                                } else {
+                                    "AI補完を使うにはOpenRouterのAPIキーが必要です。"
+                                },
+                                style = MaterialTheme.typography.bodySmall,
+                                modifier = Modifier.padding(top = 4.dp),
+                            )
+                            OutlinedTextField(
+                                value = apiKey,
+                                onValueChange = {
+                                    apiKey = it
+                                    localError = null
+                                },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 12.dp),
+                                label = {
+                                    Text(
+                                        if (hasApiKey) "新しいAPIキー（変更する場合のみ）" else "APIキー",
+                                    )
+                                },
+                                placeholder = {
+                                    Text(if (hasApiKey) "設定済み" else "sk-or-v1-...")
+                                },
+                                singleLine = true,
+                                visualTransformation = if (showKey) {
+                                    VisualTransformation.None
+                                } else {
+                                    PasswordVisualTransformation()
+                                },
+                                trailingIcon = {
+                                    TextButton(onClick = { showKey = !showKey }) {
+                                        Text(if (showKey) "隠す" else "表示")
+                                    }
+                                },
+                            )
+                            if (hasApiKey) {
+                                TextButton(
+                                    onClick = { confirmDelete = true },
+                                    modifier = Modifier.padding(top = 4.dp),
+                                ) {
+                                    Text("APIキーを削除")
+                                }
+                            }
+                        }
+                    }
+                }
+
+                item {
+                    Card(modifier = Modifier.fillMaxWidth()) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Text("モデル", style = MaterialTheme.typography.titleMedium)
+                            Text(
+                                "OpenRouterのモデルIDを指定できます。",
+                                style = MaterialTheme.typography.bodySmall,
+                                modifier = Modifier.padding(top = 4.dp),
+                            )
+                            FlowRow(
+                                modifier = Modifier.padding(top = 8.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalArrangement = Arrangement.spacedBy(4.dp),
+                            ) {
+                                AiDefaults.PRESETS.forEach { preset ->
+                                    FilterChip(
+                                        selected = model == preset.model,
+                                        onClick = {
+                                            model = preset.model
+                                            localError = null
+                                        },
+                                        label = { Text(preset.label) },
+                                    )
+                                }
+                            }
+                            OutlinedTextField(
+                                value = model,
+                                onValueChange = {
+                                    model = it
+                                    localError = null
+                                },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 8.dp),
+                                label = { Text("モデルID") },
+                                singleLine = true,
+                            )
+                        }
+                    }
+                }
+
+                item {
+                    Card(modifier = Modifier.fillMaxWidth()) {
+                        Column(modifier = Modifier.padding(16.dp)) {
+                            Text("API Base URL", style = MaterialTheme.typography.titleMedium)
+                            OutlinedTextField(
+                                value = baseUrl,
+                                onValueChange = {
+                                    baseUrl = it
+                                    localError = null
+                                },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 8.dp),
+                                label = { Text("Base URL") },
+                                placeholder = { Text(AiDefaults.BASE_URL) },
+                                singleLine = true,
+                            )
+                            Text(
+                                "OpenAI互換APIのURLを指定できます。通常はOpenRouterの既定値のままにしてください。",
+                                style = MaterialTheme.typography.bodySmall,
+                                modifier = Modifier.padding(top = 6.dp),
+                            )
+                        }
                     }
                 }
             }
@@ -188,24 +267,163 @@ fun SettingsScreen(
             item {
                 Card(modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(16.dp)) {
-                        Text("API Base URL", style = MaterialTheme.typography.titleMedium)
-                        OutlinedTextField(
-                            value = baseUrl,
-                            onValueChange = {
-                                baseUrl = it
-                                localError = null
-                            },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = 8.dp),
-                            label = { Text("Base URL") },
-                            placeholder = { Text(AiDefaults.BASE_URL) },
-                            singleLine = true,
+                        Text(
+                            "ローカルLLM（${LocalModelSpec.DISPLAY_NAME}）",
+                            style = MaterialTheme.typography.titleMedium,
                         )
                         Text(
-                            "OpenAI互換APIのURLを指定できます。通常はOpenRouterの既定値のままにしてください。",
+                            "任意ダウンロード。端末内で日本語から英語プロンプトを生成します。ダウンロード後は機内モードでも動きます。",
                             style = MaterialTheme.typography.bodySmall,
-                            modifier = Modifier.padding(top = 6.dp),
+                            modifier = Modifier.padding(top = 4.dp),
+                        )
+                        Text(
+                            "モデル: ${LocalModelSpec.FILE_NAME} / " +
+                                "${formatBytes(LocalModelSpec.SIZE_BYTES)} / " +
+                                LocalModelSpec.LICENSE,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = 8.dp),
+                        )
+
+                        when (localModelStatus.state) {
+                            LocalModelState.READY -> {
+                                Text(
+                                    "状態: 準備完了（SHA-256検証済み）",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    modifier = Modifier.padding(top = 8.dp),
+                                )
+                                if (localEngineLoaded) {
+                                    Text(
+                                        "エンジン: 読み込み済み（CPU / 4 threads）",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.padding(top = 4.dp),
+                                    )
+                                }
+                                TextButton(
+                                    onClick = { confirmDeleteModel = true },
+                                    modifier = Modifier.padding(top = 4.dp),
+                                ) {
+                                    Text("モデルを削除")
+                                }
+                                if (localEngineLoaded) {
+                                    TextButton(onClick = onUnloadLocalEngine) {
+                                        Text("エンジンを解放")
+                                    }
+                                }
+                            }
+
+                            LocalModelState.DOWNLOADING -> {
+                                val percent = (localModelStatus.progress * 100).toInt()
+                                Text(
+                                    "状態: ダウンロード中 $percent% " +
+                                        "(${formatBytes(localModelStatus.bytesDownloaded)} / " +
+                                        "${formatBytes(localModelStatus.totalBytes)})",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    modifier = Modifier.padding(top = 8.dp),
+                                )
+                                LinearProgressIndicator(
+                                    progress = { localModelStatus.progress },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(top = 8.dp),
+                                )
+                                Button(
+                                    onClick = onCancelLocalModelDownload,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(top = 8.dp),
+                                ) {
+                                    Text("ダウンロードをキャンセル")
+                                }
+                            }
+
+                            LocalModelState.NEEDS_VERIFICATION -> {
+                                Text(
+                                    "状態: 検証が必要（SHA-256未確認）",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    modifier = Modifier.padding(top = 8.dp),
+                                )
+                                Button(
+                                    onClick = onVerifyLocalModel,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(top = 8.dp),
+                                ) {
+                                    Text("モデルを検証")
+                                }
+                            }
+
+                            LocalModelState.VERIFYING -> {
+                                Text(
+                                    "状態: SHA-256を検証中…",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    modifier = Modifier.padding(top = 8.dp),
+                                )
+                                LinearProgressIndicator(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(top = 8.dp),
+                                )
+                            }
+
+                            LocalModelState.ERROR -> {
+                                Text(
+                                    "状態: エラー",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    modifier = Modifier.padding(top = 8.dp),
+                                )
+                                localModelStatus.error?.let { message ->
+                                    Text(
+                                        text = message,
+                                        color = MaterialTheme.colorScheme.error,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        modifier = Modifier.padding(top = 4.dp),
+                                    )
+                                }
+                                Button(
+                                    onClick = onDownloadLocalModel,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(top = 8.dp),
+                                ) {
+                                    Text("モデルを再ダウンロード（約2.59GB）")
+                                }
+                            }
+
+                            LocalModelState.NOT_DOWNLOADED -> {
+                                Text(
+                                    "状態: 未ダウンロード",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    modifier = Modifier.padding(top = 8.dp),
+                                )
+                                Button(
+                                    onClick = onDownloadLocalModel,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(top = 8.dp),
+                                ) {
+                                    Text("モデルをダウンロード（約2.59GB）")
+                                }
+                            }
+                        }
+
+                        localModelStatus.error?.takeIf {
+                            localModelStatus.state != LocalModelState.ERROR
+                        }?.let { message ->
+                            Text(
+                                text = message,
+                                color = MaterialTheme.colorScheme.error,
+                                style = MaterialTheme.typography.bodySmall,
+                                modifier = Modifier.padding(top = 8.dp),
+                            )
+                        }
+
+                        Text(
+                            "Wi-Fi接続時のみダウンロードします。8GB以上のRAMと約3.6GBの空き容量が必要です。",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = 8.dp),
                         )
                     }
                 }
@@ -288,7 +506,7 @@ fun SettingsScreen(
                     Column(modifier = Modifier.padding(16.dp)) {
                         Text("セキュリティ", style = MaterialTheme.typography.titleSmall)
                         Text(
-                            "APIキーはAndroid Keystoreの鍵で暗号化して端末内に保存します。履歴・ログ・APKには含めません。",
+                            "APIキーはAndroid Keystoreの鍵で暗号化して端末内に保存します。履歴・ログ・APKには含めません。ローカルLLMのモデルと生成結果も端末外へ送信しません。",
                             style = MaterialTheme.typography.bodySmall,
                             modifier = Modifier.padding(top = 4.dp),
                         )
@@ -320,4 +538,39 @@ fun SettingsScreen(
             },
         )
     }
+
+    if (confirmDeleteModel) {
+        AlertDialog(
+            onDismissRequest = { confirmDeleteModel = false },
+            title = { Text("ローカルLLMモデルを削除") },
+            text = {
+                Text(
+                    "モデルファイル（約${formatBytes(LocalModelSpec.SIZE_BYTES)}）を削除します。" +
+                        "次回利用時に再ダウンロードが必要です。",
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        confirmDeleteModel = false
+                        onDeleteLocalModel()
+                    },
+                ) {
+                    Text("削除")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmDeleteModel = false }) {
+                    Text("キャンセル")
+                }
+            },
+        )
+    }
+}
+
+private fun formatBytes(bytes: Long): String = when {
+    bytes >= 1_000_000_000L -> String.format(Locale.US, "%.2f GB", bytes / 1_000_000_000.0)
+    bytes >= 1_000_000L -> String.format(Locale.US, "%.0f MB", bytes / 1_000_000.0)
+    bytes >= 1_000L -> String.format(Locale.US, "%.0f KB", bytes / 1_000.0)
+    else -> "$bytes B"
 }

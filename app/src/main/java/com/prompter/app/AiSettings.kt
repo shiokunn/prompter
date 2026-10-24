@@ -32,6 +32,12 @@ class AiSettings(context: Context) {
             prefs.edit().putString(KEY_BASE_URL, AiDefaults.normalizeBaseUrl(value)).apply()
         }
 
+    var backend: AiBackend
+        get() = AiBackend.fromStored(prefs.getString(KEY_BACKEND, null))
+        set(value) {
+            prefs.edit().putString(KEY_BACKEND, value.name).apply()
+        }
+
     fun hasApiKey(): Boolean = !getApiKey().isNullOrBlank()
 
     fun getApiKey(): String? {
@@ -125,6 +131,7 @@ class AiSettings(context: Context) {
         private const val KEY_MODEL = "model"
         private const val KEY_MODEL_MIGRATION_V1 = "model_migration_v1"
         private const val KEY_BASE_URL = "base_url"
+        private const val KEY_BACKEND = "ai_backend"
         private const val ANDROID_KEYSTORE = "AndroidKeyStore"
         private const val KEY_ALIAS = "prompter_openrouter_key_v1"
         private const val TRANSFORMATION = "AES/GCM/NoPadding"
