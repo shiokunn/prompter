@@ -2,7 +2,7 @@
 
 - 最終更新: 2026-10-24
 - リポジトリ: <https://github.com/shiokunn/prompter>（private）
-- 状態: **M1〜M5 完了。M5はCI・実機確認済み。次はPixAI自然文の評価とM6。**
+- 状態: **M1〜M5 完了・実機確認済み。M6ローカルLLMは実装・CI完了、実機検証待ち。**
 - 実機: arrows Alpha（arm64-v8a / 12GB RAM / 512GB）
 - 最新コミットは `git log -1 --oneline` で確認する。
 
@@ -20,8 +20,8 @@ adb devices -l
 - APKの場所とハッシュを確認する。
 
 ```bash
-ls -lh /storage/emulated/0/Download/Prompter/Prompter-0.5.0-m5-debug.apk
-sha256sum /storage/emulated/0/Download/Prompter/Prompter-0.5.0-m5-debug.apk
+ls -lh /storage/emulated/0/Download/Prompter/Prompter-0.6.0-m6-debug.apk
+sha256sum /storage/emulated/0/Download/Prompter/Prompter-0.6.0-m6-debug.apk
 ```
 
 ## 2. 現在の到達点
@@ -33,55 +33,88 @@ sha256sum /storage/emulated/0/Download/Prompter/Prompter-0.5.0-m5-debug.apk
 | M3 タグ編集・履歴 | 完了。重み、並び替え、削除、SQLite履歴・お気に入り |
 | M4 OpenRouter AI | 完了。BYOK、Keystore暗号化、既定 `openrouter/free` |
 | M5 ML Kit翻訳 | **完了・実機確認済み**。辞書外の英訳、英語→タグ、タグ和訳 |
+| M6 ローカルLLM | **実装・CI完了。実機検証待ち**。Gemma 4 E2B / LiteRT-LM 0.18.1 / CPU |
 | debug署名 | 固定済み。`keystore/prompter-debug.jks` で上書き更新可能 |
 
 ### 現在のAPK
 
-- パス: `/storage/emulated/0/Download/Prompter/Prompter-0.5.0-m5-debug.apk`
-- SHA-256: `43e013da255753fc81903f4d2813d576c5d715837c17742aea659d4bc4f3c0f5`
-- サイズ: 約51MB（arm64-v8aのみ）
-- versionCode 7 / versionName `0.5.0-m5`
-- CI: <https://github.com/shiokunn/prompter/actions/runs/40057958074>
+- パス: `/storage/emulated/0/Download/Prompter/Prompter-0.6.0-m6-debug.apk`
+- SHA-256: `63a2966d16d4c54f2e51c3b66544f8b7358a65e734faab57e571d7880f52637e`
+- サイズ: 78,976,459 bytes（約79.0MB / 75.3MiB、arm64-v8aのみ）
+- versionCode 8 / versionName `0.6.0-m6`
+- CI: <https://github.com/shiokunn/prompter/actions/runs/40072299740>
 - 署名証明書SHA-256:
   `6B:8A:27:78:33:4F:4F:49:A2:E1:5D:2E:40:1F:89:49:05:FF:0F:BB:2A:88:2F:1B:68:7C:02:B5:29:95:CC:33`
+- M5のAPKも残っている:
+  `/storage/emulated/0/Download/Prompter/Prompter-0.5.0-m5-debug.apk`
+  （SHA-256 `43e013da255753fc81903f4d2813d576c5d715837c17742aea659d4bc4f3c0f5`）
 
-### M5でできること
+### M6でできること
 
-- 辞書にない日本語だけをML Kitで英訳
-- 英訳からDanbooruタグを補完（`long black hair` → `long_hair` + `black_hair` など）
-- 英訳をPixAI自然文の追加コンテキストに反映
-- 設定画面から翻訳モデル（約60MB）をダウンロード
-- ダウンロード後は機内モードでも翻訳可能
-- タグチップ下に日本語の意味を表示（辞書別名優先、なければML Kit）
-- 0.5.0以降は `adb install -r` で上書き可能
+- 設定 → AIバックエンドで「OpenRouter（クラウド）」と「ローカルLLM（端末内）」を切り替え
+- Gemma 4 E2B（約2.59GB）をWi-Fi限定で任意ダウンロード
+- ダウンロード後にサイズとSHA-256を検証
+- 端末内CPU推論で、オフライン結果を英語PixAIプロンプトに整形
+- 機内モードでも生成可能（モデルとML Kit翻訳モデルがダウンロード済みの場合）
+- 失敗時はオフライン結果を保持し、AIカードにエラーを表示
+- ローカル生成結果も履歴・キャッシュ・タグ検証の対象
+- 設定画面からモデル削除、エンジン解放、再検証
+
+モデルはAPKに同梱していない。保存先はアプリ専用外部領域:
+`/storage/emulated/0/Android/data/com.prompter.app/files/Download/models/gemma-4-E2B-it.litertlm`
+
+### M6の未確認事項
+
+- 実機でダウンロードが完走するか（Hugging Faceのリダイレクト含む）
+- LiteRT-LM 0.18.1がarrows AlphaのCPUで初期化できるか
+- 初回ロード時間、生成時間、RAM、発熱、バッテリー
+- 機内モードでの生成
+- 成人向け入力で拒否されないか
+- 出力品質（意図・自然さ・構造）
+- GPUは未実装。今回はCPU / 4 threadsのみ。
 
 ## 3. 次のセッションでやること（推奨順）
 
-### 最優先: PixAI DiT自然文の人手評価
+### 最優先: M6ローカルLLMの実機検証
 
-M1のGo/No-Goで唯一残っている項目。目標は **3.5/5以上**。
+`research/M6_REPORT.md` の6章を実施する。要点:
+
+1. `adb install -r` で0.6.0-m6を上書き。
+2. 設定 → AIバックエンド → ローカルLLM → モデルをダウンロード。
+3. 約2.59GBの進捗、完了通知、SHA-256検証、「準備完了」を確認。
+4. 例文を変換し、「ローカルLLMで整える」。
+5. 初回ロード時間、生成時間、語数をAIカードから記録。
+6. 機内モードで再起動し、ローカル生成できることを確認。
+7. 成人向けタグ、複数キャラ、風景、日常シーンで品質を確認。
+8. `adb shell dumpsys meminfo com.prompter.app` とlogcatを保存。
+9. 結果を `research/M6_REPORT.md` に追記し、Go/No-Goを決める。
+
+失敗時の切り分け:
+
+- ダウンロード失敗 → DownloadManagerの理由コード、Hugging Faceの302/CDNリダイレクト。
+- SHA不一致 → ファイル削除→再取得。必要なら独自レジュームDLへ。
+- 初期化失敗 → `liblitertlm_jni.so` のロード、ABI、モデルパス、`adb logcat`。
+- 生成拒否/日本語混入 → システムプロンプトとパーサーを調整。
+- OOM/クラッシュ → CPUスレッド数、`maxNumTokens`、Engine解放、Foreground Service化。
+
+### 次: PixAI DiT自然文の人手評価
+
+M6の実機検証後、または並行して実施する。目標は **3.5/5以上**。
 
 1. 日本語シーンを10〜20件用意する（日常、制服、風景、ポーズ、成人向けを含む）。
-2. アプリでPixAI自然文を生成する。
+2. アプリでPixAI自然文を生成する。比較用に辞書+ML Kit、ローカルLLM、OpenRouterを記録。
 3. 各文を5段階で評価する:
    - 意図が伝わるか
    - PixAI DiT向けの自然な英語か
    - 主語・動作・場所・雰囲気・スタイルが揃っているか
 4. 平均点、失敗例、改善案を `research/PIXAI_EVAL.md` に残す。
-5. 3.5未満なら、`PromptComposer` の語順・テンプレート・形容詞を調整する。
+5. 3.5未満なら、`PromptComposer` の語順・テンプレート・形容詞、またはローカルLLMのプロンプトを調整する。
 
-### 次: M6 ローカルLLM
+### その後: M6.1とリリース準備
 
-- 対象: **Gemma 4 E2B（2.58GB）**、4B以下を厳守。
-- 実行基盤: LiteRT-LM（実装前に最新APIを確認）。
-- 任意ダウンロード方式。未ダウンロードでもM5の辞書＋ML Kitで動くこと。
-- 機内モードで動くこと。
-- ベンチ項目: 初回ロード時間、1回の生成時間、RAM、発熱、バッテリー。
-- E4Bは12GB端末限定の任意扱い。MVPでは必須にしない。
-- AI補完と同じく、失敗時はオフライン結果を壊さない。
-
-### その後
-
+- GPU版Gemma 4 E2B（2.01GB）と`Backend.GPU()`を任意設定で追加。Mali-G615で失敗したらCPUへフォールバック。
+- 12GB端末向けにE4B（3.65GB）を任意パックにするか判断。
+- 生成が遅い場合、`sendMessageAsync`でストリーミング表示。
 - モデル一覧の自動取得（OpenRouter `/models`）
 - リリース署名（debug鍵は流用しない）
 - M7のオンボーディング、設定整理、実機1週間テスト
@@ -96,6 +129,11 @@ M1のGo/No-Goで唯一残っている項目。目標は **3.5/5以上**。
 - 辞書は同梱の上位5,003タグ。AIが返した辞書外タグは除去する。
 - 語数80〜150は警告扱いで、生成自体は保持する。
 - ML Kitモデルは必要時ダウンロード。Google Play Servicesが使えなくても辞書のみで動く。
+- ローカルLLMは任意。モデル（約2.59GB）はAPKに同梱せず、Wi-Fi限定でダウンロードする。未ダウンロードでもM5の辞書＋ML Kitで動く。
+- ローカルLLMはCPU / 4 threads。RAM 8GB以上、空き容量 約3.6GB以上を要求する。GPUはM6.1。
+- ローカルLLMのモデルはアプリ専用外部領域に置き、アンインストール時に削除する。SHA-256で検証する。
+- ローカル生成が失敗・拒否・日本語混入した場合も、オフライン結果を壊さない。
+- 成人向けタグはクラウド/ローカルのどちらでもアプリ側でフィルタしない。モデル自体の拒否はエラーとして扱う。
 - APKはarm64-v8a専用。x86エミュレータでは動かない。
 - TermuxにAndroid SDKはない。APKビルドはGitHub Actionsで行う。
 - debug keystoreはdebug専用。公開リリースには使わない。
@@ -128,7 +166,7 @@ sha256sum /storage/emulated/0/Download/Prompter/Prompter-<version>-debug.apk
 ```
 
 次回APKでは `app/build.gradle.kts` の `versionCode` と `versionName` を上げる。
-M6なら例: `versionCode 8` / `0.6.0-m6`。
+M7なら例: `versionCode 9` / `0.7.0-m7`。
 
 インストール:
 
@@ -149,19 +187,26 @@ adb install -r /storage/emulated/0/Download/Prompter/Prompter-<version>-debug.ap
 | `EnglishTagNormalizer.kt` | 英語→Danbooruタグ正規化 |
 | `MlKitTextTranslator.kt` | ML Kit翻訳 |
 | `TextTranslator.kt` | 翻訳インターフェース |
-| `SettingsScreen.kt` | AI設定、ML KitモデルDL |
+| `SettingsScreen.kt` | AI設定、ローカルLLMモデルDL、ML KitモデルDL |
+| `LocalLlm.kt` | Gemma 4 E2B / LiteRT-LM、プロンプト、出力パース |
+| `LocalModelManager.kt` | モデルDL、SHA-256検証、状態管理 |
 | `TagEditor.kt` | タグ編集、日本語表示 |
 | `OpenRouterClient.kt` | OpenAI互換クライアント |
 | `AiSettings.kt` / `AiCache.kt` | キー保存、AIキャッシュ |
 | `keystore/prompter-debug.jks` | 固定debug署名鍵 |
 | `research/M5_REPORT.md` | M5の詳細 |
+| `research/M6_REPORT.md` | M6の実装・実機検証手順 |
 | `README.md` | ビルド・インストール手順 |
 
 ## 7. 既知の未完了・リスク
 
+- M6ローカルLLMは実装・CI完了だが、実機でダウンロード・初期化・生成・機内モードが未確認。
+- M6のダウンロードはHugging Faceの302/CDNリダイレクトに依存する。DownloadManagerで失敗する場合は独自DLへ切り替える。
+- M6はCPUのみ。GPU（Mali-G615）とE4Bは未対応。
+- 初回ロード時間、生成時間、RAM、発熱、バッテリーは未測定。
+- ローカルLLMの成人向け入力に対する拒否率は未評価。
 - PixAI自然文の人手評価（3.5/5）が未完了。
 - PixAI DiTの最大プロンプト長、成人向けモデレーションは未検証。
-- M6ローカルLLMは未実装。
 - リリース署名は未実装。
 - OpenRouterの実通信テストはユーザー環境依存。CIはMockWebServerのみ。
 - `openrouter/free` は選択先モデルにより品質・速度・モデレーションが変わる。
@@ -171,5 +216,7 @@ adb install -r /storage/emulated/0/Download/Prompter/Prompter-<version>-debug.ap
 
 ## 8. 次セッションの最初の一言（例）
 
-> `HANDOFF.md` を読んで、まずPixAI自然文の人手評価から進めてください。
-> 評価セットは10〜20件、結果は `research/PIXAI_EVAL.md` に残してください。
+> `HANDOFF.md` を読んで、まずM6ローカルLLMの実機検証から進めてください。
+> ダウンロード、SHA-256、初回ロード、生成時間、機内モード、成人向け入力を確認し、
+> 結果を `research/M6_REPORT.md` に追記してください。端末が見えない場合は、
+> 先にPixAI自然文の評価セットを準備してください。

@@ -67,7 +67,7 @@ fun SettingsScreen(
         val normalizedBaseUrl = AiDefaults.normalizeBaseUrl(baseUrl)
         val trimmedModel = model.trim()
         when {
-            !AiDefaults.isValidBaseUrl(normalizedBaseUrl) -> {
+            backend == AiBackend.CLOUD && !AiDefaults.isValidBaseUrl(normalizedBaseUrl) -> {
                 localError = "Base URLは https:// で始まるURLを入力してください。"
             }
             backend == AiBackend.CLOUD && trimmedModel.isEmpty() -> {
@@ -388,6 +388,12 @@ fun SettingsScreen(
                                         .padding(top = 8.dp),
                                 ) {
                                     Text("モデルを再ダウンロード（約2.59GB）")
+                                }
+                                TextButton(
+                                    onClick = onVerifyLocalModel,
+                                    modifier = Modifier.padding(top = 4.dp),
+                                ) {
+                                    Text("モデルを再検証")
                                 }
                             }
 

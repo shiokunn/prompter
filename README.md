@@ -14,6 +14,7 @@
 - **M3 実装レポート**: [`research/M3_REPORT.md`](research/M3_REPORT.md)
 - **M4 実装レポート**: [`research/M4_REPORT.md`](research/M4_REPORT.md)
 - **M5 実装レポート**: [`research/M5_REPORT.md`](research/M5_REPORT.md)
+- **M6 実装レポート**: [`research/M6_REPORT.md`](research/M6_REPORT.md)
 - **引き継ぎ指示書**: [`HANDOFF.md`](HANDOFF.md)
 - **プロトタイプ**: [`tools/spike_match.py`](tools/spike_match.py)
 
@@ -34,10 +35,16 @@
 - 2026-10-24: **M5 実装・実機確認完了**。ML Kit翻訳フォールバック、英語→タグ正規化、
   タグの日本語別名表示を追加。CIのdebug署名鍵を固定し、今後のAPKを上書き可能にした。
   ユーザー実機（arrows Alpha）でモデルDL、機内モード翻訳、タグ和訳、上書き更新を確認済み。
-- APK: `/storage/emulated/0/Download/Prompter/Prompter-0.5.0-m5-debug.apk`
-  （SHA-256 `43e013da255753fc81903f4d2813d576c5d715837c17742aea659d4bc4f3c0f5`、約51MB）。
-- 次の作業: 0.4.2を一度アンインストールして0.5.0を入れ、ML Kit翻訳のダウンロードと
-  機内モード動作を確認する。その後M6のローカルLLMとPixAI自然文の人手評価へ。
+- 2026-10-24: **M6 ローカルLLM 実装・CI完了（実機検証待ち）**。LiteRT-LM 0.18.1 +
+  Gemma 4 E2B（約2.59GB）を任意ダウンロード。CPU / 4 threadsで端末内生成し、
+  クラウド/ローカルを設定で切り替えられる。SHA-256検証、失敗時のオフライン保持、
+  拒否・日本語混入の検出、履歴・キャッシュ連携を実装。実機でのDL・初期化・生成・
+  機内モード・発熱は未確認。
+- APK: `/storage/emulated/0/Download/Prompter/Prompter-0.6.0-m6-debug.apk`
+  （SHA-256 `63a2966d16d4c54f2e51c3b66544f8b7358a65e734faab57e571d7880f52637e`、
+  78,976,459 bytes / 約79.0MB）。
+- 次の作業: M6の実機検証（DL、SHA-256、初回ロード、生成時間、機内モード、成人向け入力）。
+  その後、PixAI自然文の人手評価（10〜20件、目標3.5/5）とM6.1のGPU/E4B検討へ。
 
 ## 要約
 
@@ -54,9 +61,11 @@
   既定モデルは無料モデル自動ルーター `openrouter/free`。Gemma 4 31Bはレート制限のためプリセットから外した。
 - M5 で **ML Kit翻訳フォールバック** を追加。辞書外の日本語を端末内で英訳し、
   英語からタグを補完する。モデルは設定画面から任意ダウンロード（約60MB）。
-- AI 補完は **OpenAI API 互換（既定: OpenRouter）** を任意 ON（BYOK）。
-- AI を使わない人向けに **ML Kit翻訳（実装済み）**、将来は **Gemma 4 E2B（2.58GB）** の
-  ローカルLLMを任意ダウンロードする予定。
+- M6 で **オンデバイスLLM（Gemma 4 E2B / LiteRT-LM）** を追加。約2.59GBのモデルを
+  任意ダウンロードし、CPUで英語PixAIプロンプトを生成する。クラウド/ローカルを設定で切り替え、
+  失敗時はオフライン結果を保持する。モデルはAPKに同梱しない。
+- AI 補完は **OpenAI API 互換（既定: OpenRouter）** または **端末内Gemma 4 E2B** を任意 ON。
+- クラウドAIを使いたくない人向けの **ML Kit翻訳**、およびネットなしで動く **ローカルLLM** を用意。
 - APK は GitHub Actions でビルドし、Termux から `adb install` する。
 - 実機は arrows Alpha（12GB RAM / 512GB）。成人向けタグはそのまま扱う。
 

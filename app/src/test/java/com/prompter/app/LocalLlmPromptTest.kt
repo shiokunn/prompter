@@ -123,6 +123,20 @@ class LocalLlmPromptTest {
     }
 
     @Test
+    fun rejectsLeftoverControlMarkers() {
+        assertThrows(LocalLlmException::class.java) {
+            LocalLlmPrompt.parse(
+                """
+                PROMPT_BEGIN
+                A girl sits by a window. PROMPT_BEGIN
+                PROMPT_END
+                TAGS: 1girl, window
+                """.trimIndent(),
+            )
+        }
+    }
+
+    @Test
     fun dropsJapaneseAndBracketedTags() {
         val result = LocalLlmPrompt.parse(
             """

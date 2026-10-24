@@ -44,6 +44,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -157,36 +158,48 @@ private fun PrompterApp() {
 
     DisposableEffect(Unit) {
         onDispose {
-            localLlm.close()
+            // The native engine may still be generating. Close it off the main
+            // thread so activity teardown cannot trigger an ANR.
+            localLlm.closeAsync()
             translator?.close()
             engine?.close()
             historyStore?.close()
         }
     }
 
-    LaunchedEffect(localModelStatus.state) {
-        when (localModelStatus.state) {
-            LocalModelState.DOWNLOADING -> {
-                while (true) {
-                    delay(1000)
-                    val next = withContext(Dispatchers.IO) { localModelManager.status() }
-                    localModelStatus = next
-                    if (next.state != LocalModelState.DOWNLOADING) break
-                }
-            }
-
-            LocalModelState.NEEDS_VERIFICATION -> {
-                localModelStatus = localModelStatus.copy(state = LocalModelState.VERIFYING)
-                localModelStatus = withContext(Dispatchers.IO) { localModelManager.verify() }
-            }
-
-            else -> Unit
+    val isDownloading = localModelStatus.state == LocalModelState.DOWNLOADING
+    LaunchedEffect(isDownloading) {
+        if (!isDownloading) return@LaunchedEffect
+        while (true) {
+            delay(1000)
+            val next = withContext(Dispatchers.IO) { localModelManager.status() }
+            localModelStatus = next
+            if (next.state != LocalModelState.DOWNLOADING) break
         }
     }
 
+    // Keep verification in an effect whose key never changes. If the effect
+    // were keyed on the state itself, setting VERIFYING would cancel the
+    // in-flight hash and could leave the UI stuck at VERIFYING forever.
+    LaunchedEffect(Unit) {
+        snapshotFlow { localModelStatus.state }
+            .collect { state ->
+                if (state == LocalModelState.NEEDS_VERIFICATION) {
+                    localModelStatus = localModelStatus.copy(state = LocalModelState.VERIFYING)
+                    localModelStatus = withContext(Dispatchers.IO) {
+                        localModelManager.verify()
+                    }
+                }
+            }
+    }
+
     LaunchedEffect(showSettings) {
-        if (showSettings) {
-            localModelStatus = withContext(Dispatchers.IO) { localModelManager.status() }
+        if (showSettings && localModelStatus.state != LocalModelState.VERIFYING) {
+            val refreshed = withContext(Dispatchers.IO) { localModelManager.status() }
+            // Verification may have started while status() was running.
+            if (localModelStatus.state != LocalModelState.VERIFYING) {
+                localModelStatus = refreshed
+            }
         }
     }
 
@@ -415,6 +428,16 @@ private fun PrompterApp() {
     }
 
     fun downloadLocalModel() {
+        if (
+            localModelStatus.state == LocalModelState.DOWNLOADING ||
+            localModelStatus.state == LocalModelState.VERIFYING ||
+            localModelStatus.state == LocalModelState.READY
+        ) {
+            return
+        }
+        // Move to DOWNLOADING immediately so a double tap cannot enqueue two
+        // DownloadManager requests to the same destination.
+        localModelStatus = LocalModelStatus(LocalModelState.DOWNLOADING)
         scope.launch {
             localModelStatus = withContext(Dispatchers.IO) { localModelManager.startDownload() }
         }
@@ -427,27 +450,41 @@ private fun PrompterApp() {
     }
 
     fun verifyLocalModel() {
+        if (
+            localModelStatus.state == LocalModelState.VERIFYING ||
+            localModelStatus.state == LocalModelState.DOWNLOADING
+        ) {
+            return
+        }
+        localModelStatus = localModelStatus.copy(state = LocalModelState.VERIFYING)
         scope.launch {
-            localModelStatus = localModelStatus.copy(state = LocalModelState.VERIFYING)
             localModelStatus = withContext(Dispatchers.IO) { localModelManager.verify() }
         }
     }
 
     fun deleteLocalModel() {
-        localLlm.close()
         localEngineLoaded = false
         scope.launch {
-            localModelStatus = withContext(Dispatchers.IO) { localModelManager.deleteModel() }
+            val status = withContext(Dispatchers.IO) {
+                // close() waits for any in-flight generation; never block the
+                // main thread while the native engine is still busy.
+                localLlm.close()
+                localModelManager.deleteModel()
+            }
+            localModelStatus = status
         }
     }
 
     fun unloadLocalEngine() {
-        localLlm.close()
         localEngineLoaded = false
-        aiNotice = "ローカルLLMのエンジンを解放しました"
+        scope.launch {
+            withContext(Dispatchers.IO) { localLlm.close() }
+            aiNotice = "ローカルLLMのエンジンを解放しました"
+        }
     }
 
-    fun downloadTranslationModels() {        val current = translator
+    fun downloadTranslationModels() {
+        val current = translator
         if (current == null) {
             translationError = "ML Kit翻訳を初期化できませんでした。辞書のみで動作します。"
             return

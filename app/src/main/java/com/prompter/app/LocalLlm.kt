@@ -127,6 +127,12 @@ object LocalLlmPrompt {
         if (prompt.isBlank()) {
             throw LocalLlmException("ローカルLLMが自然文を返しませんでした。")
         }
+        if (
+            prompt.contains(PROMPT_BEGIN, ignoreCase = true) ||
+            prompt.contains(PROMPT_END, ignoreCase = true)
+        ) {
+            throw LocalLlmException("ローカルLLMの出力に制御マーカーが残っています。")
+        }
         if (prompt.contains("<English prompt>", ignoreCase = true)) {
             throw LocalLlmException("ローカルLLMがテンプレートを埋めずに返しました。")
         }
@@ -231,7 +237,7 @@ class LocalLlmEngine(context: Context) : AutoCloseable {
                         temperature = 0.3,
                         seed = 42,
                     ),
-                    maxOutputToken = 2048,
+                    maxOutputToken = 768,
                     thinkingConfig = ThinkingConfig(
                         enableThinking = false,
                         thinkingTokenBudget = 0,
@@ -291,5 +297,13 @@ class LocalLlmEngine(context: Context) : AutoCloseable {
             }
             engine = null
         }
+    }
+
+    /**
+     * Closes the engine on a daemon thread. Used from Compose teardown, where
+     * blocking the main thread on an in-flight generation would risk an ANR.
+     */
+    fun closeAsync() {
+        Thread({ close() }, "litertlm-close").apply { isDaemon = true }.start()
     }
 }

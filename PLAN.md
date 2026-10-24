@@ -1,7 +1,7 @@
 # Prompter — 日本語→PixAI DiT プロンプト変換 Android アプリ 企画書
 
 - 最終更新: 2026-10-24
-- ステータス: **M1 完了 / M2 コア完了 / M3 実装完了 / M4 実装完了（実通信確認済み） / M5 実装・実機確認完了**
+- ステータス: **M1 完了 / M2 コア完了 / M3 実装完了 / M4 実装完了（実通信確認済み） / M5 実装・実機確認完了 / M6 実装・CI完了（実機検証待ち）**
 - 作業ディレクトリ: `~/prompter`
 - 関連調査:
   - [`research/DECISIONS.md`](research/DECISIONS.md) — 確定した要件
@@ -13,6 +13,7 @@
   - [`research/M3_REPORT.md`](research/M3_REPORT.md) — M3 タグ編集・履歴の実装
   - [`research/M4_REPORT.md`](research/M4_REPORT.md) — M4 OpenRouter AI補完の実装
   - [`research/M5_REPORT.md`](research/M5_REPORT.md) — M5 ML Kit翻訳・安定debug署名の実装
+  - [`research/M6_REPORT.md`](research/M6_REPORT.md) — M6 ローカルLLMの実装・実機検証手順
 
 ---
 
@@ -834,7 +835,7 @@ Return only canonical Danbooru tags for the requested image.
 | **M3 エディタ / 履歴** | 実装完了 | 自然文/タグ切替、タグチップ、重み、並び替え、削除、コピー、履歴・お気に入り（SQLite） | 編集・履歴がテスト済み（APK `0.3.0-m3`、実機確認待ち） |
 | **M4 OpenRouter AI** | 実装完了 | OpenAI 互換クライアント、設定画面、Keystore、JSON Schema、フォールバック、タグ検証、キャッシュ、既定 `openrouter/free` | 実通信確認済み（ユーザー環境、APK `0.4.2-m4`、CIはモック） |
 | **M5 ML Kit / タグ和訳** | 実装・実機確認完了 | ML Kit翻訳フォールバック、英語→タグ正規化、タグ→日本語、安定debug署名 | CI成功、実機でモデルDL・機内モード翻訳・上書き更新を確認（APK `0.5.0-m5`） |
-| **M6 ローカル LLM** | 5〜7日 | LiteRT-LM、E2B ダウンロード、GPU/CPU、E4B 任意、ベンチ | 機内モードで E2B が動く |
+| **M6 ローカル LLM** | 実装・CI完了（実機検証待ち） | LiteRT-LM 0.18.1、E2B CPU ダウンロード、SHA-256、クラウド/ローカル切替、失敗時フォールバック | 実機でダウンロード・初期化・機内モード生成・品質/負荷を確認（APK `0.6.0-m6`） |
 | **M7 統合・仕上げ** | 3〜4日 | 選択メニュー、共有、オンボーディング、設定、署名、リリース | 実機で1週間使える |
 
 **合計: 約5〜6週間**（1日1〜2時間、週末多めの想定）。M1 を先にやるのが重要。アプリから作ると、辞書品質の問題で手戻りする。
@@ -855,13 +856,29 @@ Return only canonical Danbooru tags for the requested image.
 
 ### 9.2 M6 のローカルモデル実装
 
-1. LiteRT-LM の Kotlin API を組み込む。
-2. E2B の CPU 版（2.58GB）で動かす。
-3. GPU 版（2.0GB）を試し、Mali-G615 で動くか確認。
-4. 30プロンプトで品質・速度・メモリを測る。
-5. E2B が目標に届けば既定のオフライン AI に。届かなければベータ扱い。
-6. 余裕があれば E4B（3.65GB）を 12GB 端末限定で追加。
-7. モデル削除・再ダウンロード・SHA-256 検証・Wi-Fi 限定を実装。
+実装済み（`0.6.0-m6`、CI成功、実機検証待ち）:
+
+1. LiteRT-LM `0.18.1` の Kotlin API を組み込む。
+2. E2B の CPU 版（2,588,147,712 bytes）を固定revision・SHA-256付きで任意ダウンロード。
+3. 設定で「クラウド（OpenRouter）」と「ローカルLLM（端末内）」を切り替える。
+4. CPU / 4 threads、4,096 context、768 output tokens で生成する。
+5. モデル削除・再ダウンロード・SHA-256 検証・Wi-Fi 限定を実装する。
+6. 失敗・拒否・日本語混入時はオフライン結果を保持し、AIカードにエラーを出す。
+
+実機検証待ち:
+
+1. arrows Alpha で DownloadManager の完走と Hugging Face リダイレクトを確認。
+2. 初回ロード時間、生成時間、RAM、発熱、バッテリーを測る。
+3. 機内モードで生成できることを確認。
+4. 成人向け入力、複数キャラ、風景、日常シーンで拒否率と品質を確認。
+5. 30プロンプト程度で品質・速度・メモリを測り、Go/No-Go を決める。
+
+M6.1以降:
+
+- GPU 版（2.0GB）を試し、Mali-G615 で動くか確認。失敗時は CPU へフォールバック。
+- E2B が目標に届けば既定のオフライン AI に。届かなければベータ扱い。
+- 余裕があれば E4B（3.65GB）を 12GB 端末限定で追加。
+- 生成が遅い場合、`sendMessageAsync` でストリーミング表示。
 
 ---
 

@@ -1,6 +1,7 @@
 # オンデバイスモデル選定（4B 以下・日本語 → 英語プロンプト）
 
 - 日付: 2026-10-23
+- 実装更新: 2026-10-24（M6。LiteRT-LM 0.18.1 / CPU / Gemma 4 E2Bで実装、実機検証待ち）
 - 目的: OpenRouter を使わない人向けに、arrows Alpha（12GB RAM）で動く 4B 以下のモデルを選ぶ。
 - 結論: **Gemma 4 E2B を本命、Gemma 4 E4B を 12GB 端末向けの任意高品質パックにする。**
 
@@ -104,11 +105,11 @@ Dimensity 8350 Extreme / Mali-G615 は S26 Ultra（Snapdragon 8 Elite 系）よ�
 
 ```kotlin
 dependencies {
-    implementation("com.google.ai.edge.litertlm:litertlm-android:latest.release")
+    implementation("com.google.ai.edge.litertlm:litertlm-android:0.18.1")
 }
 ```
 
-バージョンは実装時に固定する。`latest.release` のままにしない。
+M6では`0.18.1`に固定した。`latest.release`のままにしない。
 
 ### 4.2 Manifest
 
@@ -126,8 +127,9 @@ GPU バックエンドを使う場合:
 ```kotlin
 val config = EngineConfig(
     modelPath = modelFile.absolutePath,
-    backend = Backend.GPU(), // 失敗したら Backend.CPU()
-    cacheDir = context.cacheDir.path,
+    backend = Backend.CPU(threadCount = 4), // GPUはM6.1で検証
+    cacheDir = File(context.cacheDir, "litertlm").absolutePath,
+    maxNumTokens = 4096,
 )
 val engine = Engine(config)
 engine.initialize()
@@ -135,9 +137,13 @@ val conversation = engine.createConversation(
     ConversationConfig(
         systemInstruction = Contents.of(SYSTEM_PROMPT),
         samplerConfig = SamplerConfig(topK = 10, topP = 0.95, temperature = 0.3),
+        maxOutputToken = 768,
+        thinkingConfig = ThinkingConfig(enableThinking = false, thinkingTokenBudget = 0),
     )
 )
 ```
+
+M6の実装では、会話は生成ごとに作り直し、`Conversation.close()`で履歴の混入を防ぐ。`Engine`はActivity内で再利用する。
 
 - `initialize()` は 10 秒以上かかる場合がある。必ず IO ディスパッチャで実行する。
 - `engine` はアプリ内で再利用する。画面回転のたびにロードしない。
@@ -154,6 +160,7 @@ ExperimentalFlags.enableSpeculativeDecoding = true
 
 - E2B の CPU では自由生成時に逆効果になる場合があるため、GPU 優先。
 - E4B は CPU でも有効。
+- **M6では未実装**。CPU安定後にGPUと合わせて検証する。
 
 ### 4.5 モデルファイル
 
@@ -178,16 +185,23 @@ https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm/resolve/main/ge
 - Android の `DownloadManager` を使い、Wi-Fi 限定・通知・再開を任せる。
 - ダウンロード後に SHA-256 を検証する。
 - 失敗時は再試行。途中ファイルは削除。
-- モデルは `filesDir/models/` に置く。`cacheDir` は OS に消される可能性がある。
+- M6の保存先はアプリ専用外部領域:
+  `/storage/emulated/0/Android/data/com.prompter.app/files/Download/models/`。
+  `DownloadManager`の`setDestinationInExternalFilesDir`と読み出しパスを一致させている。
+  ストレージ権限は不要で、アンインストール時に削除される。
+- モデルはAPKに同梱しない。
+- 実装の詳細と実機検証手順は `research/M6_REPORT.md` を参照。
 
 ### 4.6 端末チェック
 
 - RAM 8GB 以上: E2B を表示。
-- RAM 12GB 以上: E4B も表示。
+- RAM 12GB 以上: E4B も表示（E4Bは未実装）。
 - 空き容量: モデルサイズ + 1GB 以上。
 - API 29 以上、arm64-v8a。
-- GPU 初期化に失敗したら CPU にフォールバック。
-- バッテリー残量が少ない場合は警告。
+- GPU 初期化に失敗したら CPU にフォールバック（M6.1）。
+- バッテリー残量が少ない場合は警告（未実装）。
+
+M6の実装では、RAM 8GB未満・空き容量不足・Wi-Fi以外の開始を`LocalModelManager`でブロックする。CPU / 4 threadsのみ。
 
 ---
 
