@@ -4,8 +4,8 @@
 - 状態: **実装・CIビルド完了。実機検証は未実施（adb接続端末なし）。**
 - 対象: arrows Alpha（arm64-v8a / RAM 12GB / Android 15または16）
 - ブランチ: `main`
-- 最新コミット: `d456423 fix: reject local model refusals and guard download storage`
-- CI: <https://github.com/shiokunn/prompter/actions/runs/40072299740>
+- 最新コミット: `84bf4e2 fix: make local model verification and engine teardown safe`
+- CI: <https://github.com/shiokunn/prompter/actions/runs/40073512951>
 
 ---
 
@@ -158,7 +158,7 @@ CIで以下が成功。
 
 - パス: `/storage/emulated/0/Download/Prompter/Prompter-0.6.0-m6-debug.apk`
 - サイズ: 78,976,459 bytes（約79.0MB / 75.3MiB）
-- SHA-256: `63a2966d16d4c54f2e51c3b66544f8b7358a65e734faab57e571d7880f52637e`
+- SHA-256: `10d7a21aec1be0a8c37c292672983354cc4419e3713e21c5cfd9efd7d9dbd77f`
 - versionCode 8 / versionName `0.6.0-m6`
 - ABI: arm64-v8aのみ
 - 署名: M5と同じ固定debug鍵。`adb install -r`で上書き可能。

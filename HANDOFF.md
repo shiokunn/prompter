@@ -39,10 +39,10 @@ sha256sum /storage/emulated/0/Download/Prompter/Prompter-0.6.0-m6-debug.apk
 ### 現在のAPK
 
 - パス: `/storage/emulated/0/Download/Prompter/Prompter-0.6.0-m6-debug.apk`
-- SHA-256: `63a2966d16d4c54f2e51c3b66544f8b7358a65e734faab57e571d7880f52637e`
+- SHA-256: `10d7a21aec1be0a8c37c292672983354cc4419e3713e21c5cfd9efd7d9dbd77f`
 - サイズ: 78,976,459 bytes（約79.0MB / 75.3MiB、arm64-v8aのみ）
 - versionCode 8 / versionName `0.6.0-m6`
-- CI: <https://github.com/shiokunn/prompter/actions/runs/40072299740>
+- CI: <https://github.com/shiokunn/prompter/actions/runs/40073512951>
 - 署名証明書SHA-256:
   `6B:8A:27:78:33:4F:4F:49:A2:E1:5D:2E:40:1F:89:49:05:FF:0F:BB:2A:88:2F:1B:68:7C:02:B5:29:95:CC:33`
 - M5のAPKも残っている:

@@ -41,7 +41,7 @@
   拒否・日本語混入の検出、履歴・キャッシュ連携を実装。実機でのDL・初期化・生成・
   機内モード・発熱は未確認。
 - APK: `/storage/emulated/0/Download/Prompter/Prompter-0.6.0-m6-debug.apk`
-  （SHA-256 `63a2966d16d4c54f2e51c3b66544f8b7358a65e734faab57e571d7880f52637e`、
+  （SHA-256 `10d7a21aec1be0a8c37c292672983354cc4419e3713e21c5cfd9efd7d9dbd77f`、
   78,976,459 bytes / 約79.0MB）。
 - 次の作業: M6の実機検証（DL、SHA-256、初回ロード、生成時間、機内モード、成人向け入力）。
   その後、PixAI自然文の人手評価（10〜20件、目標3.5/5）とM6.1のGPU/E4B検討へ。
