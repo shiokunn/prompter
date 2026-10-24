@@ -11,8 +11,8 @@ android {
         applicationId = "com.prompter.app"
         minSdk = 29
         targetSdk = 36
-        versionCode = 5
-        versionName = "0.4.1-m4"
+        versionCode = 6
+        versionName = "0.4.2-m4"
     }
 
     buildTypes {
