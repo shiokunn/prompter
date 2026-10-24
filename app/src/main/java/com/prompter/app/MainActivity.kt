@@ -110,6 +110,7 @@ private fun PrompterApp() {
     var translatedUnmatched by remember { mutableStateOf<String?>(null) }
     var translationNotice by remember { mutableStateOf<String?>(null) }
     var tagMeanings by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
+    var mlTagMeanings by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
 
     LaunchedEffect(Unit) {
         loading = true
@@ -152,13 +153,38 @@ private fun PrompterApp() {
         }
     }
 
-    LaunchedEffect(editableTags, engine) {
+    LaunchedEffect(editableTags, engine, translationReady, translator) {
         val current = engine ?: return@LaunchedEffect
         val tags = editableTags.map { it.tag }
-        tagMeanings = if (tags.isEmpty()) {
+        val dictionaryMeanings: Map<String, String> = if (tags.isEmpty()) {
             emptyMap()
         } else {
             withContext(Dispatchers.IO) { current.japaneseMeanings(tags) }
+        }
+        tagMeanings = dictionaryMeanings + mlTagMeanings.filterKeys { it in tags }
+
+        val currentTranslator = translator
+        if (translationReady && currentTranslator != null) {
+            val missing = tags
+                .filter { it !in dictionaryMeanings && it !in mlTagMeanings }
+                .distinct()
+                .take(8)
+            if (missing.isNotEmpty()) {
+                val translated = withContext(Dispatchers.IO) {
+                    missing.mapNotNull { tag ->
+                        runCatching {
+                            currentTranslator.translateEnglishToJapanese(tag.replace('_', ' '))
+                        }.getOrNull()
+                            ?.trim()
+                            ?.takeIf { it.isNotBlank() }
+                            ?.let { tag to it }
+                    }.toMap()
+                }
+                if (translated.isNotEmpty()) {
+                    mlTagMeanings = mlTagMeanings + translated
+                    tagMeanings = dictionaryMeanings + mlTagMeanings.filterKeys { it in tags }
+                }
+            }
         }
     }
 

@@ -31,7 +31,7 @@ fun TagEditor(
         Column(modifier = Modifier.padding(16.dp)) {
             Text("タグ編集", style = MaterialTheme.typography.titleMedium)
             Text(
-                "チップをタップすると強調（1.2 → 1.4 → 1.0）。↑↓で並び替え、×で削除。重みはタグ出力に反映されます。チップ下の日本語は辞書の意味です。",
+                "チップをタップすると強調（1.2 → 1.4 → 1.0）。↑↓で並び替え、×で削除。重みはタグ出力に反映されます。チップ下の日本語は辞書の意味、辞書にない場合はML Kitの機械訳です。",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = 4.dp),
