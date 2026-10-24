@@ -1,0 +1,139 @@
+# M4 — OpenRouter AI補完
+
+- 日付: 2026-10-24
+- 状態: **実装完了（実キー・実機確認待ち）**
+- 対象: `app/src/main/java/com/prompter/app/` / `app/src/test/java/com/prompter/app/`
+- APK: `Prompter-0.4.0-m4-debug.apk`（versionCode 4）
+
+## 目的
+
+オフライン変換を土台に、必要なときだけOpenRouterのモデルで自然文とタグを整える。
+APIキーはBYOKとし、アプリ・履歴・ログ・APK・CIのどこにも平文で残さない。
+
+## 実装
+
+### 設定画面（`SettingsScreen.kt` / `AiSettings.kt`）
+
+- 右上の「設定」からAI設定を開く。
+- OpenRouter APIキーを入力（既存キーは表示しない。変更する場合だけ再入力）。
+- API Base URLを変更可能。既定は `https://openrouter.ai/api/v1`。
+- モデルIDを直接入力できる。プリセット:
+  - 既定: `google/gemini-3.1-flash-lite`
+  - 低コスト: `google/gemini-2.5-flash-lite`
+  - 高品質: `openai/gpt-5.6-luna`
+  - 無料テスト: `google/gemma-4-31b-it:free`
+- モデルIDは2026-10-24時点のOpenRouter `/api/v1/models` で存在を確認済み。
+- APIキー削除は確認ダイアログ付き。
+
+### キーの保存
+
+- Android KeystoreのAES-256-GCM鍵でAPIキーを暗号化。
+- 暗号文だけをアプリ専用SharedPreferencesに保存。
+- `android:allowBackup="false"` のためバックアップ経由でも持ち出さない。
+- 履歴DB、AIキャッシュ、ログ、クラッシュレポートにはキーを保存しない。
+- 復号できない場合はキーを破棄し、再登録を促す。
+
+### OpenRouterクライアント（`OpenRouterClient.kt`）
+
+- `POST {baseUrl}/chat/completions`。
+- ヘッダー:
+  - `Authorization: Bearer <key>`
+  - `Content-Type: application/json`
+  - `HTTP-Referer` / `X-Title`
+- 既定はJSON Schemaのstructured outputs:
+  - `pixai_prompt`: string
+  - `tags`: string[]
+  - `required` / `additionalProperties: false`
+- `json_schema` 非対応モデル向けに `json_object` へ1回フォールバック。
+- Markdownのコードフェンスで返されたJSONも抽出。
+- 401 / 402 / 403 / 404 / 429 / 5xxを日本語メッセージに変換。
+- APIキーやリクエスト本文はログ・例外メッセージに含めない。
+
+### プロンプト
+
+- 80〜150語（目標約110語）。
+- `Subject + Action + Scene + Mood + Style`。
+- オフライン辞書タグを優先し、存在しないタグを作らないよう指示。
+- 成人向けタグをフィルタ・検閲しないよう指示。
+- 出力はJSONのみ。
+
+### 検証（`AiPromptValidator.kt`）
+
+- AIタグを小文字・アンダースコア形式に正規化。
+- `(tag:1.2)` 形式の重みはタグ名に戻す。
+- 重複を除去。
+- 同梱辞書（5,003タグ）に存在するタグだけを採用。
+- 辞書外タグは除去し、UIに件数を表示。
+- 有効タグが0件の場合はオフラインタグへフォールバック。
+- 自然文の語数が80〜150語の範囲外なら警告を表示（生成自体は保持）。
+
+### キャッシュ（`AiCache.kt`）
+
+- API結果を端末内SharedPreferencesに最大50件保存。
+- キーは `baseUrl + model + 入力 + オフラインタグ + 辞書外テキスト` のSHA-256。
+- APIキーはキャッシュに含めない。
+- 同じ条件の再実行はAPIを呼ばず、キャッシュから反映。
+
+### UI
+
+- オフライン変換後に「AIで整える」を表示。
+- キー未設定時は設定画面への導線を表示。
+- オフラインでタグが0件でもAI補完を実行可能。
+- AI結果の語数、辞書外タグ除去、キャッシュ利用を表示。
+- AI結果の自然文は履歴にも保存。タグ削除時は自然文をオフライン再合成へ戻す。
+
+## テスト
+
+CIで以下を実行し、すべて成功した。
+
+```bash
+python3 -m unittest tools.test_m1 -v
+./gradlew testDebugUnitTest --stacktrace
+./gradlew assembleDebug --stacktrace
+```
+
+Kotlinテストは合計22件:
+
+- 既存13件（`PromptComposerTest` / `M1MatcherTest` / `TagEditingTest` / `HistoryStoreTest`）
+- `AiPromptValidatorTest`（4件）
+  - タグ正規化
+  - 辞書外タグ・重複の除去
+  - 語数範囲の判定
+  - 成人向けタグの保持
+- `OpenRouterClientTest`（4件、MockWebServer）
+  - JSON Schemaリクエストと応答パース
+  - `json_object` フォールバック
+  - 401エラー処理（キー非漏えい）
+  - MarkdownフェンスのJSON抽出
+- `AiCacheTest`（1件）
+  - 保存・取得・キー分離・クリア
+
+## 検証結果
+
+- GitHub Actions run: <https://github.com/shiokunn/prompter/actions/runs/40050801700>
+- `Run M1 matcher tests`: 成功
+- `Run Kotlin unit tests`: 成功
+- `Build debug APK`: 成功
+- APK: 約31MB
+- 共有ストレージ: `/storage/emulated/0/Download/Prompter/Prompter-0.4.0-m4-debug.apk`
+- SHA-256: `d75dce08a2ab12349bfcc64ccf3a4c4480599e3007733dbc61f69dab6ccbe5d3`
+- debug署名。debug keystore cacheが残っている限り上書きインストール可能。
+
+## 未完了・既知の制約
+
+- **実キーでのOpenRouter実通信は未実施**。APIキーがないため、クライアントはMockWebServerで検証した。
+- **実機（arrows Alpha）へのインストール・AI設定画面の確認は未実施**（adb未接続）。
+- ストリーミング、トークン数・料金表示、接続テスト、モデル自動取得は未実装。
+- AIタグは同梱する上位5,003タグの範囲でしか検証できない。それ以外の正しいDanbooruタグも除去される。
+- 自然文の語数が範囲外でも警告のみで採用する。
+- OpenRouter側のモデレーションはアプリでは制御できない。特に `openai/gpt-5.6-luna` はモデレーション有効。成人向けタグ自体はアプリ内でフィルタしない。
+- カスタムBase URLはHTTPSのみ許可。
+- APIキーはリクエスト中はメモリ上に存在する。ログ・保存領域には残さない。
+
+## 次の作業
+
+1. APKを実機にインストールし、設定画面でAPIキーを登録する。
+2. 既定モデル `google/gemini-3.1-flash-lite` で「AIで整える」を実行し、自然文・タグ・履歴を確認する。
+3. 無料モデル `google/gemma-4-31b-it:free` で `json_object` フォールバックを確認する。
+4. APIキー削除後にAIボタンが設定導線へ戻ることを確認する。
+5. M5のML Kit翻訳フォールバックへ進む。

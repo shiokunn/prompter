@@ -12,6 +12,7 @@
 - **M1 fresh holdout**: [`research/M1_FINAL_REPORT.md`](research/M1_FINAL_REPORT.md)
 - **M2 実装レポート**: [`research/M2_REPORT.md`](research/M2_REPORT.md)
 - **M3 実装レポート**: [`research/M3_REPORT.md`](research/M3_REPORT.md)
+- **M4 実装レポート**: [`research/M4_REPORT.md`](research/M4_REPORT.md)
 - **プロトタイプ**: [`tools/spike_match.py`](tools/spike_match.py)
 
 ## 状況
@@ -24,9 +25,11 @@
   GitHub Actions で Python テスト、Kotlin 単体テスト（Robolectric 含む）、APK ビルドが成功。
 - 2026-10-24: **M3 実装完了（実機確認待ち）**。タグチップの削除・並び替え・重み付け、履歴・お気に入りを実装。
   共有ボタンは削除し、コピー中心のUIに変更。
-- APK: `/storage/emulated/0/Download/Prompter/Prompter-0.3.0-m3-debug.apk`
-  （SHA-256 `43616094c475215f33b6f21a70ca3f26b2076189ec4f797a8b0e3e327eecc3ed`）。
-- 次の作業: OpenRouterキー待ちのM4 AI補完、またはM5 ML Kit翻訳フォールバック。
+- 2026-10-24: **M4 実装完了（実キー・実機確認待ち）**。OpenRouter AI補完、設定画面、Keystore暗号化、
+  JSON Schema、タグ検証、キャッシュを実装。
+- APK: `/storage/emulated/0/Download/Prompter/Prompter-0.4.0-m4-debug.apk`
+  （SHA-256 `d75dce08a2ab12349bfcc64ccf3a4c4480599e3007733dbc61f69dab6ccbe5d3`）。
+- 次の作業: 実機でAPIキーを設定してAI補完を確認、またはM5 ML Kit翻訳フォールバック。
 
 ## 要約
 
@@ -38,6 +41,8 @@
   日本語入力から PixAI 向け英文（80〜150語）とタグ列を同時に生成できる。
 - M3 で **タグ編集（重み・並び替え・削除）と履歴・お気に入り** を追加。
   履歴は端末内のSQLiteに保存し、変換結果をすぐ呼び出せる。
+- M4 で **OpenRouter AI補完** を追加。設定画面でBYOKのAPIキーを登録し、
+  オフライン結果を「AIで整える」ことができる。キーはAndroid Keystoreで暗号化して保存する。
 - AI 補完は **OpenAI API 互換（既定: OpenRouter）** を任意 ON（BYOK）。
 - AI を使わない人向けに **Gemma 4 E2B（2.58GB）** の任意ダウンロードを用意。
 - APK は GitHub Actions でビルドし、Termux から `adb install` する。
@@ -86,15 +91,25 @@ adb install -r app-debug.apk
 
 ブラウザからダウンロードした場合は ZIP を展開してからインストールする。
 
-現在の APK は `0.3.0-m3`（versionCode 3、debug 署名）。M1 の辞書、M2 のオフライン変換、M3 のタグ編集・履歴を含む。
+現在の APK は `0.4.0-m4`（versionCode 4、debug 署名）。M1 の辞書、M2 のオフライン変換、M3 のタグ編集・履歴、M4 のAI補完を含む。
 
-旧ビルドの debug APK が既に入っている場合、GitHub Actions の debug 署名がビルドごとに変わり
-`INSTALL_FAILED_UPDATE_INCOMPATIBLE` になることがある。その場合は一度アンインストールしてから入れる。
+旧ビルドの debug APK が既に入っている場合、CIは debug keystore をキャッシュして再利用するため
+通常は上書きインストールできる。キャッシュが消えた場合だけ
+`INSTALL_FAILED_UPDATE_INCOMPATIBLE` になるので、その場合は一度アンインストールしてから入れる。
 
 ```bash
 adb uninstall com.prompter.app
-adb install Prompter-0.3.0-m3-debug.apk
+adb install Prompter-0.4.0-m4-debug.apk
 ```
+
+### AI補完の使い方
+
+1. アプリ右上の **設定** を開く
+2. OpenRouterのAPIキーを入力して保存（キーは端末内で暗号化）
+3. 日本語を入力して **変換する**
+4. 結果の下にある **AIで整える** を押す
+
+APIキーはチャット・リポジトリ・APK・履歴には保存しない。実キーでの動作確認は未実施。
 
 ## 調査の再現
 
