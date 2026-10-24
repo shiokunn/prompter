@@ -122,14 +122,10 @@ class LocalModelManager(context: Context) {
         if (!destinationDir.exists() && !destinationDir.mkdirs()) {
             return error("モデルの保存先を作成できませんでした。")
         }
-        val freeBytes = runCatching { StatFs(destinationDir.absolutePath).availableBytes }
-            .getOrDefault(0L)
-        if (freeBytes < LocalModelSpec.SIZE_BYTES + LocalModelSpec.EXTRA_FREE_BYTES) {
-            return error("空き容量が不足しています。約3.6GBの空き容量を確保してください。")
-        }
 
         // A previous partial/mismatched file would make DownloadManager append
-        // to an unknown state. Remove it before starting a fresh transfer.
+        // to an unknown state. Remove it before checking free space so its
+        // bytes count toward the available capacity.
         if (modelFile.exists()) {
             modelFile.delete()
         }
@@ -137,6 +133,12 @@ class LocalModelManager(context: Context) {
             .remove(KEY_VERIFIED_SIZE)
             .remove(KEY_VERIFIED_MTIME)
             .apply()
+
+        val freeBytes = runCatching { StatFs(destinationDir.absolutePath).availableBytes }
+            .getOrDefault(0L)
+        if (freeBytes < LocalModelSpec.SIZE_BYTES + LocalModelSpec.EXTRA_FREE_BYTES) {
+            return error("空き容量が不足しています。約3.6GBの空き容量を確保してください。")
+        }
 
         val request = DownloadManager.Request(Uri.parse(LocalModelSpec.DOWNLOAD_URL))
             .setTitle("${LocalModelSpec.DISPLAY_NAME} モデル")

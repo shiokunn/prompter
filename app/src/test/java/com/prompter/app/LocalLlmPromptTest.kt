@@ -95,6 +95,48 @@ class LocalLlmPromptTest {
     }
 
     @Test
+    fun rejectsARefusal() {
+        assertThrows(LocalLlmException::class.java) {
+            LocalLlmPrompt.parse(
+                """
+                PROMPT_BEGIN
+                I'm sorry, but I cannot create that prompt.
+                PROMPT_END
+                TAGS: 1girl
+                """.trimIndent(),
+            )
+        }
+    }
+
+    @Test
+    fun rejectsAnUnfilledTemplate() {
+        assertThrows(LocalLlmException::class.java) {
+            LocalLlmPrompt.parse(
+                """
+                PROMPT_BEGIN
+                <English prompt>
+                PROMPT_END
+                TAGS: 1girl
+                """.trimIndent(),
+            )
+        }
+    }
+
+    @Test
+    fun dropsJapaneseAndBracketedTags() {
+        val result = LocalLlmPrompt.parse(
+            """
+            PROMPT_BEGIN
+            A girl sits by a window.
+            PROMPT_END
+            TAGS: [1girl, long_hair], 黒髪, window
+            """.trimIndent(),
+        )
+
+        assertEquals(listOf("1girl", "long_hair", "window"), result.tags)
+    }
+
+    @Test
     fun rejectsAnEmptyResponse() {
         assertThrows(LocalLlmException::class.java) {
             LocalLlmPrompt.parse("   ")

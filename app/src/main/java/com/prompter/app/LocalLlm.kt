@@ -127,6 +127,12 @@ object LocalLlmPrompt {
         if (prompt.isBlank()) {
             throw LocalLlmException("ローカルLLMが自然文を返しませんでした。")
         }
+        if (prompt.contains("<English prompt>", ignoreCase = true)) {
+            throw LocalLlmException("ローカルLLMがテンプレートを埋めずに返しました。")
+        }
+        if (looksLikeRefusal(prompt)) {
+            throw LocalLlmException("ローカルLLMが生成を拒否しました。")
+        }
         if (containsJapanese(prompt)) {
             throw LocalLlmException("ローカルLLMの自然文に日本語が混入しました。")
         }
@@ -143,9 +149,9 @@ object LocalLlmPrompt {
             .flatMap { line ->
                 line.split(',')
                     .asSequence()
-                    .map { it.trim().trim('-', '*', '`', '"', '\'') }
+                    .map { it.trim().trim('-', '*', '`', '"', '\'', '[', ']') }
             }
-            .filter { it.isNotBlank() }
+            .filter { it.isNotBlank() && !containsJapanese(it) }
             .distinct()
             .toList()
 
@@ -154,6 +160,9 @@ object LocalLlmPrompt {
 
     fun containsJapanese(text: String): Boolean =
         JAPANESE_REGEX.containsMatchIn(text)
+
+    private fun looksLikeRefusal(text: String): Boolean =
+        REFUSAL_REGEX.containsMatchIn(text.take(160))
 
     private fun String.cleanPrompt(): String {
         var value = trim()
@@ -175,6 +184,10 @@ object LocalLlmPrompt {
 
     private val JAPANESE_REGEX =
         Regex("[\\u3040-\\u30ff\\u3400-\\u4dbf\\u4e00-\\u9fff\\uff66-\\uff9f]")
+    private val REFUSAL_REGEX = Regex(
+        "(?i)^\\s*(i'?m sorry|i am sorry|i can'?t|i cannot|i won'?t|i will not|" +
+            "as an ai|i'?m unable|i am unable)\\b",
+    )
 }
 
 /**
