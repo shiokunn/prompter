@@ -37,6 +37,30 @@ class EnglishTagNormalizerTest {
     }
 
     @Test
+    fun prefersVeryLongHairOverLongHair() {
+        val engine = engine()
+        try {
+            val tags = engine.normalizeEnglishTags("very long black hair")
+            assertTrue(tags.contains("very_long_hair"))
+            assertTrue(tags.contains("black_hair"))
+            assertTrue(tags.none { it == "long_hair" })
+        } finally {
+            engine.close()
+        }
+    }
+
+    @Test
+    fun keepsCanonicalTagsWithStopwordEndings() {
+        val engine = engine()
+        try {
+            assertTrue(engine.normalizeEnglishTags("shirt tucked in").contains("shirt_tucked_in"))
+            assertTrue(engine.normalizeEnglishTags("k-on!").contains("k-on!"))
+        } finally {
+            engine.close()
+        }
+    }
+
+    @Test
     fun mergesTranslationIntoPromptAndTags() {
         val engine = engine()
         try {

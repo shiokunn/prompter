@@ -71,7 +71,9 @@ class EnglishTagNormalizer private constructor(
             while (i < normalized.length && normalized[i] == ' ') i++
         }
         val matched = found.entries.sortedBy { it.value }.map { it.key }
-        return (attributes + matched).distinct()
+        val result = (attributes + matched).distinct().toMutableList()
+        if ("very_long_hair" in result) result.remove("long_hair")
+        return result
     }
 
     /**
@@ -123,13 +125,19 @@ class EnglishTagNormalizer private constructor(
                 priority: Int,
                 confidence: Double,
                 postCount: Long,
+                filterIncompleteAlias: Boolean,
             ) {
                 val norm = normalizeEnglish(surface)
                 if (norm.isBlank()) return
                 // Incomplete aliases such as "sitting on" swallow the noun
                 // ("sitting on a chair" -> sitting_on_person). Let the
-                // shorter, exact tags match instead.
-                if (norm.substringAfterLast(' ') in TRAILING_STOPWORDS) return
+                // shorter, exact tags match instead. Canonical tags such as
+                // "shirt_tucked_in" and "k-on!" must still be inserted.
+                if (filterIncompleteAlias &&
+                    norm.substringAfterLast(' ') in TRAILING_STOPWORDS
+                ) {
+                    return
+                }
                 var node = root
                 for (ch in norm) {
                     node = node.children.getOrPut(ch) { Node() }
@@ -145,6 +153,7 @@ class EnglishTagNormalizer private constructor(
                     priority = 10,
                     confidence = 0.9,
                     postCount = 0L,
+                    filterIncompleteAlias = false,
                 )
             }
 
@@ -160,6 +169,7 @@ class EnglishTagNormalizer private constructor(
                         priority = c.getInt(3),
                         confidence = c.getDouble(2),
                         postCount = c.getLong(4),
+                        filterIncompleteAlias = true,
                     )
                 }
             }
