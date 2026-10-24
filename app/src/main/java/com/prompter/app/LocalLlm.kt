@@ -66,7 +66,7 @@ data class LocalLlmGeneration(
 object LocalLlmPrompt {
     const val PROMPT_BEGIN = "PROMPT_BEGIN"
     const val PROMPT_END = "PROMPT_END"
-    const val SYSTEM_PROMPT = """
+    val SYSTEM_PROMPT = """
         You are an expert prompt writer for PixAI DiT anime image generation.
         Convert the Japanese scene and the provided Danbooru tags into ONE English
         natural-language prompt.
