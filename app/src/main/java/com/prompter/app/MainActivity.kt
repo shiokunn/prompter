@@ -3,7 +3,6 @@ package com.prompter.app
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
-import android.content.Intent
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -51,6 +50,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -84,7 +84,13 @@ private fun PrompterApp() {
     var modeName by rememberSaveable { mutableStateOf(OutputMode.BOTH.name) }
     val mode = OutputMode.valueOf(modeName)
     var result by remember { mutableStateOf<ConversionResult?>(null) }
+    var editableTags by remember { mutableStateOf<List<EditableTag>>(emptyList()) }
     var engine by remember { mutableStateOf<PromptEngine?>(null) }
+    var historyStore by remember { mutableStateOf<HistoryStore?>(null) }
+    var historyItems by remember { mutableStateOf<List<HistoryItem>>(emptyList()) }
+    var currentHistoryId by remember { mutableStateOf<Long?>(null) }
+    var showHistory by rememberSaveable { mutableStateOf(false) }
+    var onlyFavorites by rememberSaveable { mutableStateOf(false) }
     var loading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
 
@@ -92,15 +98,48 @@ private fun PrompterApp() {
         loading = true
         try {
             engine = withContext(Dispatchers.IO) { PromptEngine(context) }
+            historyStore = withContext(Dispatchers.IO) { HistoryStore(context) }
         } catch (t: Throwable) {
-            error = "辞書を開けませんでした: ${t.message}"
+            error = "初期化に失敗しました: ${t.message}"
         } finally {
             loading = false
         }
     }
 
     DisposableEffect(Unit) {
-        onDispose { engine?.close() }
+        onDispose {
+            engine?.close()
+            historyStore?.close()
+        }
+    }
+
+    LaunchedEffect(showHistory, onlyFavorites, historyStore) {
+        if (showHistory) {
+            val store = historyStore ?: return@LaunchedEffect
+            historyItems = withContext(Dispatchers.IO) { store.recent(onlyFavorites) }
+        }
+    }
+
+    val editedTagText = remember(editableTags) { formatTagText(editableTags) }
+    val editedPixaiPrompt = remember(editableTags) {
+        PromptComposer.compose(editableTags.map { it.tag })
+    }
+
+    LaunchedEffect(editableTags, currentHistoryId, historyStore) {
+        val id = currentHistoryId ?: return@LaunchedEffect
+        val store = historyStore ?: return@LaunchedEffect
+        if (editableTags.isEmpty()) return@LaunchedEffect
+        delay(300)
+        withContext(Dispatchers.IO) {
+            store.update(id, editedPixaiPrompt, editedTagText)
+        }
+    }
+
+    fun refreshHistory() {
+        val store = historyStore ?: return
+        scope.launch {
+            historyItems = withContext(Dispatchers.IO) { store.recent(onlyFavorites) }
+        }
     }
 
     fun convert() {
@@ -110,13 +149,104 @@ private fun PrompterApp() {
             loading = true
             error = null
             try {
-                result = withContext(Dispatchers.Default) { current.convert(input) }
+                val converted = withContext(Dispatchers.Default) { current.convert(input) }
+                result = converted
+                editableTags = converted.tags.map { EditableTag(it) }
+                currentHistoryId = null
+                val store = historyStore
+                if (store != null && converted.tags.isNotEmpty()) {
+                    currentHistoryId = withContext(Dispatchers.IO) {
+                        store.add(
+                            input = input,
+                            pixaiPrompt = converted.pixaiPrompt,
+                            tagText = converted.tagText,
+                            unmatched = converted.unmatched,
+                        )
+                    }
+                }
             } catch (t: Throwable) {
                 error = "変換に失敗しました: ${t.message}"
             } finally {
                 loading = false
             }
         }
+    }
+
+    fun loadHistory(item: HistoryItem) {
+        val tags = parseTagText(item.tagText)
+        input = item.input
+        result = ConversionResult(
+            pixaiPrompt = item.pixaiPrompt,
+            tagText = item.tagText,
+            tags = tags.map { it.tag },
+            unmatched = item.unmatched,
+        )
+        editableTags = tags
+        currentHistoryId = item.id
+        showHistory = false
+    }
+
+    fun toggleFavorite(item: HistoryItem) {
+        val store = historyStore ?: return
+        scope.launch {
+            withContext(Dispatchers.IO) {
+                store.setFavorite(item.id, !item.isFavorite)
+            }
+            refreshHistory()
+        }
+    }
+
+    fun deleteHistory(item: HistoryItem) {
+        val store = historyStore ?: return
+        scope.launch {
+            withContext(Dispatchers.IO) { store.delete(item.id) }
+            if (currentHistoryId == item.id) currentHistoryId = null
+            refreshHistory()
+        }
+    }
+
+    fun clearHistory() {
+        val store = historyStore ?: return
+        scope.launch {
+            withContext(Dispatchers.IO) { store.clear() }
+            currentHistoryId = null
+            historyItems = emptyList()
+        }
+    }
+
+    fun cycleWeight(index: Int) {
+        if (index !in editableTags.indices) return
+        val next = editableTags.toMutableList()
+        next[index] = next[index].copy(weight = cycleTagWeight(next[index].weight))
+        editableTags = next
+    }
+
+    fun moveTag(index: Int, delta: Int) {
+        val target = index + delta
+        if (index !in editableTags.indices || target !in editableTags.indices) return
+        val next = editableTags.toMutableList()
+        val item = next.removeAt(index)
+        next.add(target, item)
+        editableTags = next
+    }
+
+    fun removeTag(index: Int) {
+        if (index !in editableTags.indices) return
+        editableTags = editableTags.filterIndexed { i, _ -> i != index }
+    }
+
+    if (showHistory) {
+        HistoryScreen(
+            items = historyItems,
+            onlyFavorites = onlyFavorites,
+            onFilter = { onlyFavorites = it },
+            onBack = { showHistory = false },
+            onLoad = ::loadHistory,
+            onToggleFavorite = ::toggleFavorite,
+            onDelete = ::deleteHistory,
+            onClear = ::clearHistory,
+        )
+        return
     }
 
     Scaffold(
@@ -129,6 +259,11 @@ private fun PrompterApp() {
                             "日本語 → PixAI DiT / Danbooru tags",
                             style = MaterialTheme.typography.labelSmall,
                         )
+                    }
+                },
+                actions = {
+                    TextButton(onClick = { showHistory = true }) {
+                        Text("履歴")
                     }
                 },
             )
@@ -166,6 +301,8 @@ private fun PrompterApp() {
                     onPick = {
                         input = it
                         result = null
+                        editableTags = emptyList()
+                        currentHistoryId = null
                     },
                 )
             }
@@ -198,68 +335,50 @@ private fun PrompterApp() {
 
             error?.let { message ->
                 item {
-                    Card(modifier = Modifier.fillMaxWidth()) {
-                        Text(
-                            text = message,
-                            color = MaterialTheme.colorScheme.error,
-                            style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier.padding(16.dp),
-                        )
-                    }
+                    ErrorCard(message)
                 }
             }
 
             result?.let { res ->
-                if (res.tags.isEmpty()) {
-                    item {
-                        Card(modifier = Modifier.fillMaxWidth()) {
-                            Column(modifier = Modifier.padding(16.dp)) {
-                                Text(
-                                    "辞書に一致するタグがありません",
-                                    style = MaterialTheme.typography.titleMedium,
+                when {
+                    res.tags.isEmpty() -> item { NoMatchCard(res.unmatched) }
+                    editableTags.isEmpty() -> item { EmptyTagsCard() }
+                    else -> {
+                        val emphasized = editableTags.count { it.weight > 1.0f }
+                        val subtitle = if (emphasized > 0) {
+                            "${editableTags.size} tags / $emphasized emphasized"
+                        } else {
+                            "${editableTags.size} tags"
+                        }
+                        if (mode != OutputMode.TAGS) {
+                            item {
+                                OutputCard(
+                                    title = "PixAI DiT 自然文",
+                                    subtitle = subtitle,
+                                    text = editedPixaiPrompt,
                                 )
-                                Text(
-                                    "髪色・服装・ポーズ・場所など、具体的な言葉を入れてください。",
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    modifier = Modifier.padding(top = 6.dp),
-                                )
-                                if (res.unmatched.isNotBlank()) {
-                                    Text(
-                                        "未変換: ${res.unmatched}",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        modifier = Modifier.padding(top = 8.dp),
-                                    )
-                                }
                             }
                         }
-                    }
-                } else {
-                    if (mode != OutputMode.TAGS) {
-                        item {
-                            OutputCard(
-                                title = "PixAI DiT 自然文",
-                                subtitle = "${res.tags.size} tags",
-                                text = res.pixaiPrompt,
-                            )
-                        }
-                    }
-                    if (mode != OutputMode.PIXAI) {
-                        item {
-                            OutputCard(
-                                title = "Danbooru タグ",
-                                subtitle = "${res.tags.size} tags",
-                                text = res.tagText,
-                            )
-                        }
-                    }
-                    if (res.unmatched.isNotBlank()) {
-                        item {
-                            Card(modifier = Modifier.fillMaxWidth()) {
-                                Text(
-                                    text = "辞書外: ${res.unmatched}",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    modifier = Modifier.padding(12.dp),
+                        if (mode != OutputMode.PIXAI) {
+                            item {
+                                OutputCard(
+                                    title = "Danbooru タグ",
+                                    subtitle = subtitle,
+                                    text = editedTagText,
                                 )
+                            }
+                        }
+                        item {
+                            TagEditor(
+                                tags = editableTags,
+                                onCycleWeight = ::cycleWeight,
+                                onMove = ::moveTag,
+                                onRemove = ::removeTag,
+                            )
+                        }
+                        if (res.unmatched.isNotBlank()) {
+                            item {
+                                UnmatchedCard(res.unmatched)
                             }
                         }
                     }
@@ -343,9 +462,6 @@ private fun OutputCard(title: String, subtitle: String, text: String) {
                 TextButton(onClick = { copyText(context, title, text) }) {
                     Text("コピー")
                 }
-                TextButton(onClick = { shareText(context, text) }) {
-                    Text("共有")
-                }
             }
             SelectionContainer {
                 Text(
@@ -355,6 +471,64 @@ private fun OutputCard(title: String, subtitle: String, text: String) {
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun ErrorCard(message: String) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Text(
+            text = message,
+            color = MaterialTheme.colorScheme.error,
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.padding(16.dp),
+        )
+    }
+}
+
+@Composable
+private fun NoMatchCard(unmatched: String) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text("辞書に一致するタグがありません", style = MaterialTheme.typography.titleMedium)
+            Text(
+                "髪色・服装・ポーズ・場所など、具体的な言葉を入れてください。",
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.padding(top = 6.dp),
+            )
+            if (unmatched.isNotBlank()) {
+                Text(
+                    "未変換: $unmatched",
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(top = 8.dp),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun EmptyTagsCard() {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text("タグをすべて削除しました", style = MaterialTheme.typography.titleMedium)
+            Text(
+                "入力文を変えて、もう一度変換してください。",
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.padding(top = 6.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun UnmatchedCard(unmatched: String) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Text(
+            text = "辞書外: $unmatched",
+            style = MaterialTheme.typography.bodySmall,
+            modifier = Modifier.padding(12.dp),
+        )
     }
 }
 
@@ -380,16 +554,4 @@ private fun copyText(context: Context, label: String, text: String) {
     val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
     clipboard.setPrimaryClip(ClipData.newPlainText(label, text))
     Toast.makeText(context, "コピーしました", Toast.LENGTH_SHORT).show()
-}
-
-private fun shareText(context: Context, text: String) {
-    val intent = Intent(Intent.ACTION_SEND).apply {
-        type = "text/plain"
-        putExtra(Intent.EXTRA_TEXT, text)
-    }
-    val chooser = Intent.createChooser(intent, "プロンプトを共有")
-    if (context !is android.app.Activity) {
-        chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-    }
-    context.startActivity(chooser)
 }
