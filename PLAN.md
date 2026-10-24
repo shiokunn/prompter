@@ -1,7 +1,7 @@
 # Prompter — 日本語→PixAI DiT プロンプト変換 Android アプリ 企画書
 
 - 最終更新: 2026-10-24
-- ステータス: **M1 完了 / M2 コア完了 / M3 実装完了 / M4 実装完了（実通信確認済み） / M5 実装完了（実機確認待ち）**
+- ステータス: **M1 完了 / M2 コア完了 / M3 実装完了 / M4 実装完了（実通信確認済み） / M5 実装・実機確認完了**
 - 作業ディレクトリ: `~/prompter`
 - 関連調査:
   - [`research/DECISIONS.md`](research/DECISIONS.md) — 確定した要件
@@ -833,7 +833,7 @@ Return only canonical Danbooru tags for the requested image.
 | **M2 アプリ骨格** | コア完了 | Compose、Trie、PixAI オフライン合成、CI、Kotlin/Robolectric テスト | 日本語→PixAI 自然文がオフラインで動く（APK `0.2.0-m1`） |
 | **M3 エディタ / 履歴** | 実装完了 | 自然文/タグ切替、タグチップ、重み、並び替え、削除、コピー、履歴・お気に入り（SQLite） | 編集・履歴がテスト済み（APK `0.3.0-m3`、実機確認待ち） |
 | **M4 OpenRouter AI** | 実装完了 | OpenAI 互換クライアント、設定画面、Keystore、JSON Schema、フォールバック、タグ検証、キャッシュ、既定 `openrouter/free` | 実通信確認済み（ユーザー環境、APK `0.4.2-m4`、CIはモック） |
-| **M5 ML Kit / タグ和訳** | 実装完了 | ML Kit翻訳フォールバック、英語→タグ正規化、タグ→日本語、安定debug署名 | CI成功（APK `0.5.0-m5`、実機確認待ち） |
+| **M5 ML Kit / タグ和訳** | 実装・実機確認完了 | ML Kit翻訳フォールバック、英語→タグ正規化、タグ→日本語、安定debug署名 | CI成功、実機でモデルDL・機内モード翻訳・上書き更新を確認（APK `0.5.0-m5`） |
 | **M6 ローカル LLM** | 5〜7日 | LiteRT-LM、E2B ダウンロード、GPU/CPU、E4B 任意、ベンチ | 機内モードで E2B が動く |
 | **M7 統合・仕上げ** | 3〜4日 | 選択メニュー、共有、オンボーディング、設定、署名、リリース | 実機で1週間使える |
 

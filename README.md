@@ -14,6 +14,7 @@
 - **M3 実装レポート**: [`research/M3_REPORT.md`](research/M3_REPORT.md)
 - **M4 実装レポート**: [`research/M4_REPORT.md`](research/M4_REPORT.md)
 - **M5 実装レポート**: [`research/M5_REPORT.md`](research/M5_REPORT.md)
+- **引き継ぎ指示書**: [`HANDOFF.md`](HANDOFF.md)
 - **プロトタイプ**: [`tools/spike_match.py`](tools/spike_match.py)
 
 ## 状況
@@ -30,8 +31,9 @@
   Keystore暗号化、JSON Schema、タグ検証、キャッシュを実装。Gemma 4 31Bの無料プリセットは
   レート制限が厳しいため、無料モデル自動ルーター `openrouter/free` に置き換えた。
   `content: null` や不正JSONが返った場合は `json_object` で1回再試行する。
-- 2026-10-24: **M5 実装完了（実機確認待ち）**。ML Kit翻訳フォールバック、英語→タグ正規化、
+- 2026-10-24: **M5 実装・実機確認完了**。ML Kit翻訳フォールバック、英語→タグ正規化、
   タグの日本語別名表示を追加。CIのdebug署名鍵を固定し、今後のAPKを上書き可能にした。
+  ユーザー実機（arrows Alpha）でモデルDL、機内モード翻訳、タグ和訳、上書き更新を確認済み。
 - APK: `/storage/emulated/0/Download/Prompter/Prompter-0.5.0-m5-debug.apk`
   （SHA-256 `43e013da255753fc81903f4d2813d576c5d715837c17742aea659d4bc4f3c0f5`、約51MB）。
 - 次の作業: 0.4.2を一度アンインストールして0.5.0を入れ、ML Kit翻訳のダウンロードと
