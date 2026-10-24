@@ -56,6 +56,21 @@ class AiSettings(context: Context) {
         prefs.edit().remove(KEY_API_KEY).apply()
     }
 
+    /**
+     * Existing installs may have the old Gemini default or the old Gemma free
+     * preset stored. Move those to the free router once; custom model IDs are
+     * left untouched. A marker prevents re-migrating a deliberate later choice.
+     */
+    fun migrateLegacyDefaultModel() {
+        if (prefs.getBoolean(KEY_MODEL_MIGRATION_V1, false)) return
+        val stored = prefs.getString(KEY_MODEL, null)
+        val editor = prefs.edit().putBoolean(KEY_MODEL_MIGRATION_V1, true)
+        if (stored.isNullOrBlank() || stored in AiDefaults.LEGACY_DEFAULT_MODELS) {
+            editor.putString(KEY_MODEL, AiDefaults.MODEL)
+        }
+        editor.apply()
+    }
+
     private fun encrypt(value: String): String {
         val cipher = Cipher.getInstance(TRANSFORMATION)
         cipher.init(Cipher.ENCRYPT_MODE, getOrCreateSecretKey())
@@ -108,6 +123,7 @@ class AiSettings(context: Context) {
         private const val PREFS_NAME = "prompter_ai_settings"
         private const val KEY_API_KEY = "openrouter_api_key"
         private const val KEY_MODEL = "model"
+        private const val KEY_MODEL_MIGRATION_V1 = "model_migration_v1"
         private const val KEY_BASE_URL = "base_url"
         private const val ANDROID_KEYSTORE = "AndroidKeyStore"
         private const val KEY_ALIAS = "prompter_openrouter_key_v1"

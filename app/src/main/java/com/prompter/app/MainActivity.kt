@@ -111,6 +111,7 @@ private fun PrompterApp() {
             historyStore = withContext(Dispatchers.IO) { HistoryStore(context) }
             val loadedAiSettings = withContext(Dispatchers.IO) { AiSettings(context) }
             aiSettings = loadedAiSettings
+            withContext(Dispatchers.IO) { loadedAiSettings.migrateLegacyDefaultModel() }
             aiCache = withContext(Dispatchers.IO) { AiCache(context) }
             apiKeyConfigured = withContext(Dispatchers.IO) { loadedAiSettings.hasApiKey() }
             aiModel = loadedAiSettings.model
