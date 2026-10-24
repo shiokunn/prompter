@@ -2,7 +2,7 @@
 
 - 最終更新: 2026-10-24
 - リポジトリ: <https://github.com/shiokunn/prompter>（private）
-- 状態: **M1〜M5 完了・実機確認済み。M6ローカルLLMは実装・CI完了、実機検証待ち。**
+- 状態: **M1〜M5 完了・実機確認済み。M6は実機で生成確認（約10秒/回、拒否なし）。詳細ベンチと品質評価を継続。**
 - 実機: arrows Alpha（arm64-v8a / 12GB RAM / 512GB）
 - 最新コミットは `git log -1 --oneline` で確認する。
 
@@ -33,7 +33,7 @@ sha256sum /storage/emulated/0/Download/Prompter/Prompter-0.6.0-m6-debug.apk
 | M3 タグ編集・履歴 | 完了。重み、並び替え、削除、SQLite履歴・お気に入り |
 | M4 OpenRouter AI | 完了。BYOK、Keystore暗号化、既定 `openrouter/free` |
 | M5 ML Kit翻訳 | **完了・実機確認済み**。辞書外の英訳、英語→タグ、タグ和訳 |
-| M6 ローカルLLM | **実装・CI完了。実機検証待ち**。Gemma 4 E2B / LiteRT-LM 0.18.1 / CPU |
+| M6 ローカルLLM | **実機で生成確認済み**。約10秒/回、拒否なし。Gemma 4 E2B / LiteRT-LM 0.18.1 / CPU。詳細ベンチ・品質評価は継続 |
 | debug署名 | 固定済み。`keystore/prompter-debug.jks` で上書き更新可能 |
 
 ### 現在のAPK
@@ -55,6 +55,7 @@ sha256sum /storage/emulated/0/Download/Prompter/Prompter-0.6.0-m6-debug.apk
 - Gemma 4 E2B（約2.59GB）をWi-Fi限定で任意ダウンロード
 - ダウンロード後にサイズとSHA-256を検証
 - 端末内CPU推論で、オフライン結果を英語PixAIプロンプトに整形
+- 実機（arrows Alpha）で **約10秒/回、拒否なし** を確認済み（ユーザー報告）
 - 機内モードでも生成可能（モデルとML Kit翻訳モデルがダウンロード済みの場合）
 - 失敗時はオフライン結果を保持し、AIカードにエラーを表示
 - ローカル生成結果も履歴・キャッシュ・タグ検証の対象
@@ -63,31 +64,35 @@ sha256sum /storage/emulated/0/Download/Prompter/Prompter-0.6.0-m6-debug.apk
 モデルはAPKに同梱していない。保存先はアプリ専用外部領域:
 `/storage/emulated/0/Android/data/com.prompter.app/files/Download/models/gemma-4-E2B-it.litertlm`
 
-### M6の未確認事項
+### M6の残る確認事項
 
-- 実機でダウンロードが完走するか（Hugging Faceのリダイレクト含む）
-- LiteRT-LM 0.18.1がarrows AlphaのCPUで初期化できるか
-- 初回ロード時間、生成時間、RAM、発熱、バッテリー
+- 約10秒が初回ロード込みか、2回目以降か（出力語数・プロンプト長も揃えて記録）
 - 機内モードでの生成
-- 成人向け入力で拒否されないか
-- 出力品質（意図・自然さ・構造）
+- RAM、発熱、バッテリー消費
+- 出力品質（意図・自然さ・構造の5段階評価）
+- 成人向け入力のバリエーション別の拒否率（初回確認では拒否なし）
 - GPUは未実装。今回はCPU / 4 threadsのみ。
 
 ## 3. 次のセッションでやること（推奨順）
 
-### 最優先: M6ローカルLLMの実機検証
+### 最優先: M6ローカルLLMの詳細ベンチと品質評価
 
-`research/M6_REPORT.md` の6章を実施する。要点:
+基本動作は実機で確認済み（**約10秒/回、拒否なし**、ユーザー報告）。`research/M6_REPORT.md` の6章に沿って、再現性のある数字を取る。
 
-1. `adb install -r` で0.6.0-m6を上書き。
-2. 設定 → AIバックエンド → ローカルLLM → モデルをダウンロード。
-3. 約2.59GBの進捗、完了通知、SHA-256検証、「準備完了」を確認。
-4. 例文を変換し、「ローカルLLMで整える」。
-5. 初回ロード時間、生成時間、語数をAIカードから記録。
-6. 機内モードで再起動し、ローカル生成できることを確認。
-7. 成人向けタグ、複数キャラ、風景、日常シーンで品質を確認。
-8. `adb shell dumpsys meminfo com.prompter.app` とlogcatを保存。
-9. 結果を `research/M6_REPORT.md` に追記し、Go/No-Goを決める。
+確認済み:
+
+- モデルのダウンロードとSHA-256検証（生成に到達したため通過）
+- CPU / 4 threadsでのローカル生成、約10秒/回
+- 初回確認で生成拒否なし
+
+残り:
+
+1. 同じ例文で、初回（モデル未ロード）と2回目以降を分けて計測する。AIカードの「読み込み」「生成」表示を記録。
+2. 出力語数が80〜150語に入っているか、`PROMPT_BEGIN`などのマーカーや日本語が残っていないか確認する。
+3. 機内モードでアプリを再起動し、ローカル生成できることを確認する。
+4. 成人向け、複数キャラ、風景、日常の10〜20件で品質と拒否率を確認する。
+5. `adb shell dumpsys meminfo com.prompter.app`、logcat、体感の発熱・バッテリー消費を記録する。
+6. 結果を `research/M6_REPORT.md` に追記し、品質のGo/No-Goを決める。
 
 失敗時の切り分け:
 
@@ -200,11 +205,11 @@ adb install -r /storage/emulated/0/Download/Prompter/Prompter-<version>-debug.ap
 
 ## 7. 既知の未完了・リスク
 
-- M6ローカルLLMは実装・CI完了だが、実機でダウンロード・初期化・生成・機内モードが未確認。
-- M6のダウンロードはHugging Faceの302/CDNリダイレクトに依存する。DownloadManagerで失敗する場合は独自DLへ切り替える。
+- M6ローカルLLMは実機で約10秒/回・拒否なしを確認済み。ただし初回/2回目の内訳、機内モード、RAM、発熱、品質評価は未完了。
+- M6のダウンロードはHugging Faceの302/CDNリダイレクトに依存する。実機では生成まで到達したが、失敗が再発する場合は独自DLへ切り替える。
 - M6はCPUのみ。GPU（Mali-G615）とE4Bは未対応。
-- 初回ロード時間、生成時間、RAM、発熱、バッテリーは未測定。
-- ローカルLLMの成人向け入力に対する拒否率は未評価。
+- 初回ロード時間、2回目以降の生成時間、RAM、発熱、バッテリーは未測定。
+- ローカルLLMの成人向け入力は初回確認では拒否なし。バリエーション別の拒否率は未評価。
 - PixAI自然文の人手評価（3.5/5）が未完了。
 - PixAI DiTの最大プロンプト長、成人向けモデレーションは未検証。
 - リリース署名は未実装。
@@ -216,7 +221,7 @@ adb install -r /storage/emulated/0/Download/Prompter/Prompter-<version>-debug.ap
 
 ## 8. 次セッションの最初の一言（例）
 
-> `HANDOFF.md` を読んで、まずM6ローカルLLMの実機検証から進めてください。
-> ダウンロード、SHA-256、初回ロード、生成時間、機内モード、成人向け入力を確認し、
-> 結果を `research/M6_REPORT.md` に追記してください。端末が見えない場合は、
-> 先にPixAI自然文の評価セットを準備してください。
+> `HANDOFF.md` を読んで、M6ローカルLLMの詳細ベンチと品質評価から進めてください。
+> 約10秒/回・拒否なしは確認済みなので、初回ロードと2回目以降の内訳、機内モード、
+> RAM・発熱、10〜20件の5段階評価を記録し、結果を `research/M6_REPORT.md` に追記してください。
+> 端末が見えない場合は、先にPixAI自然文の評価セットを準備してください。
