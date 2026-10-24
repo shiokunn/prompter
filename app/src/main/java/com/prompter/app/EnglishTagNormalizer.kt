@@ -126,6 +126,10 @@ class EnglishTagNormalizer private constructor(
             ) {
                 val norm = normalizeEnglish(surface)
                 if (norm.isBlank()) return
+                // Incomplete aliases such as "sitting on" swallow the noun
+                // ("sitting on a chair" -> sitting_on_person). Let the
+                // shorter, exact tags match instead.
+                if (norm.substringAfterLast(' ') in TRAILING_STOPWORDS) return
                 var node = root
                 for (ch in norm) {
                     node = node.children.getOrPut(ch) { Node() }
@@ -196,6 +200,11 @@ class EnglishTagNormalizer private constructor(
             "aqua" to "aqua",
             "gold" to "gold",
             "yellow" to "yellow",
+        )
+
+        private val TRAILING_STOPWORDS = setOf(
+            "on", "in", "at", "with", "of", "to", "for", "from", "by",
+            "and", "or",
         )
 
         private val NON_WORD = Regex("[^a-z0-9]+")
