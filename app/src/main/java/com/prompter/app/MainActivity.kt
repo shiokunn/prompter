@@ -168,10 +168,9 @@ private fun PrompterApp() {
             val missing = tags
                 .filter { it !in dictionaryMeanings && it !in mlTagMeanings }
                 .distinct()
-                .take(8)
-            if (missing.isNotEmpty()) {
+            for (batch in missing.chunked(8)) {
                 val translated = withContext(Dispatchers.IO) {
-                    missing.mapNotNull { tag ->
+                    batch.mapNotNull { tag ->
                         runCatching {
                             currentTranslator.translateEnglishToJapanese(tag.replace('_', ' '))
                         }.getOrNull()
