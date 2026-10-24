@@ -3,7 +3,7 @@
 - 日付: 2026-10-24
 - 状態: **実装完了（ユーザー環境で実通信確認済み。自動テストはモック）**
 - 対象: `app/src/main/java/com/prompter/app/` / `app/src/test/java/com/prompter/app/`
-- APK: `Prompter-0.4.1-m4-debug.apk`（versionCode 5）
+- APK: `Prompter-0.4.2-m4-debug.apk`（versionCode 6）
 
 ## 目的
 
@@ -47,6 +47,7 @@ APIキーはBYOKとし、アプリ・履歴・ログ・APK・CIのどこにも�
   - `tags`: string[]
   - `required` / `additionalProperties: false`
 - `json_schema` 非対応モデル向けに `json_object` へ1回フォールバック。
+- `content: null` や不正JSONが返った場合も `json_object` で1回再試行し、生のJSON例外を表示しない。
 - Markdownのコードフェンスで返されたJSONも抽出。
 - 401 / 402 / 403 / 404 / 429 / 5xxを日本語メッセージに変換。
 - APIキーやリクエスト本文はログ・例外メッセージに含めない。
@@ -94,7 +95,7 @@ python3 -m unittest tools.test_m1 -v
 ./gradlew assembleDebug --stacktrace
 ```
 
-Kotlinテストは合計25件:
+Kotlinテストは合計26件:
 
 - 既存13件（`PromptComposerTest` / `M1MatcherTest` / `TagEditingTest` / `HistoryStoreTest`）
 - `AiPromptValidatorTest`（4件）
@@ -102,9 +103,10 @@ Kotlinテストは合計25件:
   - 辞書外タグ・重複の除去
   - 語数範囲の判定
   - 成人向けタグの保持
-- `OpenRouterClientTest`（4件、MockWebServer）
+- `OpenRouterClientTest`（5件、MockWebServer）
   - JSON Schemaリクエストと応答パース
   - `json_object` フォールバック
+  - `content: null` 時の `json_object` 再試行
   - 401エラー処理（キー非漏えい）
   - MarkdownフェンスのJSON抽出
 - `AiCacheTest`（1件）
@@ -116,13 +118,13 @@ Kotlinテストは合計25件:
 
 ## 検証結果
 
-- GitHub Actions run: <https://github.com/shiokunn/prompter/actions/runs/40052200048>
+- GitHub Actions run: <https://github.com/shiokunn/prompter/actions/runs/40053384789>
 - `Run M1 matcher tests`: 成功
 - `Run Kotlin unit tests`: 成功
 - `Build debug APK`: 成功
 - APK: 約31MB
-- 共有ストレージ: `/storage/emulated/0/Download/Prompter/Prompter-0.4.1-m4-debug.apk`
-- SHA-256: `4262ac3a379c740503e54d8c050f094eb07ce25b6959e5fa8c4c9dca98ab9c14`
+- 共有ストレージ: `/storage/emulated/0/Download/Prompter/Prompter-0.4.2-m4-debug.apk`
+- SHA-256: `2d1800b523e9885936ee84a04f9acbe9c2fa535ec51d542c56fdbede33290243`
 - debug署名。debug keystore cacheが残っている限り上書きインストール可能。
 - ユーザー環境で実機インストール・OpenRouter実通信に成功したとの報告あり。CIでは実キーを使わずMockWebServerで検証している。
 

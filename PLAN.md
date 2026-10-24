@@ -716,7 +716,7 @@ Return only canonical Danbooru tags for the requested image.
 ### 7.4 構造化出力とフォールバック
 
 1. `response_format: {type: "json_schema", json_schema: {...}, strict: true}` を試す。
-2. 400/422 なら `response_format: {type: "json_object"}` で再試行。
+2. 400/422、または `content: null` / 不正JSONなら `response_format: {type: "json_object"}` で1回再試行。
 3. それもダメなら通常チャット + 「JSON のみ」プロンプト。
 4. それでもパース失敗なら、コードフェンスや最初の `{...}` を抽出。
 5. 失敗時はローカル下書きを維持し、エラーを表示。勝手に壊れた出力を採用しない。
@@ -831,7 +831,7 @@ Return only canonical Danbooru tags for the requested image.
 | **M1 辞書パイプライン** | 完了 | 別名生成、逆翻訳検証、SQLite ビルド、評価セット | 上位5,000タグの DB と評価レポート。fresh holdout で Recall 0.519 / Precision 0.762 / Invalid 0% |
 | **M2 アプリ骨格** | コア完了 | Compose、Trie、PixAI オフライン合成、CI、Kotlin/Robolectric テスト | 日本語→PixAI 自然文がオフラインで動く（APK `0.2.0-m1`） |
 | **M3 エディタ / 履歴** | 実装完了 | 自然文/タグ切替、タグチップ、重み、並び替え、削除、コピー、履歴・お気に入り（SQLite） | 編集・履歴がテスト済み（APK `0.3.0-m3`、実機確認待ち） |
-| **M4 OpenRouter AI** | 実装完了 | OpenAI 互換クライアント、設定画面、Keystore、JSON Schema、フォールバック、タグ検証、キャッシュ、既定 `openrouter/free` | 実通信確認済み（ユーザー環境、APK `0.4.1-m4`、CIはモック） |
+| **M4 OpenRouter AI** | 実装完了 | OpenAI 互換クライアント、設定画面、Keystore、JSON Schema、フォールバック、タグ検証、キャッシュ、既定 `openrouter/free` | 実通信確認済み（ユーザー環境、APK `0.4.2-m4`、CIはモック） |
 | **M5 ML Kit / タグ和訳** | 3〜4日 | ML Kit、英語→タグ正規化、タグ→日本語、オフライン強化 | 辞書外の表現も変換できる |
 | **M6 ローカル LLM** | 5〜7日 | LiteRT-LM、E2B ダウンロード、GPU/CPU、E4B 任意、ベンチ | 機内モードで E2B が動く |
 | **M7 統合・仕上げ** | 3〜4日 | 選択メニュー、共有、オンボーディング、設定、署名、リリース | 実機で1週間使える |

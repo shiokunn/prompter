@@ -28,8 +28,9 @@
 - 2026-10-24: **M4 実装完了（実通信確認済み、既定 `openrouter/free`）**。OpenRouter AI補完、設定画面、
   Keystore暗号化、JSON Schema、タグ検証、キャッシュを実装。Gemma 4 31Bの無料プリセットは
   レート制限が厳しいため、無料モデル自動ルーター `openrouter/free` に置き換えた。
-- APK: `/storage/emulated/0/Download/Prompter/Prompter-0.4.1-m4-debug.apk`
-  （SHA-256 `4262ac3a379c740503e54d8c050f094eb07ce25b6959e5fa8c4c9dca98ab9c14`）。
+  `content: null` や不正JSONが返った場合は `json_object` で1回再試行する。
+- APK: `/storage/emulated/0/Download/Prompter/Prompter-0.4.2-m4-debug.apk`
+  （SHA-256 `2d1800b523e9885936ee84a04f9acbe9c2fa535ec51d542c56fdbede33290243`）。
 - 次の作業: 新APKで `openrouter/free` の品質・レートを確認、またはM5 ML Kit翻訳フォールバック。
 
 ## 要約
@@ -93,7 +94,7 @@ adb install -r app-debug.apk
 
 ブラウザからダウンロードした場合は ZIP を展開してからインストールする。
 
-現在の APK は `0.4.1-m4`（versionCode 5、debug 署名）。M1 の辞書、M2 のオフライン変換、M3 のタグ編集・履歴、M4 のAI補完を含む。
+現在の APK は `0.4.2-m4`（versionCode 6、debug 署名）。M1 の辞書、M2 のオフライン変換、M3 のタグ編集・履歴、M4 のAI補完を含む。
 
 旧ビルドの debug APK が既に入っている場合、CIは debug keystore をキャッシュして再利用するため
 通常は上書きインストールできる。キャッシュが消えた場合だけ
@@ -101,7 +102,7 @@ adb install -r app-debug.apk
 
 ```bash
 adb uninstall com.prompter.app
-adb install Prompter-0.4.1-m4-debug.apk
+adb install Prompter-0.4.2-m4-debug.apk
 ```
 
 ### AI補完の使い方
