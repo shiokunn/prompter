@@ -288,7 +288,6 @@ private fun PrompterApp() {
             showSettings = true
             return
         }
-        if (editableTags.isEmpty()) return
 
         val sourceInput = input
         val offlineTags = editableTags.map { it.tag }
@@ -363,7 +362,13 @@ private fun PrompterApp() {
                         append(" / 辞書外タグ${validation.removedTags.size}件を除去")
                     }
                     if (validation.tags.isEmpty()) {
-                        append(" / 有効タグがないためオフラインタグを使用")
+                        append(
+                            if (offlineTags.isEmpty()) {
+                                " / 有効タグなし"
+                            } else {
+                                " / 有効タグがないためオフラインタグを使用"
+                            },
+                        )
                     }
                 }
 
@@ -539,15 +544,44 @@ private fun PrompterApp() {
             }
 
             result?.let { res ->
+                val hasAiPrompt = !naturalPromptOverride.isNullOrBlank()
                 when {
-                    res.tags.isEmpty() -> item { NoMatchCard(res.unmatched) }
-                    editableTags.isEmpty() -> item { EmptyTagsCard() }
+                    res.tags.isEmpty() && !hasAiPrompt -> {
+                        item { NoMatchCard(res.unmatched) }
+                        item {
+                            AiCard(
+                                hasApiKey = apiKeyConfigured,
+                                model = aiModel,
+                                loading = aiLoading,
+                                error = aiError,
+                                notice = aiNotice,
+                                enabled = !aiLoading,
+                                onOpenSettings = { showSettings = true },
+                                onRefine = ::refineWithAi,
+                            )
+                        }
+                    }
+                    editableTags.isEmpty() && !hasAiPrompt -> {
+                        item { EmptyTagsCard() }
+                        item {
+                            AiCard(
+                                hasApiKey = apiKeyConfigured,
+                                model = aiModel,
+                                loading = aiLoading,
+                                error = aiError,
+                                notice = aiNotice,
+                                enabled = !aiLoading,
+                                onOpenSettings = { showSettings = true },
+                                onRefine = ::refineWithAi,
+                            )
+                        }
+                    }
                     else -> {
                         val emphasized = editableTags.count { it.weight > 1.0f }
-                        val subtitle = if (emphasized > 0) {
-                            "${editableTags.size} tags / $emphasized emphasized"
-                        } else {
-                            "${editableTags.size} tags"
+                        val subtitle = when {
+                            editableTags.isEmpty() -> "AI prompt / no valid tags"
+                            emphasized > 0 -> "${editableTags.size} tags / $emphasized emphasized"
+                            else -> "${editableTags.size} tags"
                         }
                         if (mode != OutputMode.TAGS) {
                             item {
@@ -558,7 +592,7 @@ private fun PrompterApp() {
                                 )
                             }
                         }
-                        if (mode != OutputMode.PIXAI) {
+                        if (mode != OutputMode.PIXAI && editableTags.isNotEmpty()) {
                             item {
                                 OutputCard(
                                     title = "Danbooru タグ",
@@ -567,13 +601,17 @@ private fun PrompterApp() {
                                 )
                             }
                         }
-                        item {
-                            TagEditor(
-                                tags = editableTags,
-                                onCycleWeight = ::cycleWeight,
-                                onMove = ::moveTag,
-                                onRemove = ::removeTag,
-                            )
+                        if (editableTags.isNotEmpty()) {
+                            item {
+                                TagEditor(
+                                    tags = editableTags,
+                                    onCycleWeight = ::cycleWeight,
+                                    onMove = ::moveTag,
+                                    onRemove = ::removeTag,
+                                )
+                            }
+                        } else {
+                            item { AiNoTagsCard() }
                         }
                         item {
                             AiCard(
@@ -582,7 +620,7 @@ private fun PrompterApp() {
                                 loading = aiLoading,
                                 error = aiError,
                                 notice = aiNotice,
-                                enabled = editableTags.isNotEmpty() && !aiLoading,
+                                enabled = !aiLoading,
                                 onOpenSettings = { showSettings = true },
                                 onRefine = ::refineWithAi,
                             )
@@ -681,6 +719,20 @@ private fun OutputCard(title: String, subtitle: String, text: String) {
                     modifier = Modifier.padding(top = 10.dp),
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun AiNoTagsCard() {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text("有効なタグなし", style = MaterialTheme.typography.titleMedium)
+            Text(
+                "AIは辞書に存在するタグを返しませんでした。自然文を確認するか、入力文を変えて再試行してください。",
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(top = 4.dp),
+            )
         }
     }
 }
