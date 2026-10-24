@@ -24,7 +24,7 @@ object LocalModelSpec {
     const val SIZE_BYTES = 2_588_147_712L
     const val SHA256 = "181938105e0eefd105961417e8da75903eacda102c4fce9ce90f50b97139a63c"
     const val REVISION = "1caa527c1e88b55f046fcd8d2b4265606680663d"
-    const val DOWNLOAD_URL =
+    val DOWNLOAD_URL =
         "https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm/resolve/" +
             "$REVISION/$FILE_NAME"
     const val LICENSE = "Apache-2.0"
