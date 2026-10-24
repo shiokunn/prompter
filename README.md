@@ -13,6 +13,7 @@
 - **M2 実装レポート**: [`research/M2_REPORT.md`](research/M2_REPORT.md)
 - **M3 実装レポート**: [`research/M3_REPORT.md`](research/M3_REPORT.md)
 - **M4 実装レポート**: [`research/M4_REPORT.md`](research/M4_REPORT.md)
+- **M5 実装レポート**: [`research/M5_REPORT.md`](research/M5_REPORT.md)
 - **プロトタイプ**: [`tools/spike_match.py`](tools/spike_match.py)
 
 ## 状況
@@ -29,9 +30,12 @@
   Keystore暗号化、JSON Schema、タグ検証、キャッシュを実装。Gemma 4 31Bの無料プリセットは
   レート制限が厳しいため、無料モデル自動ルーター `openrouter/free` に置き換えた。
   `content: null` や不正JSONが返った場合は `json_object` で1回再試行する。
-- APK: `/storage/emulated/0/Download/Prompter/Prompter-0.4.2-m4-debug.apk`
-  （SHA-256 `2d1800b523e9885936ee84a04f9acbe9c2fa535ec51d542c56fdbede33290243`）。
-- 次の作業: 新APKで `openrouter/free` の品質・レートを確認、またはM5 ML Kit翻訳フォールバック。
+- 2026-10-24: **M5 実装完了（実機確認待ち）**。ML Kit翻訳フォールバック、英語→タグ正規化、
+  タグの日本語別名表示を追加。CIのdebug署名鍵を固定し、今後のAPKを上書き可能にした。
+- APK: `/storage/emulated/0/Download/Prompter/Prompter-0.5.0-m5-debug.apk`
+  （SHA-256 `43e013da255753fc81903f4d2813d576c5d715837c17742aea659d4bc4f3c0f5`、約51MB）。
+- 次の作業: 0.4.2を一度アンインストールして0.5.0を入れ、ML Kit翻訳のダウンロードと
+  機内モード動作を確認する。その後M6のローカルLLMとPixAI自然文の人手評価へ。
 
 ## 要約
 
@@ -46,8 +50,11 @@
 - M4 で **OpenRouter AI補完** を追加。設定画面でBYOKのAPIキーを登録し、
   オフライン結果を「AIで整える」ことができる。キーはAndroid Keystoreで暗号化して保存する。
   既定モデルは無料モデル自動ルーター `openrouter/free`。Gemma 4 31Bはレート制限のためプリセットから外した。
+- M5 で **ML Kit翻訳フォールバック** を追加。辞書外の日本語を端末内で英訳し、
+  英語からタグを補完する。モデルは設定画面から任意ダウンロード（約60MB）。
 - AI 補完は **OpenAI API 互換（既定: OpenRouter）** を任意 ON（BYOK）。
-- AI を使わない人向けに **Gemma 4 E2B（2.58GB）** の任意ダウンロードを用意。
+- AI を使わない人向けに **ML Kit翻訳（実装済み）**、将来は **Gemma 4 E2B（2.58GB）** の
+  ローカルLLMを任意ダウンロードする予定。
 - APK は GitHub Actions でビルドし、Termux から `adb install` する。
 - 実機は arrows Alpha（12GB RAM / 512GB）。成人向けタグはそのまま扱う。
 
@@ -94,16 +101,23 @@ adb install -r app-debug.apk
 
 ブラウザからダウンロードした場合は ZIP を展開してからインストールする。
 
-現在の APK は `0.4.2-m4`（versionCode 6、debug 署名）。M1 の辞書、M2 のオフライン変換、M3 のタグ編集・履歴、M4 のAI補完を含む。
+現在の APK は `0.5.0-m5`（versionCode 7、debug 署名、arm64-v8a）。M1 の辞書、M2 のオフライン変換、
+M3 のタグ編集・履歴、M4 のAI補完、M5 のML Kit翻訳フォールバックを含む。
 
-旧ビルドの debug APK が既に入っている場合、CIは debug keystore をキャッシュして再利用するため
-通常は上書きインストールできる。キャッシュが消えた場合だけ
-`INSTALL_FAILED_UPDATE_INCOMPATIBLE` になるので、その場合は一度アンインストールしてから入れる。
+M5以降はdebug署名鍵をリポジトリ内の `keystore/prompter-debug.jks` に固定した。
+そのため、**0.5.0以降**のAPKは `adb install -r` で上書きできる。
+0.4.2以前はCIの一時鍵で署名されていたため、0.5.0の初回だけは一度アンインストールが必要。
 
 ```bash
+# 0.4.2からの初回だけ
 adb uninstall com.prompter.app
-adb install Prompter-0.4.2-m4-debug.apk
+adb install Prompter-0.5.0-m5-debug.apk
+
+# 0.5.0以降の更新
+adb install -r Prompter-0.5.0-m5-debug.apk
 ```
+
+APKはarm64-v8a専用のため、x86/x86_64のエミュレータにはインストールできない。
 
 ### AI補完の使い方
 
@@ -118,6 +132,17 @@ adb install Prompter-0.4.2-m4-debug.apk
 初回起動時に一度だけ `openrouter/free` へ移行する（カスタムモデルは維持）。
 APIキーはチャット・リポジトリ・APK・履歴には保存しない。
 実キーでのOpenRouter通信はユーザー環境で確認済み（CIはモックHTTPで検証）。
+
+### ML Kit翻訳の使い方
+
+1. アプリ右上の **設定** を開く
+2. **オフライン翻訳（ML Kit）** の「翻訳モデルをダウンロード（約60MB）」を押す
+3. ダウンロード完了後、日本語を入力して **変換する**
+
+辞書にない日本語はML Kitで英訳され、自然文の補足とDanbooruタグに反映される。
+モデルは端末内に保存されるため、ダウンロード後は機内モードでも使える。
+Google Play Servicesが使えない端末や、モデル未ダウンロード時は辞書のみで動作する。
+タグチップの下には同梱辞書の日本語別名を表示し、別名がないタグはML Kitの英語→日本語モデルで補完する。
 
 ## 調査の再現
 
@@ -136,6 +161,7 @@ python3 tools/build_db_spike.py
 | 既定出力 | 英語自然文 80〜150語 |
 | タグ出力 | PixAI Haruka v2 / SDXL / Pony / A1111 / ComfyUI / NovelAI |
 | AI | OpenRouter / OpenAI 互換、任意 ON、BYOK |
-| オフライン AI | Gemma 4 E2B（任意）、E4B（12GB 端末限定） |
-| 配布 | 自分用 APK |
+| オフライン翻訳 | ML Kit（M5、約60MB、任意ダウンロード） |
+| ローカルLLM | Gemma 4 E2B（任意、M6予定）、E4B（12GB 端末限定） |
+| 配布 | 自分用 APK（arm64-v8a、安定debug署名） |
 | 成人向け | フィルタしない（個人用） |

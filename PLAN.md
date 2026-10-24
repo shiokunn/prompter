@@ -1,7 +1,7 @@
 # Prompter — 日本語→PixAI DiT プロンプト変換 Android アプリ 企画書
 
 - 最終更新: 2026-10-24
-- ステータス: **M1 完了 / M2 コア完了 / M3 実装完了 / M4 実装完了（実通信確認済み、既定 `openrouter/free`）**
+- ステータス: **M1 完了 / M2 コア完了 / M3 実装完了 / M4 実装完了（実通信確認済み） / M5 実装完了（実機確認待ち）**
 - 作業ディレクトリ: `~/prompter`
 - 関連調査:
   - [`research/DECISIONS.md`](research/DECISIONS.md) — 確定した要件
@@ -12,6 +12,7 @@
   - [`research/M2_REPORT.md`](research/M2_REPORT.md) — M2 アプリ骨格の実装
   - [`research/M3_REPORT.md`](research/M3_REPORT.md) — M3 タグ編集・履歴の実装
   - [`research/M4_REPORT.md`](research/M4_REPORT.md) — M4 OpenRouter AI補完の実装
+  - [`research/M5_REPORT.md`](research/M5_REPORT.md) — M5 ML Kit翻訳・安定debug署名の実装
 
 ---
 
@@ -20,7 +21,7 @@
 1. **主対象は PixAI の DiT 系（Tsubaki.3 / Tsubaki.2）**。DiT はタグ列より **英語の自然文** に向くため、既定出力を「Danbooru タグ」から「PixAI 用の英語プロンプト」に変更する。
 2. ただしタグ変換は捨てない。**PixAI Haruka v2 / SDXL / Pony / Illustrious / A1111 / ComfyUI / NovelAI** 向けのタグモードを併設し、同じ日本語入力から両方を生成する。
 3. オフラインの土台は **Danbooru 辞書 + ML Kit 翻訳 + テンプレート合成**。ここだけで動く。
-4. AI モードは **OpenAI API 互換（既定: OpenRouter）** を任意 ON。API キーは BYOK。AI を使わない人向けに、**Gemma 4 E2B（2.58GB）** の任意ダウンロードも用意する。
+4. AI モードは **OpenAI API 互換（既定: OpenRouter）** を任意 ON。API キーは BYOK。AI を使わない人向けに、**ML Kit翻訳（実装済み）** と、将来の **Gemma 4 E2B（2.58GB）** の任意ダウンロードを用意する。
 5. 配布は **自分用 APK**。実機は **arrows Alpha**（12GB RAM / 512GB / Android 15・16）。成人向けタグは **そのまま扱う**。MVP は **5〜6週間**、最初に辞書品質を固める。
 
 ---
@@ -832,7 +833,7 @@ Return only canonical Danbooru tags for the requested image.
 | **M2 アプリ骨格** | コア完了 | Compose、Trie、PixAI オフライン合成、CI、Kotlin/Robolectric テスト | 日本語→PixAI 自然文がオフラインで動く（APK `0.2.0-m1`） |
 | **M3 エディタ / 履歴** | 実装完了 | 自然文/タグ切替、タグチップ、重み、並び替え、削除、コピー、履歴・お気に入り（SQLite） | 編集・履歴がテスト済み（APK `0.3.0-m3`、実機確認待ち） |
 | **M4 OpenRouter AI** | 実装完了 | OpenAI 互換クライアント、設定画面、Keystore、JSON Schema、フォールバック、タグ検証、キャッシュ、既定 `openrouter/free` | 実通信確認済み（ユーザー環境、APK `0.4.2-m4`、CIはモック） |
-| **M5 ML Kit / タグ和訳** | 3〜4日 | ML Kit、英語→タグ正規化、タグ→日本語、オフライン強化 | 辞書外の表現も変換できる |
+| **M5 ML Kit / タグ和訳** | 実装完了 | ML Kit翻訳フォールバック、英語→タグ正規化、タグ→日本語、安定debug署名 | CI成功（APK `0.5.0-m5`、実機確認待ち） |
 | **M6 ローカル LLM** | 5〜7日 | LiteRT-LM、E2B ダウンロード、GPU/CPU、E4B 任意、ベンチ | 機内モードで E2B が動く |
 | **M7 統合・仕上げ** | 3〜4日 | 選択メニュー、共有、オンボーディング、設定、署名、リリース | 実機で1週間使える |
 
