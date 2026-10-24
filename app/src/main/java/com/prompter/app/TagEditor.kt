@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun TagEditor(
     tags: List<EditableTag>,
+    meanings: Map<String, String>,
     onCycleWeight: (Int) -> Unit,
     onMove: (Int, Int) -> Unit,
     onRemove: (Int) -> Unit,
@@ -30,7 +31,7 @@ fun TagEditor(
         Column(modifier = Modifier.padding(16.dp)) {
             Text("タグ編集", style = MaterialTheme.typography.titleMedium)
             Text(
-                "チップをタップすると強調（1.2 → 1.4 → 1.0）。↑↓で並び替え、×で削除。重みはタグ出力に反映されます。",
+                "チップをタップすると強調（1.2 → 1.4 → 1.0）。↑↓で並び替え、×で削除。重みはタグ出力に反映されます。チップ下の日本語は辞書の意味です。",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = 4.dp),
@@ -46,13 +47,23 @@ fun TagEditor(
                             selected = editable.weight > 1.0f,
                             onClick = { onCycleWeight(index) },
                             label = {
-                                Text(
-                                    if (editable.weight > 1.0f) {
-                                        "${editable.tag}  ${editable.weight}"
-                                    } else {
-                                        editable.tag
-                                    },
-                                )
+                                Column {
+                                    Text(
+                                        if (editable.weight > 1.0f) {
+                                            "${editable.tag}  ${editable.weight}"
+                                        } else {
+                                            editable.tag
+                                        },
+                                    )
+                                    meanings[editable.tag]?.let { meaning ->
+                                        Text(
+                                            text = meaning,
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            maxLines = 2,
+                                        )
+                                    }
+                                }
                             },
                         )
                         TextButton(

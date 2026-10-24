@@ -58,4 +58,37 @@ class PromptComposerTest {
     fun emptyInputProducesEmptyPrompt() {
         assertEquals("", PromptComposer.compose(emptyList()))
     }
+
+    @Test
+    fun includesTranslatedUnmatchedContext() {
+        val prompt = PromptComposer.compose(
+            tags = listOf("1girl", "long_hair", "blue_dress"),
+            extraContext = "a girl standing on a rooftop at sunset",
+        )
+        assertTrue(prompt.contains("Additional context from the input: a girl standing on a rooftop at sunset."))
+        val words = prompt.split(Regex("\\s+")).count { it.isNotBlank() }
+        assertTrue("word count was $words", words in 80..150)
+    }
+
+    @Test
+    fun contextOnlyProducesAPrompt() {
+        val prompt = PromptComposer.compose(
+            tags = emptyList(),
+            extraContext = "a quiet shrine in the rain",
+        )
+        assertTrue(prompt.startsWith("An anime-style illustration."))
+        assertTrue(prompt.contains("Additional context from the input: a quiet shrine in the rain."))
+        val words = prompt.split(Regex("\\s+")).count { it.isNotBlank() }
+        assertTrue("word count was $words", words in 80..150)
+    }
+
+    @Test
+    fun truncatesOverlongContextToTheWordLimit() {
+        val prompt = PromptComposer.compose(
+            tags = listOf("1girl"),
+            extraContext = (1..200).joinToString(" ") { "detail$it" },
+        )
+        val words = prompt.split(Regex("\\s+")).count { it.isNotBlank() }
+        assertTrue("word count was $words", words <= 150)
+    }
 }

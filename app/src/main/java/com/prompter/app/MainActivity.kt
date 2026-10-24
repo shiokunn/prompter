@@ -103,6 +103,13 @@ private fun PrompterApp() {
     var aiError by remember { mutableStateOf<String?>(null) }
     var aiNotice by remember { mutableStateOf<String?>(null) }
     var naturalPromptOverride by remember { mutableStateOf<String?>(null) }
+    var translator by remember { mutableStateOf<TextTranslator?>(null) }
+    var translationReady by remember { mutableStateOf(false) }
+    var translationDownloading by remember { mutableStateOf(false) }
+    var translationError by remember { mutableStateOf<String?>(null) }
+    var translatedUnmatched by remember { mutableStateOf<String?>(null) }
+    var translationNotice by remember { mutableStateOf<String?>(null) }
+    var tagMeanings by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
 
     LaunchedEffect(Unit) {
         loading = true
@@ -116,6 +123,20 @@ private fun PrompterApp() {
             apiKeyConfigured = withContext(Dispatchers.IO) { loadedAiSettings.hasApiKey() }
             aiModel = loadedAiSettings.model
             aiBaseUrl = loadedAiSettings.baseUrl
+            val loadedTranslator = withContext(Dispatchers.IO) {
+                runCatching { MlKitTextTranslator() }.getOrNull()
+            }
+            translator = loadedTranslator
+            translationReady = if (loadedTranslator == null) {
+                false
+            } else {
+                withContext(Dispatchers.IO) {
+                    runCatching { loadedTranslator.isReady() }.getOrDefault(false)
+                }
+            }
+            if (loadedTranslator == null) {
+                translationError = "ML Kit翻訳を初期化できませんでした。辞書のみで動作します。"
+            }
         } catch (t: Throwable) {
             error = "初期化に失敗しました: ${t.message}"
         } finally {
@@ -125,8 +146,19 @@ private fun PrompterApp() {
 
     DisposableEffect(Unit) {
         onDispose {
+            translator?.close()
             engine?.close()
             historyStore?.close()
+        }
+    }
+
+    LaunchedEffect(editableTags, engine) {
+        val current = engine ?: return@LaunchedEffect
+        val tags = editableTags.map { it.tag }
+        tagMeanings = if (tags.isEmpty()) {
+            emptyMap()
+        } else {
+            withContext(Dispatchers.IO) { current.japaneseMeanings(tags) }
         }
     }
 
@@ -138,8 +170,11 @@ private fun PrompterApp() {
     }
 
     val editedTagText = remember(editableTags) { formatTagText(editableTags) }
-    val editedPixaiPrompt = remember(editableTags, naturalPromptOverride) {
-        naturalPromptOverride ?: PromptComposer.compose(editableTags.map { it.tag })
+    val editedPixaiPrompt = remember(editableTags, naturalPromptOverride, translatedUnmatched) {
+        naturalPromptOverride ?: PromptComposer.compose(
+            tags = editableTags.map { it.tag },
+            extraContext = translatedUnmatched,
+        )
     }
 
     LaunchedEffect(
@@ -173,14 +208,41 @@ private fun PrompterApp() {
             error = null
             aiError = null
             aiNotice = null
+            translatedUnmatched = null
+            translationNotice = null
             try {
-                val converted = withContext(Dispatchers.Default) { current.convert(input) }
+                var converted = withContext(Dispatchers.Default) { current.convert(input) }
+                val currentTranslator = translator
+                if (translationReady && currentTranslator != null &&
+                    converted.unmatched.isNotBlank()
+                ) {
+                    try {
+                        val english = withContext(Dispatchers.IO) {
+                            currentTranslator.translateJapaneseToEnglish(converted.unmatched)
+                        }
+                        if (english.isNotBlank()) {
+                            val normalized = withContext(Dispatchers.Default) {
+                                current.normalizeEnglishTags(english)
+                            }
+                            val addedCount = normalized.count { it !in converted.tags }
+                            converted = current.applyTranslation(converted, english, normalized)
+                            translatedUnmatched = english
+                            translationNotice = if (addedCount == 0) {
+                                "辞書外をML Kitで英訳しました"
+                            } else {
+                                "辞書外をML Kitで英訳し、タグ${addedCount}件を追加しました"
+                            }
+                        }
+                    } catch (t: Throwable) {
+                        translationNotice = "ML Kit翻訳に失敗しました: ${t.message ?: "不明なエラー"}"
+                    }
+                }
                 naturalPromptOverride = null
                 result = converted
                 editableTags = converted.tags.map { EditableTag(it) }
                 currentHistoryId = null
                 val store = historyStore
-                if (store != null && converted.tags.isNotEmpty()) {
+                if (store != null && converted.pixaiPrompt.isNotBlank()) {
                     currentHistoryId = withContext(Dispatchers.IO) {
                         store.add(
                             input = input,
@@ -210,6 +272,8 @@ private fun PrompterApp() {
         editableTags = tags
         currentHistoryId = item.id
         naturalPromptOverride = item.pixaiPrompt
+        translatedUnmatched = null
+        translationNotice = null
         aiError = null
         aiNotice = null
         showHistory = false
@@ -278,6 +342,32 @@ private fun PrompterApp() {
             aiError = null
             aiNotice = null
             showSettings = false
+        }
+    }
+
+    fun downloadTranslationModels() {
+        val current = translator
+        if (current == null) {
+            translationError = "ML Kit翻訳を初期化できませんでした。辞書のみで動作します。"
+            return
+        }
+        scope.launch {
+            translationDownloading = true
+            translationError = null
+            try {
+                withContext(Dispatchers.IO) { current.downloadModels() }
+                translationReady = withContext(Dispatchers.IO) {
+                    runCatching { current.isReady() }.getOrDefault(false)
+                }
+                if (!translationReady) {
+                    translationError = "翻訳モデルの準備を確認できませんでした。再試行してください。"
+                }
+            } catch (t: Throwable) {
+                translationError = "翻訳モデルのダウンロードに失敗しました: " +
+                    (t.message ?: "不明なエラー")
+            } finally {
+                translationDownloading = false
+            }
         }
     }
 
@@ -352,6 +442,8 @@ private fun PrompterApp() {
                 )
                 editableTags = editable
                 naturalPromptOverride = validation.prompt
+                translatedUnmatched = null
+                translationNotice = null
 
                 aiNotice = buildString {
                     append(if (fromCache) "キャッシュから反映" else "AIで更新")
@@ -440,9 +532,13 @@ private fun PrompterApp() {
             hasApiKey = apiKeyConfigured,
             initialModel = aiModel,
             initialBaseUrl = aiBaseUrl,
+            translationReady = translationReady,
+            translationDownloading = translationDownloading,
+            translationError = translationError,
             onBack = { showSettings = false },
             onSave = ::saveAiSettings,
             onDeleteKey = ::deleteAiKey,
+            onDownloadTranslation = ::downloadTranslationModels,
         )
         return
     }
@@ -505,6 +601,8 @@ private fun PrompterApp() {
                         editableTags = emptyList()
                         currentHistoryId = null
                         naturalPromptOverride = null
+                        translatedUnmatched = null
+                        translationNotice = null
                         aiError = null
                         aiNotice = null
                         error = null
@@ -546,8 +644,9 @@ private fun PrompterApp() {
 
             result?.let { res ->
                 val hasAiPrompt = !naturalPromptOverride.isNullOrBlank()
+                val hasTranslatedContext = !translatedUnmatched.isNullOrBlank()
                 when {
-                    res.tags.isEmpty() && !hasAiPrompt -> {
+                    res.tags.isEmpty() && !hasAiPrompt && !hasTranslatedContext -> {
                         item { NoMatchCard(res.unmatched) }
                         item {
                             AiCard(
@@ -561,8 +660,17 @@ private fun PrompterApp() {
                                 onRefine = ::refineWithAi,
                             )
                         }
+                        if (res.unmatched.isNotBlank() && !translationReady) {
+                            item {
+                                TranslationSetupCard(
+                                    downloading = translationDownloading,
+                                    error = translationError,
+                                    onOpenSettings = { showSettings = true },
+                                )
+                            }
+                        }
                     }
-                    editableTags.isEmpty() && !hasAiPrompt -> {
+                    editableTags.isEmpty() && !hasAiPrompt && !hasTranslatedContext -> {
                         item { EmptyTagsCard() }
                         item {
                             AiCard(
@@ -580,7 +688,7 @@ private fun PrompterApp() {
                     else -> {
                         val emphasized = editableTags.count { it.weight > 1.0f }
                         val subtitle = when {
-                            editableTags.isEmpty() -> "AI prompt / no valid tags"
+                            editableTags.isEmpty() -> "ML Kit翻訳 / タグなし"
                             emphasized > 0 -> "${editableTags.size} tags / $emphasized emphasized"
                             else -> "${editableTags.size} tags"
                         }
@@ -606,6 +714,7 @@ private fun PrompterApp() {
                             item {
                                 TagEditor(
                                     tags = editableTags,
+                                    meanings = tagMeanings,
                                     onCycleWeight = ::cycleWeight,
                                     onMove = ::moveTag,
                                     onRemove = ::removeTag,
@@ -628,7 +737,20 @@ private fun PrompterApp() {
                         }
                         if (res.unmatched.isNotBlank()) {
                             item {
-                                UnmatchedCard(res.unmatched)
+                                UnmatchedCard(
+                                    unmatched = res.unmatched,
+                                    translated = translatedUnmatched,
+                                    notice = translationNotice,
+                                )
+                            }
+                            if (!translationReady && !hasAiPrompt) {
+                                item {
+                                    TranslationSetupCard(
+                                        downloading = translationDownloading,
+                                        error = translationError,
+                                        onOpenSettings = { showSettings = true },
+                                    )
+                                }
                             }
                         }
                     }
@@ -730,7 +852,7 @@ private fun AiNoTagsCard() {
         Column(modifier = Modifier.padding(16.dp)) {
             Text("有効なタグなし", style = MaterialTheme.typography.titleMedium)
             Text(
-                "AIは辞書に存在するタグを返しませんでした。自然文を確認するか、入力文を変えて再試行してください。",
+                "辞書に存在するタグがありません。自然文を確認するか、入力文を変えて再試行してください。",
                 style = MaterialTheme.typography.bodySmall,
                 modifier = Modifier.padding(top = 4.dp),
             )
@@ -856,13 +978,67 @@ private fun EmptyTagsCard() {
 }
 
 @Composable
-private fun UnmatchedCard(unmatched: String) {
+private fun UnmatchedCard(
+    unmatched: String,
+    translated: String?,
+    notice: String?,
+) {
     Card(modifier = Modifier.fillMaxWidth()) {
-        Text(
-            text = "辞書外: $unmatched",
-            style = MaterialTheme.typography.bodySmall,
-            modifier = Modifier.padding(12.dp),
-        )
+        Column(modifier = Modifier.padding(12.dp)) {
+            Text(
+                text = "辞書外: $unmatched",
+                style = MaterialTheme.typography.bodySmall,
+            )
+            if (!translated.isNullOrBlank()) {
+                Text(
+                    text = "ML Kit翻訳: $translated",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 6.dp),
+                )
+            }
+            if (!notice.isNullOrBlank()) {
+                Text(
+                    text = notice,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 4.dp),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun TranslationSetupCard(
+    downloading: Boolean,
+    error: String?,
+    onOpenSettings: () -> Unit,
+) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text("辞書外を翻訳できます", style = MaterialTheme.typography.titleSmall)
+            Text(
+                "ML Kitの翻訳モデル（約60MB）をダウンロードすると、辞書にない日本語も英訳して自然文とタグに反映します。",
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(top = 4.dp),
+            )
+            TextButton(
+                onClick = onOpenSettings,
+                enabled = !downloading,
+                modifier = Modifier.padding(top = 4.dp),
+            ) {
+                Text(if (downloading) "ダウンロード中…" else "設定で翻訳モデルを準備")
+            }
+            error?.let {
+                Text(
+                    text = it,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.labelSmall,
+                    modifier = Modifier.padding(top = 4.dp),
+                )
+            }
+        }
     }
 }
 

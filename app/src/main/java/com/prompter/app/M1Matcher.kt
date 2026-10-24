@@ -27,6 +27,9 @@ class M1Matcher private constructor(
     val tagCount: Int,
     val aliasCount: Int,
 ) {
+    val allTagNames: Set<String>
+        get() = allTags
+
     data class Conversion(
         val tags: List<String>,
         val matches: List<TagMatch>,

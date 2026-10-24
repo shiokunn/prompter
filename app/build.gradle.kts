@@ -11,11 +11,25 @@ android {
         applicationId = "com.prompter.app"
         minSdk = 29
         targetSdk = 36
-        versionCode = 6
-        versionName = "0.4.2-m4"
+        versionCode = 7
+        versionName = "0.5.0-m5"
+    }
+
+    signingConfigs {
+        create("stableDebug") {
+            // Debug-only key. Committed so every CI build uses the same
+            // certificate and can overwrite the previous debug APK.
+            storeFile = rootProject.file("keystore/prompter-debug.jks")
+            storePassword = "prompterdebug"
+            keyAlias = "prompterdebug"
+            keyPassword = "prompterdebug"
+        }
     }
 
     buildTypes {
+        getByName("debug") {
+            signingConfig = signingConfigs.getByName("stableDebug")
+        }
         release {
             isMinifyEnabled = false
         }
@@ -41,6 +55,7 @@ dependencies {
     implementation("androidx.compose.foundation:foundation")
     implementation("androidx.compose.material3:material3")
     implementation("androidx.activity:activity-compose:1.13.0")
+    implementation("com.google.mlkit:translate:17.0.3")
     debugImplementation("androidx.compose.ui:ui-tooling")
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.robolectric:robolectric:4.17")

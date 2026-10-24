@@ -36,9 +36,13 @@ fun SettingsScreen(
     hasApiKey: Boolean,
     initialModel: String,
     initialBaseUrl: String,
+    translationReady: Boolean,
+    translationDownloading: Boolean,
+    translationError: String?,
     onBack: () -> Unit,
     onSave: (apiKey: String, model: String, baseUrl: String) -> Unit,
     onDeleteKey: () -> Unit,
+    onDownloadTranslation: () -> Unit,
 ) {
     var apiKey by remember { mutableStateOf("") }
     var model by remember { mutableStateOf(initialModel) }
@@ -202,6 +206,59 @@ fun SettingsScreen(
                             "OpenAI互換APIのURLを指定できます。通常はOpenRouterの既定値のままにしてください。",
                             style = MaterialTheme.typography.bodySmall,
                             modifier = Modifier.padding(top = 6.dp),
+                        )
+                    }
+                }
+            }
+
+            item {
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Text("オフライン翻訳（ML Kit）", style = MaterialTheme.typography.titleMedium)
+                        Text(
+                            "辞書にない日本語を英訳し、英語からDanbooruタグを補完します。ダウンロード後は機内モードでも使えます。",
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.padding(top = 4.dp),
+                        )
+                        Text(
+                            when {
+                                translationReady -> "状態: 準備完了（日本語→英語 / 英語→日本語）"
+                                translationDownloading -> "状態: ダウンロード中…"
+                                else -> "状態: 未ダウンロード"
+                            },
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.padding(top = 8.dp),
+                        )
+                        if (!translationReady) {
+                            Button(
+                                onClick = onDownloadTranslation,
+                                enabled = !translationDownloading,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 8.dp),
+                            ) {
+                                Text(
+                                    if (translationDownloading) {
+                                        "ダウンロード中…"
+                                    } else {
+                                        "翻訳モデルをダウンロード（約60MB）"
+                                    },
+                                )
+                            }
+                        }
+                        translationError?.let { message ->
+                            Text(
+                                text = message,
+                                color = MaterialTheme.colorScheme.error,
+                                style = MaterialTheme.typography.bodySmall,
+                                modifier = Modifier.padding(top = 8.dp),
+                            )
+                        }
+                        Text(
+                            "モデルのダウンロードにはネット接続が必要です。Google Play Servicesが使えない端末では辞書のみで動作します。",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = 8.dp),
                         )
                     }
                 }

@@ -12,6 +12,7 @@ on:
       - "gradle.properties"
       - "gradle/**"
       - "gradlew"
+      - "keystore/**"
       - ".github/workflows/build-apk.yml"
 
 concurrency:
@@ -45,12 +46,6 @@ jobs:
         uses: gradle/actions/setup-gradle@v6
         with:
           gradle-version: "9.5.0"
-
-      - name: Cache debug keystore
-        uses: actions/cache@v4
-        with:
-          path: ~/.android/debug.keystore
-          key: prompter-debug-keystore-v1
 
       - name: Run M1 matcher tests
         run: python3 -m unittest tools.test_m1 -v

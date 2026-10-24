@@ -129,8 +129,18 @@ object PromptComposer {
         "The image is designed to read clearly as a single, coherent illustration.",
     )
 
-    fun compose(tags: List<String>): String {
-        if (tags.isEmpty()) return ""
+    fun compose(tags: List<String>, extraContext: String? = null): String {
+        val context = extraContext
+            ?.trim()
+            ?.trimEnd('.', '。', '!', '?')
+            ?.takeIf { it.isNotBlank() }
+        if (tags.isEmpty() && context == null) return ""
+        if (tags.isEmpty()) {
+            val sb = StringBuilder("An anime-style illustration.")
+            sb.append(" Additional context from the input: ").append(context).append(".")
+            sb.append(" ").append(styleSentence(emptyList()))
+            return fitLength(sb.toString())
+        }
         val ordered = tags.distinct()
         val set = ordered.toSet()
         val used = mutableSetOf<String>()
@@ -190,8 +200,15 @@ object PromptComposer {
                 .append(extras.joinToString(", ") { natural(it) })
                 .append(".")
         }
+        if (context != null) {
+            sb.append(" Additional context from the input: ").append(context).append(".")
+        }
 
-        var text = sb.toString().replace(Regex("\\s+"), " ").trim()
+        return fitLength(sb.toString())
+    }
+
+    private fun fitLength(raw: String): String {
+        var text = raw.replace(Regex("\\s+"), " ").trim()
         var words = wordCount(text)
         var fillerIndex = 0
         while (words < 80 && fillerIndex < FILLERS.size) {
@@ -200,6 +217,12 @@ object PromptComposer {
             text = candidate
             words = wordCount(text)
             fillerIndex += 1
+        }
+        if (words > 150) {
+            text = text.split(Regex("\\s+"))
+                .filter { it.isNotBlank() }
+                .take(150)
+                .joinToString(" ")
         }
         return text
     }

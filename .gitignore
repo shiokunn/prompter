@@ -12,6 +12,8 @@ local.properties
 *.aab
 *.keystore
 *.jks
+# Debug-only signing key is intentionally committed for stable update signatures.
+!keystore/prompter-debug.jks
 dist/
 
 # IDE / OS
