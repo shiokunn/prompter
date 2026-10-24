@@ -13,6 +13,12 @@ android {
         targetSdk = 36
         versionCode = 7
         versionName = "0.5.0-m5"
+
+        // arrows Alpha is arm64-v8a. ML Kit ships a large JNI library for
+        // every ABI; keeping only the target ABI cuts the APK roughly in half.
+        ndk {
+            abiFilters += "arm64-v8a"
+        }
     }
 
     signingConfigs {
