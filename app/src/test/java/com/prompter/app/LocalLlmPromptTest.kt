@@ -174,14 +174,37 @@ class LocalLlmPromptTest {
     @Test
     fun systemPromptRequiresExpansionRatherThanTranslation() {
         assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("Do not merely translate"))
-        assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("90 to 130 words"))
+        assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("95 to 120 words"))
+        assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("16 to 20 words"))
+        assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("Never return fewer than 95 words"))
         assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("Setting and background"))
         assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("Art style and rendering"))
     }
 
     @Test
+    fun systemPromptPinsFluentRewritesForKnownWeakSpots() {
+        assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("inner-color highlights"))
+        assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("faint, ambiguous smile"))
+        assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("never a word-for-word translation"))
+        assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("repeat it for each person"))
+    }
+
+    @Test
+    fun userPromptRepeatsTheLengthAndFidelityRules() {
+        val prompt = LocalLlmPrompt.buildUserPrompt(
+            input = "白いドレスを着た少女が野原に立って、こちらを見ている",
+            offlineTags = listOf("1girl", "white_dress", "field"),
+            unmatched = "",
+        )
+
+        assertTrue(prompt.contains("95 to 120 words"))
+        assertTrue(prompt.contains("at least 16 words per sentence"))
+        assertTrue(prompt.contains("keep every color and hairstyle", ignoreCase = true))
+    }
+
+    @Test
     fun promptVersionIsBumpedWhenExpansionRulesChange() {
-        assertEquals("local:gemma-4-E2B-v2", LocalModelSpec.CACHE_KEY)
+        assertEquals("local:gemma-4-E2B-v3", LocalModelSpec.CACHE_KEY)
     }
 
     @Test
