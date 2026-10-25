@@ -15,6 +15,7 @@
 - **M4 実装レポート**: [`research/M4_REPORT.md`](research/M4_REPORT.md)
 - **M5 実装レポート**: [`research/M5_REPORT.md`](research/M5_REPORT.md)
 - **M6 実装レポート**: [`research/M6_REPORT.md`](research/M6_REPORT.md)
+- **M6 実機評価（10ケース）**: [`research/M6_LOCAL_EVAL.md`](research/M6_LOCAL_EVAL.md)
 - **引き継ぎ指示書**: [`HANDOFF.md`](HANDOFF.md)
 - **プロトタイプ**: [`tools/spike_match.py`](tools/spike_match.py)
 
@@ -35,17 +36,16 @@
 - 2026-10-24: **M5 実装・実機確認完了**。ML Kit翻訳フォールバック、英語→タグ正規化、
   タグの日本語別名表示を追加。CIのdebug署名鍵を固定し、今後のAPKを上書き可能にした。
   ユーザー実機（arrows Alpha）でモデルDL、機内モード翻訳、タグ和訳、上書き更新を確認済み。
-- 2026-10-24: **M6 ローカルLLM 実装・実機生成確認**。LiteRT-LM 0.18.1 +
+- 2026-10-25: **M6 ローカルLLM 実機評価完了（0.6.1-m6）**。LiteRT-LM 0.18.1 +
   Gemma 4 E2B（約2.59GB）を任意ダウンロード。CPU / 4 threadsで端末内生成し、
-  クラウド/ローカルを設定で切り替えられる。SHA-256検証、失敗時のオフライン保持、
-  拒否・日本語混入の検出、履歴・キャッシュ連携を実装。実機（arrows Alpha）で
-  **初回15秒（ロード込み）/2回目以降10秒、機内モード成功、拒否なし**を確認。
-  RAMはモデル込み約9GB。2回の生成では発熱・バッテリー変化なし。出力語数と品質評価は継続。
-- APK: `/storage/emulated/0/Download/Prompter/Prompter-0.6.0-m6-debug.apk`
-  （SHA-256 `10d7a21aec1be0a8c37c292672983354cc4419e3713e21c5cfd9efd7d9dbd77f`、
+  クラウド/ローカルを設定で切り替えられる。プロンプトを「展開型・6文構成・90〜130語」に
+  改善し、10ケースで **平均89語、生成平均15.6秒、拒否0/10、暫定総合4.37/5**。
+  アプリPSSは最大1.95GB、終了後219MBまで解放。10回連続で発熱・バッテリー変化なし。
+- APK: `/storage/emulated/0/Download/Prompter/Prompter-0.6.1-m6-debug.apk`
+  （SHA-256 `a2ab65e17df0992e3d32999e0d4c36b5c4d5813e569370c345d29ef8dc02c53e`、
   78,976,459 bytes / 約79.0MB）。
-- 次の作業: ADBでRAM内訳と出力語数を確認し、PixAI自然文を10〜20件で5段階評価（目標3.5/5）。
-  その後M6.1のGPU/E4B検討へ。
+- 次の作業: ユーザーによる10〜20件の人手評価、20〜30回連続生成でのメモリ安定性、
+  80語未満ケースと不自然な英語の改善。その後M6.1のGPU/E4B検討へ。
 
 ## 要約
 
@@ -64,7 +64,8 @@
   英語からタグを補完する。モデルは設定画面から任意ダウンロード（約60MB）。
 - M6 で **オンデバイスLLM（Gemma 4 E2B / LiteRT-LM）** を追加。約2.59GBのモデルを
   任意ダウンロードし、CPUで英語PixAIプロンプトを生成する。クラウド/ローカルを設定で切り替え、
-  失敗時はオフライン結果を保持する。モデルはAPKに同梱しない。
+  失敗時はオフライン結果を保持する。モデルはAPKに同梱しない。実機10ケースで平均89語、
+  暫定4.37/5、拒否0/10。詳細は [`research/M6_LOCAL_EVAL.md`](research/M6_LOCAL_EVAL.md)。
 - AI 補完は **OpenAI API 互換（既定: OpenRouter）** または **端末内Gemma 4 E2B** を任意 ON。
 - クラウドAIを使いたくない人向けの **ML Kit翻訳**、およびネットなしで動く **ローカルLLM** を用意。
 - APK は GitHub Actions でビルドし、Termux から `adb install` する。

@@ -1,8 +1,8 @@
 # Prompter 引き継ぎ指示書
 
-- 最終更新: 2026-10-24
+- 最終更新: 2026-10-25
 - リポジトリ: <https://github.com/shiokunn/prompter>（private）
-- 状態: **M1〜M5 完了・実機確認済み。M6は実機検証ほぼ完了（初回15秒/2回目10秒、機内モード成功、拒否なし）。品質評価はADB整備後に実施。**
+- 状態: **M1〜M5 完了・実機確認済み。M6は実機検証完了（10ケース、平均89語、暫定4.37/5、拒否0/10）。最終人手評価と長時間メモリ確認を残す。**
 - 実機: arrows Alpha（arm64-v8a / 12GB RAM / 512GB）
 - 最新コミットは `git log -1 --oneline` で確認する。
 
@@ -20,8 +20,8 @@ adb devices -l
 - APKの場所とハッシュを確認する。
 
 ```bash
-ls -lh /storage/emulated/0/Download/Prompter/Prompter-0.6.0-m6-debug.apk
-sha256sum /storage/emulated/0/Download/Prompter/Prompter-0.6.0-m6-debug.apk
+ls -lh /storage/emulated/0/Download/Prompter/Prompter-0.6.1-m6-debug.apk
+sha256sum /storage/emulated/0/Download/Prompter/Prompter-0.6.1-m6-debug.apk
 ```
 
 ## 2. 現在の到達点
@@ -33,16 +33,16 @@ sha256sum /storage/emulated/0/Download/Prompter/Prompter-0.6.0-m6-debug.apk
 | M3 タグ編集・履歴 | 完了。重み、並び替え、削除、SQLite履歴・お気に入り |
 | M4 OpenRouter AI | 完了。BYOK、Keystore暗号化、既定 `openrouter/free` |
 | M5 ML Kit翻訳 | **完了・実機確認済み**。辞書外の英訳、英語→タグ、タグ和訳 |
-| M6 ローカルLLM | **実機検証ほぼ完了**。初回15秒/2回目以降10秒、機内モード成功、拒否なし。RAMはモデル込み約9GB |
+| M6 ローカルLLM | **実機検証完了**。10ケース平均89語、暫定4.37/5、拒否0/10、生成平均15.6秒。アプリPSS最大1.95GB |
 | debug署名 | 固定済み。`keystore/prompter-debug.jks` で上書き更新可能 |
 
 ### 現在のAPK
 
-- パス: `/storage/emulated/0/Download/Prompter/Prompter-0.6.0-m6-debug.apk`
-- SHA-256: `10d7a21aec1be0a8c37c292672983354cc4419e3713e21c5cfd9efd7d9dbd77f`
+- パス: `/storage/emulated/0/Download/Prompter/Prompter-0.6.1-m6-debug.apk`
+- SHA-256: `a2ab65e17df0992e3d32999e0d4c36b5c4d5813e569370c345d29ef8dc02c53e`
 - サイズ: 78,976,459 bytes（約79.0MB / 75.3MiB、arm64-v8aのみ）
-- versionCode 8 / versionName `0.6.0-m6`
-- CI: <https://github.com/shiokunn/prompter/actions/runs/40073512951>
+- versionCode 9 / versionName `0.6.1-m6`
+- CI: <https://github.com/shiokunn/prompter/actions/runs/40160559150>
 - 署名証明書SHA-256:
   `6B:8A:27:78:33:4F:4F:49:A2:E1:5D:2E:40:1F:89:49:05:FF:0F:BB:2A:88:2F:1B:68:7C:02:B5:29:95:CC:33`
 - M5のAPKも残っている:
@@ -55,8 +55,9 @@ sha256sum /storage/emulated/0/Download/Prompter/Prompter-0.6.0-m6-debug.apk
 - Gemma 4 E2B（約2.59GB）をWi-Fi限定で任意ダウンロード
 - ダウンロード後にサイズとSHA-256を検証
 - 端末内CPU推論で、オフライン結果を英語PixAIプロンプトに整形
-- 実機（arrows Alpha）で **初回15秒（ロード込み）/2回目以降10秒、機内モード成功、拒否なし** を確認済み（ユーザー報告）
-- RAMはモデル込みで約9GB。2回の生成では目立った発熱・バッテリー変化なし
+- 実機（arrows Alpha）で10ケースを評価。**平均89語、生成平均15.6秒、拒否0/10、暫定4.37/5**
+- 初回ロード6.4秒（コールド）/0.5秒（ページキャッシュ後）。機内モード生成成功
+- アプリPSSは最大1.95GB、終了後219MBまで解放。バッテリー・発熱は10回連続で大きな変化なし
 - 機内モードでも生成可能（モデルとML Kit翻訳モデルがダウンロード済みの場合）
 - 失敗時はオフライン結果を保持し、AIカードにエラーを表示
 - ローカル生成結果も履歴・キャッシュ・タグ検証の対象
@@ -67,34 +68,36 @@ sha256sum /storage/emulated/0/Download/Prompter/Prompter-0.6.0-m6-debug.apk
 
 ### M6の残る確認事項
 
-- 出力が80〜150語に入っているか（AIカードの「〜語」表示。約100文字なら語数不足）
-- 正確なRAM内訳（約9GBがアプリ単体か端末全体か）を`dumpsys meminfo`で確認
-- 10〜20件の出力品質（意図・自然さ・構造の5段階評価）
-- 成人向け入力のバリエーション別の拒否率（初回確認では拒否なし）
-- 5〜10回連続生成での発熱・バッテリー（2回では変化なし）
+- 10〜20件の人手による最終評価（暫定スコアは `research/M6_LOCAL_EVAL.md`）
+- 20〜30回連続生成でPSSの増加が止まるか（10回時点1.95GB）
+- 80語未満の3ケース（77・79・71語）を許容するか、追指示で伸ばすか
+- `in-color hair`、`center of her face`などの不自然な英語の改善
+- 0.6.1-m6での機内モード再確認
 - GPUは未実装。今回はCPU / 4 threadsのみ。
 
 ## 3. 次のセッションでやること（推奨順）
 
-### 最優先: M6ローカルLLMの詳細ベンチと品質評価
+### 最優先: M6ローカルLLMの最終評価
 
-基本動作は実機で確認済み。`research/M6_REPORT.md` の6章に沿って、品質と正確な数値を取る。
+10ケースの実機評価は完了。`research/M6_LOCAL_EVAL.md` と `research/M6_REPORT.md` の6章に結果がある。
 
 確認済み:
 
-- モデルのダウンロードとSHA-256検証（生成に到達したため通過）
-- 初回15秒（モデル読み込み込み）、2回目以降10秒
+- モデルのダウンロードとSHA-256検証
+- 平均89語、80〜150語は7/10、生成平均15.6秒
 - 機内モードで生成成功
-- 生成拒否なし（初回確認）
-- RAMはモデル込み約9GB、2回では発熱・バッテリー変化なし
+- 成人向け2件を含め拒否0/10
+- アプリPSS最大1.95GB、終了後219MBまで解放
+- 10回連続で発熱・バッテリーの大きな変化なし
+- 暫定スコア: 意図4.15 / 自然さ4.25 / 構造4.70 / 総合4.37
 
 残り:
 
-1. `adb shell dumpsys meminfo com.prompter.app` でRAMの正確な内訳を記録する。
-2. AIカードの「〜語」表示で出力語数を確認する。約100文字なら80〜150語に届いていないため、プロンプトを調整する。
-3. 成人向け、複数キャラ、風景、日常の10〜20件で品質と拒否率を確認し、5段階で採点する。
-4. 5〜10回連続生成で発熱・バッテリーを再確認する。
-5. 結果を `research/M6_REPORT.md` に追記し、品質のGo/No-Goを決める。
+1. ユーザーが10〜20件で人手評価し、暫定スコアを確定する。
+2. 20〜30回連続生成でPSSが安定するか確認する。
+3. 80語未満のケースを許容するか、プロンプトの語数指示をさらに強めるか決める。
+4. 不自然な英語をfew-shotで改善する。
+5. 0.6.1-m6で機内モードを再確認する。
 
 失敗時の切り分け:
 
@@ -203,15 +206,18 @@ adb install -r /storage/emulated/0/Download/Prompter/Prompter-<version>-debug.ap
 | `keystore/prompter-debug.jks` | 固定debug署名鍵 |
 | `research/M5_REPORT.md` | M5の詳細 |
 | `research/M6_REPORT.md` | M6の実装・実機検証手順 |
+| `research/M6_LOCAL_EVAL.md` | M6の10ケース実機評価・出力全文・暫定スコア |
 | `README.md` | ビルド・インストール手順 |
 
 ## 7. 既知の未完了・リスク
 
-- M6ローカルLLMは実機で初回15秒/2回目10秒、機内モード成功、拒否なしを確認済み。出力語数、正確なRAM内訳、10〜20件の品質評価が未完了。
+- M6ローカルLLMは10ケースで平均89語・暫定4.37/5・拒否0/10。人手による最終評価と20〜30回連続のメモリ安定性が未完了。
 - M6のダウンロードはHugging Faceの302/CDNリダイレクトに依存する。実機では生成まで到達したが、失敗が再発する場合は独自DLへ切り替える。
 - M6はCPUのみ。GPU（Mali-G615）とE4Bは未対応。
-- RAMはモデル込みで約9GB（アプリ単体か端末全体かは要確認）。2回の生成では発熱・バッテリー変化なし。5〜10回連続の測定は未実施。
-- ローカルLLMの成人向け入力は初回確認では拒否なし。バリエーション別の拒否率は未評価。
+- アプリPSSは2回後1.73GB、10回後1.95GB。終了後219MBまで解放。20〜30回での安定性は未確認。
+- 3/10が80語未満（77・79・71語）。短文入力の語数対策は未決定。
+- 入力にない服装・髪・キッチンなどを補完する場合がある。汎用的な補完は許容範囲だが、意図を変える具体物は減らしたい。
+- ローカルLLMの成人向け入力は2/2で拒否なし・内容保持。バリエーションはさらに確認したい。
 - PixAI自然文の人手評価（3.5/5）が未完了。
 - PixAI DiTの最大プロンプト長、成人向けモデレーションは未検証。
 - リリース署名は未実装。
@@ -223,7 +229,7 @@ adb install -r /storage/emulated/0/Download/Prompter/Prompter-<version>-debug.ap
 
 ## 8. 次セッションの最初の一言（例）
 
-> `HANDOFF.md` を読んで、M6ローカルLLMの詳細ベンチと品質評価から進めてください。
-> 約10秒/回・拒否なしは確認済みなので、初回ロードと2回目以降の内訳、機内モード、
-> RAM・発熱、10〜20件の5段階評価を記録し、結果を `research/M6_REPORT.md` に追記してください。
-> 端末が見えない場合は、先にPixAI自然文の評価セットを準備してください。
+> `HANDOFF.md` を読んで、M6ローカルLLMの最終評価から進めてください。
+> 10ケースの暫定評価は `research/M6_LOCAL_EVAL.md` にあります。人手で10〜20件を確認し、
+> 20〜30回連続生成のメモリ安定性、80語未満ケースの扱い、不自然な英語の改善を決めてください。
+> 0.6.1-m6は実機にインストール済みです。最終Go/No-Go後にM6.1のGPU/E4Bへ進みます。
