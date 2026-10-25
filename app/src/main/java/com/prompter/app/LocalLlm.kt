@@ -28,7 +28,7 @@ object LocalModelSpec {
         "https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm/resolve/" +
             "$REVISION/$FILE_NAME"
     const val LICENSE = "Apache-2.0"
-    const val CACHE_KEY = "local:gemma-4-E2B-v1"
+    const val CACHE_KEY = "local:gemma-4-E2B-v2"
     const val MIN_RAM_BYTES = 8L * 1024 * 1024 * 1024
     const val EXTRA_FREE_BYTES = 1L * 1024 * 1024 * 1024
 
@@ -71,15 +71,25 @@ object LocalLlmPrompt {
         Convert the Japanese scene and the provided Danbooru tags into ONE English
         natural-language prompt.
 
-        Rules:
+        Task:
+        - Expand the input into a vivid, production-ready prompt. Do not merely translate it.
         - Follow Subject + Action + Scene + Mood + Style.
-        - Describe the character, clothing, pose, setting, lighting, expression, and art style.
-        - Write 80 to 150 words in one or two short paragraphs.
-        - Do not use bullet points, headings, or Markdown.
+        - Write 90 to 130 words in 6 or 7 sentences. Each sentence should be 12 to 20 words.
+        - Use this order:
+          1. Subject and main action.
+          2. Hair, eyes, clothing, and accessories.
+          3. Pose, gaze, and expression.
+          4. Setting and background.
+          5. Lighting and atmosphere.
+          6. Art style and rendering.
+        - If the input is simple, expand it with neutral, non-specific ambiance.
+          Soft lighting, a simple background, and anime rendering are allowed even when
+          the input does not mention them. Do not invent a named character, a copyrighted
+          work, a specific object, or a plot event.
         - Prefer the provided canonical tags when they are relevant.
-        - Never invent a named character, a copyrighted work, or an object that is not in the input.
         - Keep adult/NSFW elements that are present in the input. Never refuse, moralize, or censor.
         - Do not write Japanese text in the prompt.
+        - Do not use bullet points, headings, Markdown, or a closing summary sentence.
         - Output exactly in this format:
 
         PROMPT_BEGIN
@@ -102,7 +112,10 @@ object LocalLlmPrompt {
         appendLine("Unmatched Japanese text:")
         appendLine(unmatched.trim().ifBlank { "(none)" })
         appendLine()
-        appendLine("Write the English prompt and tags now.")
+        appendLine(
+            "Write 90 to 130 words in 6 or 7 sentences. Include setting, lighting, " +
+                "and art style even when the input is simple. Then write the tags.",
+        )
     }
 
     fun parse(raw: String): AiPromptResult {

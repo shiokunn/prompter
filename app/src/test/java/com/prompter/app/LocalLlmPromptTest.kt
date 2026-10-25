@@ -172,6 +172,19 @@ class LocalLlmPromptTest {
     }
 
     @Test
+    fun systemPromptRequiresExpansionRatherThanTranslation() {
+        assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("Do not merely translate"))
+        assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("90 to 130 words"))
+        assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("Setting and background"))
+        assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("Art style and rendering"))
+    }
+
+    @Test
+    fun promptVersionIsBumpedWhenExpansionRulesChange() {
+        assertEquals("local:gemma-4-E2B-v2", LocalModelSpec.CACHE_KEY)
+    }
+
+    @Test
     fun modelMetadataIsPinnedForReproducibleDownloads() {
         assertEquals(2_588_147_712L, LocalModelSpec.SIZE_BYTES)
         assertEquals(64, LocalModelSpec.SHA256.length)

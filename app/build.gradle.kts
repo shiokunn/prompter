@@ -11,8 +11,8 @@ android {
         applicationId = "com.prompter.app"
         minSdk = 29
         targetSdk = 36
-        versionCode = 8
-        versionName = "0.6.0-m6"
+        versionCode = 9
+        versionName = "0.6.1-m6"
 
         // arrows Alpha is arm64-v8a. ML Kit ships a large JNI library for
         // every ABI; keeping only the target ABI cuts the APK roughly in half.
