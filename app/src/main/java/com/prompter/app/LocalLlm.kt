@@ -28,7 +28,7 @@ object LocalModelSpec {
         "https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm/resolve/" +
             "$REVISION/$FILE_NAME"
     const val LICENSE = "Apache-2.0"
-    const val CACHE_KEY = "local:gemma-4-E2B-v6"
+    const val CACHE_KEY = "local:gemma-4-E2B-v7"
     const val MIN_RAM_BYTES = 8L * 1024 * 1024 * 1024
     const val EXTRA_FREE_BYTES = 1L * 1024 * 1024 * 1024
 
@@ -222,11 +222,22 @@ object LocalLlmPrompt {
         }
         value = value
             .replace(Regex("(?im)^\\s*(prompt|english prompt)\\s*:\\s*"), "")
+            .replace(EXPRESSION_BLEND_REGEX, "a faint smile")
+            .replace(FACE_CENTER_REGEX, "")
             .replace(Regex("\\s+"), " ")
             .trim()
             .trim('"', '\'', '`')
         return value
     }
+
+    private val EXPRESSION_BLEND_REGEX = Regex(
+        "(?i)\\b(?:a|an|the|her|his)\\s+(?:[\\w-]+(?:,\\s*|\\s+)){0,3}smile\\s+" +
+            "mixed with\\s+(?:[\\w-]+(?:,\\s*|\\s+)){0,4}" +
+            "(?:expression|demeanor|look|face)\\b",
+    )
+    private val FACE_CENTER_REGEX = Regex(
+        "(?i)\\s+in the center of (?:her|his|their|the) face\\b",
+    )
 
     private val JAPANESE_REGEX =
         Regex("[\\u3040-\\u30ff\\u3400-\\u4dbf\\u4e00-\\u9fff\\uff66-\\uff9f]")

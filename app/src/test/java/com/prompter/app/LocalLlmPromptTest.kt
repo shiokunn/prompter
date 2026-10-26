@@ -215,8 +215,50 @@ class LocalLlmPromptTest {
     }
 
     @Test
+    fun collapsesATwoStateExpressionIntoOneNaturalSmile() {
+        val result = LocalLlmPrompt.parse(
+            """
+            PROMPT_BEGIN
+            She has a gentle smile mixed with a neutral expression in the center of her face.
+            PROMPT_END
+            TAGS: 1girl
+            """.trimIndent(),
+        )
+
+        assertEquals("She has a faint smile.", result.pixaiPrompt)
+    }
+
+    @Test
+    fun collapsesLongerTwoStateExpressions() {
+        val result = LocalLlmPrompt.parse(
+            """
+            PROMPT_BEGIN
+            Her expression is a bright smile mixed with a neutral, gentle demeanor while looking back.
+            PROMPT_END
+            TAGS: 1girl
+            """.trimIndent(),
+        )
+
+        assertEquals("Her expression is a faint smile while looking back.", result.pixaiPrompt)
+    }
+
+    @Test
+    fun leavesAnOrdinarySmileAlone() {
+        val result = LocalLlmPrompt.parse(
+            """
+            PROMPT_BEGIN
+            A girl with a soft smile stands by the window.
+            PROMPT_END
+            TAGS: 1girl, window
+            """.trimIndent(),
+        )
+
+        assertEquals("A girl with a soft smile stands by the window.", result.pixaiPrompt)
+    }
+
+    @Test
     fun promptVersionIsBumpedWhenExpansionRulesChange() {
-        assertEquals("local:gemma-4-E2B-v6", LocalModelSpec.CACHE_KEY)
+        assertEquals("local:gemma-4-E2B-v7", LocalModelSpec.CACHE_KEY)
     }
 
     @Test
