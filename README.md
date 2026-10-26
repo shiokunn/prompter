@@ -17,6 +17,7 @@
 - **M6 実装レポート**: [`research/M6_REPORT.md`](research/M6_REPORT.md)
 - **M6 実機評価（10ケース）**: [`research/M6_LOCAL_EVAL.md`](research/M6_LOCAL_EVAL.md)
 - **M6 プロンプトv7 再評価**: [`research/M6_PROMPT_V7.md`](research/M6_PROMPT_V7.md)
+- **M7 UI刷新・OpenRouter診断・ローカルv9**: [`research/M7_REPORT.md`](research/M7_REPORT.md)
 - **引き継ぎ指示書**: [`HANDOFF.md`](HANDOFF.md)
 - **プロトタイプ**: [`tools/spike_match.py`](tools/spike_match.py)
 
@@ -46,11 +47,16 @@
   87・99・92語に改善し、10ケースで **平均101語、80〜150語10/10、拒否0/10**。
   `in-color hair`と`smile mixed with ...`を修正。生成時間は平均30.3秒に増加。
   詳細は [`research/M6_PROMPT_V7.md`](research/M6_PROMPT_V7.md)。
-- APK: `/storage/emulated/0/Download/Prompter/Prompter-0.6.6-m6-debug.apk`
-  （SHA-256 `bb3774f64cfb025bd3a96ce42354b253480f6018ae2bc5e77a29b71ff5e5c4eb`、
-  78,976,459 bytes / 約79.0MB）。
-- 次の作業: ユーザーによる10〜20件の人手評価、20〜30回連続生成でのメモリ安定性、
-  v7の残り（87語・125語・黒髪補完）の扱い。その後M6.1のGPU/E4B検討へ。
+- 2026-10-26: **M7 UI刷新・ローカルv9（0.7.1-m7）**。紙面調のライトUIに刷新し、
+  タグ編集をタグモードだけに限定。OpenRouterに「接続テスト」とキー再発行リンクを追加し、
+  401の説明を改善した。ローカルLLMは **180〜260語・8〜12文** に拡張し、
+  実機1ケースで **198語・生成40.5秒**、服装色の追加なしを確認。
+  詳細は [`research/M7_REPORT.md`](research/M7_REPORT.md)。
+- APK: `/storage/emulated/0/Download/Prompter/Prompter-0.7.1-m7-debug.apk`
+  （SHA-256 `594273793abbde4db52df82d21f107856b9af18b6b9448538789700378727828`、
+  約76MB）。
+- 次の作業: 有効なOpenRouterキーでのクラウド生成確認、v9の10ケース再評価、
+  20〜30回連続生成でのメモリ安定性、人手評価。その後M6.1のGPU/E4B検討へ。
 
 ## 要約
 
@@ -59,19 +65,20 @@
 - M1 のオフライン辞書は上位5,000タグ + 別名14,587件（SQLite 2.18MB）。
   将来は14万タグ規模へ拡張し、ML Kit 翻訳と組み合わせる。
 - M2 で **Compose UI + Kotlin トライ + オフライン自然文合成** を実装済み。
-  日本語入力から PixAI 向け英文（80〜150語）とタグ列を同時に生成できる。
+  日本語入力から PixAI 向け英文（オフライン80〜150語、ローカルLLM180〜260語）とタグ列を同時に生成できる。
 - M3 で **タグ編集（重み・並び替え・削除）と履歴・お気に入り** を追加。
   履歴は端末内のSQLiteに保存し、変換結果をすぐ呼び出せる。
 - M4 で **OpenRouter AI補完** を追加。設定画面でBYOKのAPIキーを登録し、
-  オフライン結果を「AIで整える」ことができる。キーはAndroid Keystoreで暗号化して保存する。
+  オフライン結果を「整える」ことができる。キーはAndroid Keystoreで暗号化して保存する。
   既定モデルは無料モデル自動ルーター `openrouter/free`。Gemma 4 31Bはレート制限のためプリセットから外した。
 - M5 で **ML Kit翻訳フォールバック** を追加。辞書外の日本語を端末内で英訳し、
   英語からタグを補完する。モデルは設定画面から任意ダウンロード（約60MB）。
 - M6 で **オンデバイスLLM（Gemma 4 E2B / LiteRT-LM）** を追加。約2.59GBのモデルを
   任意ダウンロードし、CPUで英語PixAIプロンプトを生成する。クラウド/ローカルを設定で切り替え、
-  失敗時はオフライン結果を保持する。モデルはAPKに同梱しない。プロンプトv7の実機10ケースで
-  平均101語、80〜150語10/10、拒否0/10。詳細は
-  [`research/M6_PROMPT_V7.md`](research/M6_PROMPT_V7.md)。
+  失敗時はオフライン結果を保持する。モデルはAPKに同梱しない。
+- M7 で **UIを紙面調に刷新**し、タグ編集をタグモードだけに限定。OpenRouterの
+  「接続テスト」とキー再発行リンクを追加。ローカルプロンプトv9は **180〜260語** で、
+  実機1ケースで198語・生成40.5秒。詳細は [`research/M7_REPORT.md`](research/M7_REPORT.md)。
 - AI 補完は **OpenAI API 互換（既定: OpenRouter）** または **端末内Gemma 4 E2B** を任意 ON。
 - クラウドAIを使いたくない人向けの **ML Kit翻訳**、およびネットなしで動く **ローカルLLM** を用意。
 - APK は GitHub Actions でビルドし、Termux から `adb install` する。
@@ -120,8 +127,9 @@ adb install -r app-debug.apk
 
 ブラウザからダウンロードした場合は ZIP を展開してからインストールする。
 
-現在の APK は `0.6.6-m6`（versionCode 14、debug 署名、arm64-v8a）。M1 の辞書、M2 のオフライン変換、
-M3 のタグ編集・履歴、M4 のAI補完、M5 のML Kit翻訳フォールバック、M6 のローカルLLMを含む。
+現在の APK は `0.7.1-m7`（versionCode 16、debug 署名、arm64-v8a）。M1 の辞書、M2 のオフライン変換、
+M3 のタグ編集・履歴、M4 のAI補完、M5 のML Kit翻訳フォールバック、M6 のローカルLLM、
+M7 のUI刷新・ローカルv9を含む。
 
 M5以降はdebug署名鍵をリポジトリ内の `keystore/prompter-debug.jks` に固定した。
 そのため、**0.5.0以降**のAPKは `adb install -r` で上書きできる。
@@ -141,16 +149,22 @@ APKはarm64-v8a専用のため、x86/x86_64のエミュレータにはインス�
 ### AI補完の使い方
 
 1. アプリ右上の **設定** を開く
-2. OpenRouterのAPIキーを入力して保存（キーは端末内で暗号化）
-3. 日本語を入力して **変換する**
-4. 結果の下にある **AIで整える** を押す
+2. AIバックエンドを **クラウド** または **ローカル** から選ぶ
+3. クラウドの場合、OpenRouterのAPIキーを入力して **接続テスト** を押し、**保存**
+4. 日本語を入力して **変換する**
+5. 結果の下にある **整える** を押す
 
-既定モデルは無料モデル自動ルーター `openrouter/free`。設定で
+ローカルを選ぶと、設定画面からGemma 4 E2B（約2.59GB）を任意ダウンロードできる。
+ローカル生成は **180〜260語・8〜12文**、クラウド/オフラインは **80〜150語** を目安にする。
+クラウドの既定モデルは無料モデル自動ルーター `openrouter/free`。設定で
 `google/gemini-3.1-flash-lite` などの有料モデルにも変更できる。
 旧既定のGemini 3.1 Flash Lite、または旧無料プリセットのGemmaを保存している場合は、
 初回起動時に一度だけ `openrouter/free` へ移行する（カスタムモデルは維持）。
 APIキーはチャット・リポジトリ・APK・履歴には保存しない。
-実キーでのOpenRouter通信はユーザー環境で確認済み（CIはモックHTTPで検証）。
+
+**401 `User not found.` が出る場合**: 保存済みキーが無効になっている。
+設定の **キーを再発行** から <https://openrouter.ai/keys> を開き、新しいキーを入力して
+**接続テスト** → **保存** を行う。モデルIDやエンドポイントの問題ではない。
 
 ### ML Kit翻訳の使い方
 
@@ -177,10 +191,10 @@ python3 tools/build_db_spike.py
 | 項目 | 決定 |
 |---|---|
 | 第一対象 | PixAI DiT（Tsubaki.3 / Tsubaki.2） |
-| 既定出力 | 英語自然文 80〜150語 |
+| 既定出力 | 英語自然文 80〜150語（クラウド/オフライン）、180〜260語（ローカルLLM） |
 | タグ出力 | PixAI Haruka v2 / SDXL / Pony / A1111 / ComfyUI / NovelAI |
 | AI | OpenRouter / OpenAI 互換、任意 ON、BYOK |
 | オフライン翻訳 | ML Kit（M5、約60MB、任意ダウンロード） |
-| ローカルLLM | Gemma 4 E2B（任意、M6予定）、E4B（12GB 端末限定） |
+| ローカルLLM | Gemma 4 E2B（任意、M6実装済み）、E4B（12GB 端末限定・未実装） |
 | 配布 | 自分用 APK（arm64-v8a、安定debug署名） |
 | 成人向け | フィルタしない（個人用） |
