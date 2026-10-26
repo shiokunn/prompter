@@ -184,7 +184,8 @@ class LocalLlmPromptTest {
 
     @Test
     fun systemPromptPinsFluentRewritesForKnownWeakSpots() {
-        assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("inner-color highlights"))
+        assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("inner-color"))
+        assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("two-tone hair"))
         assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("faint, ambiguous smile"))
         assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("never a word-for-word translation"))
         assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("repeat it for each person"))
