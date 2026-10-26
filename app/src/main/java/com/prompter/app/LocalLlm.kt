@@ -28,7 +28,7 @@ object LocalModelSpec {
         "https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm/resolve/" +
             "$REVISION/$FILE_NAME"
     const val LICENSE = "Apache-2.0"
-    const val CACHE_KEY = "local:gemma-4-E2B-v4"
+    const val CACHE_KEY = "local:gemma-4-E2B-v5"
     const val MIN_RAM_BYTES = 8L * 1024 * 1024 * 1024
     const val EXTRA_FREE_BYTES = 1L * 1024 * 1024 * 1024
 
@@ -74,8 +74,8 @@ object LocalLlmPrompt {
         Task:
         - Expand the input into a vivid, production-ready prompt. Do not merely translate it.
         - Follow Subject + Action + Scene + Mood + Style.
-        - Write exactly 6 sentences, one for each item below, 95 to 115 words in total.
-          Every sentence must be 16 to 19 words.
+        - Write 6 sentences, or 7 only for a multi-panel or two-person scene, for 95 to
+          115 words in total. Every sentence must be 16 to 19 words. Do not exceed 115 words.
         - Use this order:
           1. Subject and main action.
           2. Hair, eyes, clothing, and accessories.
@@ -85,25 +85,28 @@ object LocalLlmPrompt {
           6. Art style and rendering.
         - Length check: count the words before you finish. If the prompt is shorter than
           95 words, extend the appearance, pose, setting, and lighting sentences with
-          concrete visual detail. Never return fewer than 95 words, even for a very short
-          input. A short input is not a reason for a short prompt.
+          concrete visual detail. If it is longer than 115 words, remove repeated
+          adjectives. Never return fewer than 95 words, even for a very short input.
+          A short input is not a reason for a short prompt.
         - If the input is simple, expand it with neutral, non-specific ambiance.
           Soft lighting, a simple background, and anime rendering are allowed even when
           the input does not mention them. Do not invent a named character, a copyrighted
           work, a specific object, or a plot event.
-        - Preserve every color, hairstyle, garment, and number of people in the input. When
-          one trait applies to several people, repeat it for each person.
-        - Never add a hair color, eye color, or clothing color that the input does not
-          mention. If a color is unknown, omit it instead of guessing.
+        - Preserve every stated color, hairstyle, garment, expression, and number of
+          people. When one trait applies to several people, repeat it for each person.
+          Never drop a stated color.
+        - If the input states a hair or eye color, keep it in the same phrase as the hair
+          or eyes. If it does not state one, write "her hair" or "her eyes" with no color
+          word. Never guess a color for hair, eyes, or clothing.
         - Prefer the provided canonical tags when they are relevant.
 
         Fluency:
         - Write natural English, never a word-for-word translation of the Japanese.
         - Inner-color or two-tone hair: when the input mentions it, write "inner-color
           highlights" or "two-tone hair" using only the color named in the input.
-        - Mixed expression: when the input describes one, write "a faint, ambiguous smile"
-          or "a subtle, unreadable expression". Keep one clear emotion per sentence and
-          describe the whole face rather than one point on it.
+        - Mixed expression: never write "mixed with" and never place an expression "in the
+          center of her face". Choose the dominant emotion and describe the whole face in
+          one natural clause.
         - Intimate action: name the action with a direct verb and a clear object, for
           example "she caresses her chest" or "she teases her nipples slowly".
         - Start sentences with different words. Do not begin consecutive sentences with the
@@ -134,10 +137,10 @@ object LocalLlmPrompt {
         appendLine(unmatched.trim().ifBlank { "(none)" })
         appendLine()
         appendLine(
-            "Write exactly 6 sentences and 95 to 115 words, with 16 to 19 words per " +
+            "Write 6 or 7 sentences and 95 to 115 words, with 16 to 19 words per " +
                 "sentence. Count the words and expand the setting, lighting, or pose if " +
-                "the prompt is under 95 words. Keep every color and hairstyle from the " +
-                "input and never invent a color. Use fluent English, then write the tags.",
+                "the prompt is under 95 words. Keep every stated color and never guess a " +
+                "color that is not in the input. Use fluent English, then write the tags.",
         )
     }
 

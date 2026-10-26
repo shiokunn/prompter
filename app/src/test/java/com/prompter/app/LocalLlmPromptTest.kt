@@ -176,7 +176,8 @@ class LocalLlmPromptTest {
         assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("Do not merely translate"))
         assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("95 to 115 words"))
         assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("16 to 19 words"))
-        assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("exactly 6 sentences"))
+        assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("6 sentences, or 7"))
+        assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("Do not exceed 115 words"))
         assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("Never return fewer than 95 words"))
         assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("Setting and background"))
         assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("Art style and rendering"))
@@ -185,17 +186,17 @@ class LocalLlmPromptTest {
     @Test
     fun systemPromptPinsFluentRewritesForKnownWeakSpots() {
         assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("inner-color"))
-        assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("two-tone hair"))
-        assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("faint, ambiguous smile"))
+        assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("never write \"mixed with\""))
+        assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("center of her face"))
         assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("never a word-for-word translation"))
         assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("repeat it for each person"))
     }
 
     @Test
     fun systemPromptForbidsInventingColors() {
-        assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("Never add a hair color"))
+        assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("Never guess a color"))
+        assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("Never drop a stated color"))
         assertFalse(LocalLlmPrompt.SYSTEM_PROMPT.contains("light blue"))
-        assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("using only the color named in the input"))
     }
 
     @Test
@@ -208,13 +209,13 @@ class LocalLlmPromptTest {
 
         assertTrue(prompt.contains("95 to 115 words"))
         assertTrue(prompt.contains("16 to 19 words"))
-        assertTrue(prompt.contains("keep every color and hairstyle", ignoreCase = true))
-        assertTrue(prompt.contains("never invent a color", ignoreCase = true))
+        assertTrue(prompt.contains("Keep every stated color"))
+        assertTrue(prompt.contains("never guess a color", ignoreCase = true))
     }
 
     @Test
     fun promptVersionIsBumpedWhenExpansionRulesChange() {
-        assertEquals("local:gemma-4-E2B-v4", LocalModelSpec.CACHE_KEY)
+        assertEquals("local:gemma-4-E2B-v5", LocalModelSpec.CACHE_KEY)
     }
 
     @Test
