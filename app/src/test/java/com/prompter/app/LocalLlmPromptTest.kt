@@ -174,7 +174,7 @@ class LocalLlmPromptTest {
     @Test
     fun systemPromptRequiresExpansionRatherThanTranslation() {
         assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("Do not merely translate"))
-        assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("95 to 115 words"))
+        assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("115 words in total"))
         assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("16 to 19 words"))
         assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("6 sentences, or 7"))
         assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("Do not exceed 115 words"))
