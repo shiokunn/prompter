@@ -91,7 +91,7 @@ class AiCache(context: Context) {
 
     companion object {
         private const val PREFS_NAME = "prompter_ai_cache"
-        private const val CACHE_VERSION = 1
+        private const val CACHE_VERSION = 2
         private const val MAX_ENTRIES = 50
     }
 }

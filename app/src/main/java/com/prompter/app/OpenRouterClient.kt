@@ -171,7 +171,6 @@ class OpenRouterClient(
             .put("model", model)
             .put("messages", messages)
             .put("temperature", 0.4)
-            .put("max_tokens", 1800)
             .put("response_format", responseFormat)
     }
 
@@ -335,7 +334,7 @@ class OpenRouterClient(
           "properties": {
             "pixai_prompt": {
               "type": "string",
-              "description": "English natural-language prompt for PixAI DiT, 80 to 150 words."
+              "description": "Detailed English natural-language prompt for PixAI DiT. At least 180 words; no fixed upper word limit. Every sentence should add concrete visual information."
             },
             "tags": {
               "type": "array",
@@ -366,11 +365,25 @@ class OpenRouterClient(
             Unmatched Japanese text:
             ${unmatched.ifBlank { "(none)" }}
 
-            Rewrite the scene as a single English natural-language prompt for PixAI DiT.
+            Rewrite the scene as a single detailed, precise English natural-language prompt
+            for PixAI DiT.
             Requirements:
-            - 80 to 150 words, targeting about 110 words.
+            - Write at least 180 words. There is no upper word limit; stop only when the
+              scene is fully described. Do not stop at 150 words.
+            - Every sentence must add new visual information. Do not repeat adjectives or
+              pad the prompt.
             - Follow Subject + Action + Scene + Mood + Style.
-            - Describe the character, clothing, pose, setting, lighting, expression, camera/composition, and art style.
+            - Describe the character, face, hair, eyes, clothing, pose, hands, setting,
+              lighting, shadows, atmosphere, camera angle/composition, and art style with
+              concrete visual detail.
+            - Preserve every stated color, hairstyle, clothing, expression, number of
+              people, pose, and composition. When one trait applies to several people,
+              repeat it for each person.
+            - Do not invent a color for hair, eyes, or clothing unless it is stated in the
+              input. You may add generic fabric folds, trim, background objects, lighting,
+              and camera details.
+            - Do not invent a named character, a copyrighted work, a specific object, or a
+              plot event.
             - Return only canonical Danbooru tag names in the tags array.
             - Use lowercase tags with underscores instead of spaces.
             - Prefer the offline tags when they are relevant; do not invent tags.
@@ -380,9 +393,11 @@ class OpenRouterClient(
 
         private val SYSTEM_PROMPT = """
             You are an expert prompt engineer for PixAI DiT anime image generation.
-            You turn Japanese scene descriptions and Danbooru tags into a polished
-            English prompt. You always return valid JSON with the keys
-            "pixai_prompt" and "tags". Never include the API key or any private data.
+            You turn Japanese scene descriptions and Danbooru tags into a polished,
+            precise, detailed English prompt. Never shorten the prompt just to meet a
+            word limit; include every concrete visual detail without repeating yourself.
+            You always return valid JSON with the keys "pixai_prompt" and "tags".
+            Never include the API key or any private data.
         """.trimIndent()
     }
 }

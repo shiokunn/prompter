@@ -613,10 +613,10 @@ private fun PrompterApp() {
                 } else {
                     AiPromptValidator.MIN_WORDS
                 }
-                val maxWords = if (local) {
+                val maxWords: Int? = if (local) {
                     LocalLlmPrompt.MAX_WORDS
                 } else {
-                    AiPromptValidator.MAX_WORDS
+                    null
                 }
                 val validation = AiPromptValidator.validate(
                     result = aiResult,
@@ -656,7 +656,12 @@ private fun PrompterApp() {
                     )
                     append(" / ${validation.wordCount}語")
                     if (!validation.wordCountOk) {
-                        append("（目標${minWords}〜${maxWords}語）")
+                        val target = if (maxWords == null) {
+                            "${minWords}語以上"
+                        } else {
+                            "${minWords}〜${maxWords}語"
+                        }
+                        append("（目標${target}）")
                     }
                     if (backend == AiBackend.LOCAL && !fromCache) {
                         append(" / 生成${formatDuration(generateMillis)}")

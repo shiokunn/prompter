@@ -6,6 +6,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
 import org.junit.Before
@@ -58,6 +59,12 @@ class OpenRouterClientTest {
         assertEquals("Bearer test-key", request.getHeader("Authorization"))
         val body = JSONObject(request.body.readUtf8())
         assertEquals("test-model", body.getString("model"))
+        assertFalse(body.has("max_tokens"))
+        val userPrompt = body.getJSONArray("messages")
+            .getJSONObject(1)
+            .getString("content")
+        assertTrue(userPrompt.contains("at least 180 words"))
+        assertTrue(userPrompt.contains("no upper word limit"))
         assertEquals(
             "json_schema",
             body.getJSONObject("response_format").getString("type"),

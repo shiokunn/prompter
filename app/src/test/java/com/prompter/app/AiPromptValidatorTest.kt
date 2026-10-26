@@ -19,27 +19,32 @@ class AiPromptValidatorTest {
     @Test
     fun removesUnknownAndDuplicateTags() {
         val result = AiPromptResult(
-            pixaiPrompt = "word ".repeat(90).trim(),
+            pixaiPrompt = "word ".repeat(200).trim(),
             tags = listOf("1girl", "Long Hair", "made_up_tag", "long_hair", ""),
         )
         val validation = AiPromptValidator.validate(result) { it in known }
         assertEquals(listOf("1girl", "long_hair"), validation.tags)
         assertEquals(listOf("made_up_tag"), validation.removedTags)
-        assertEquals(90, validation.wordCount)
+        assertEquals(200, validation.wordCount)
         assertTrue(validation.wordCountOk)
     }
 
     @Test
-    fun flagsPromptsOutsideTheTargetRange() {
+    fun flagsShortPromptsAndAcceptsLongCloudPrompts() {
         val short = AiPromptValidator.validate(
             AiPromptResult("short prompt", listOf("1girl")),
         ) { it in known }
         assertFalse(short.wordCountOk)
 
-        val long = AiPromptValidator.validate(
-            AiPromptResult("word ".repeat(151).trim(), listOf("1girl")),
+        val belowMinimum = AiPromptValidator.validate(
+            AiPromptResult("word ".repeat(150).trim(), listOf("1girl")),
         ) { it in known }
-        assertFalse(long.wordCountOk)
+        assertFalse(belowMinimum.wordCountOk)
+
+        val long = AiPromptValidator.validate(
+            AiPromptResult("word ".repeat(500).trim(), listOf("1girl")),
+        ) { it in known }
+        assertTrue(long.wordCountOk)
     }
 
     @Test
