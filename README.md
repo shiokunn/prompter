@@ -16,6 +16,7 @@
 - **M5 実装レポート**: [`research/M5_REPORT.md`](research/M5_REPORT.md)
 - **M6 実装レポート**: [`research/M6_REPORT.md`](research/M6_REPORT.md)
 - **M6 実機評価（10ケース）**: [`research/M6_LOCAL_EVAL.md`](research/M6_LOCAL_EVAL.md)
+- **M6 プロンプトv7 再評価**: [`research/M6_PROMPT_V7.md`](research/M6_PROMPT_V7.md)
 - **引き継ぎ指示書**: [`HANDOFF.md`](HANDOFF.md)
 - **プロトタイプ**: [`tools/spike_match.py`](tools/spike_match.py)
 
@@ -41,11 +42,15 @@
   クラウド/ローカルを設定で切り替えられる。プロンプトを「展開型・6文構成・90〜130語」に
   改善し、10ケースで **平均89語、生成平均15.6秒、拒否0/10、暫定総合4.37/5**。
   アプリPSSは最大1.95GB、終了後219MBまで解放。10回連続で発熱・バッテリー変化なし。
-- APK: `/storage/emulated/0/Download/Prompter/Prompter-0.6.1-m6-debug.apk`
-  （SHA-256 `a2ab65e17df0992e3d32999e0d4c36b5c4d5813e569370c345d29ef8dc02c53e`、
+- 2026-10-26: **M6 プロンプトv7 再調整（0.6.6-m6）**。短文3件を77・79・71語から
+  87・99・92語に改善し、10ケースで **平均101語、80〜150語10/10、拒否0/10**。
+  `in-color hair`と`smile mixed with ...`を修正。生成時間は平均30.3秒に増加。
+  詳細は [`research/M6_PROMPT_V7.md`](research/M6_PROMPT_V7.md)。
+- APK: `/storage/emulated/0/Download/Prompter/Prompter-0.6.6-m6-debug.apk`
+  （SHA-256 `bb3774f64cfb025bd3a96ce42354b253480f6018ae2bc5e77a29b71ff5e5c4eb`、
   78,976,459 bytes / 約79.0MB）。
 - 次の作業: ユーザーによる10〜20件の人手評価、20〜30回連続生成でのメモリ安定性、
-  80語未満ケースと不自然な英語の改善。その後M6.1のGPU/E4B検討へ。
+  v7の残り（87語・125語・黒髪補完）の扱い。その後M6.1のGPU/E4B検討へ。
 
 ## 要約
 
@@ -64,8 +69,9 @@
   英語からタグを補完する。モデルは設定画面から任意ダウンロード（約60MB）。
 - M6 で **オンデバイスLLM（Gemma 4 E2B / LiteRT-LM）** を追加。約2.59GBのモデルを
   任意ダウンロードし、CPUで英語PixAIプロンプトを生成する。クラウド/ローカルを設定で切り替え、
-  失敗時はオフライン結果を保持する。モデルはAPKに同梱しない。実機10ケースで平均89語、
-  暫定4.37/5、拒否0/10。詳細は [`research/M6_LOCAL_EVAL.md`](research/M6_LOCAL_EVAL.md)。
+  失敗時はオフライン結果を保持する。モデルはAPKに同梱しない。プロンプトv7の実機10ケースで
+  平均101語、80〜150語10/10、拒否0/10。詳細は
+  [`research/M6_PROMPT_V7.md`](research/M6_PROMPT_V7.md)。
 - AI 補完は **OpenAI API 互換（既定: OpenRouter）** または **端末内Gemma 4 E2B** を任意 ON。
 - クラウドAIを使いたくない人向けの **ML Kit翻訳**、およびネットなしで動く **ローカルLLM** を用意。
 - APK は GitHub Actions でビルドし、Termux から `adb install` する。
@@ -114,8 +120,8 @@ adb install -r app-debug.apk
 
 ブラウザからダウンロードした場合は ZIP を展開してからインストールする。
 
-現在の APK は `0.5.0-m5`（versionCode 7、debug 署名、arm64-v8a）。M1 の辞書、M2 のオフライン変換、
-M3 のタグ編集・履歴、M4 のAI補完、M5 のML Kit翻訳フォールバックを含む。
+現在の APK は `0.6.6-m6`（versionCode 14、debug 署名、arm64-v8a）。M1 の辞書、M2 のオフライン変換、
+M3 のタグ編集・履歴、M4 のAI補完、M5 のML Kit翻訳フォールバック、M6 のローカルLLMを含む。
 
 M5以降はdebug署名鍵をリポジトリ内の `keystore/prompter-debug.jks` に固定した。
 そのため、**0.5.0以降**のAPKは `adb install -r` で上書きできる。

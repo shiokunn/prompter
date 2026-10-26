@@ -1,12 +1,12 @@
 # M6 実装レポート: オンデバイス LLM（Gemma 4 E2B / LiteRT-LM）
 
-- 日付: 2026-10-25
-- 状態: **実機検証完了。0.6.1-m6で10ケース評価、平均89語・暫定総合4.37/5・拒否なし。**
+- 日付: 2026-10-26
+- 状態: **実機検証完了。0.6.1-m6で初回評価、0.6.6-m6（プロンプトv7）で10ケース再評価。平均101語・80〜150語10/10・拒否0/10。最終人手評価を残す。**
 - 対象: arrows Alpha（arm64-v8a / RAM 12GB / Android 16）
 - ブランチ: `main`
-- 実装コミット: `d8211b7 fix: force local LLM prompt expansion to target length`
-- CI: <https://github.com/shiokunn/prompter/actions/runs/40160559150>
-- 詳細評価: [`M6_LOCAL_EVAL.md`](M6_LOCAL_EVAL.md)
+- 実装コミット: `caf77bb fix: sanitize two-state expression blends in local prompts`
+- CI: <https://github.com/shiokunn/prompter/actions/runs/40309807300>
+- 詳細評価: [`M6_LOCAL_EVAL.md`](M6_LOCAL_EVAL.md)（v2）、[`M6_PROMPT_V7.md`](M6_PROMPT_V7.md)（v7）
 
 ---
 
@@ -29,6 +29,8 @@ M6の最初の縦切りを実装した。設定画面から約2.59GBのGemma 4 E
 
 プロンプトは0.6.1-m6で「翻訳ではなく展開」「6文構成」「90〜130語」「設定・光・画風を明示」に変更した。これにより単純入力の出力が67語→86語に伸びた。詳細は [`M6_LOCAL_EVAL.md`](M6_LOCAL_EVAL.md)。
 
+0.6.6-m6（プロンプトv7）で短文3件と不自然な英語を再調整した。10ケース平均**101.0語**、80〜150語は**10/10**、拒否**0/10**、生成平均**30.3秒**。`in-color hair`と`smile mixed with ...`は解消した。残りはID24の87語、ID27の125語、ID30の黒髪補完。詳細は [`M6_PROMPT_V7.md`](M6_PROMPT_V7.md)。
+
 ---
 
 ## 2. 確定した技術選定
@@ -43,7 +45,7 @@ M6の最初の縦切りを実装した。設定画面から約2.59GBのGemma 4 E
 | ライセンス | Apache-2.0 |
 | バックエンド | CPU / 4 threads（GPUは次段階） |
 | コンテキスト | 4,096 tokens |
-| 出力上限 | 768 tokens（90〜130語＋タグに十分な上限。暴走時の待ち時間を抑える） |
+| 出力上限 | 768 tokens（95〜115語＋タグに十分な上限。暴走時の待ち時間を抑える） |
 | サンプリング | topK 10 / topP 0.95 / temperature 0.3 / seed 42 |
 | 思考トークン | 無効（`enableThinking = false`） |
 
@@ -91,11 +93,16 @@ LiteRT-LMは`latest.release`ではなく`0.18.1`に固定した。AARはarm64-v8
 `LocalLlmPrompt`
 
 - システムプロンプトで`Subject + Action + Scene + Mood + Style`を指定。
-- 90〜130語、6〜7文、各文12〜20語。設定・光・画風の展開を明示。
+- v7: 6〜7文、95〜115語、各文16〜19語。設定・光・画風の展開を明示。
 - Markdown禁止、日本語禁止、入力にない固有名詞・物体の追加禁止。
 - 単純入力でも汎用的な背景・光・画風で展開するよう指示。
+- 入力にある色・髪型・服・人数を保持し、色の推測と脱落を禁止。
+- 2状態の表情は`a faint smile`に統一し、`mixed with`を禁止。
 - 成人向け要素は入力にある場合に保持し、拒否・検閲しないよう指示。
 - オフライン辞書タグと未変換日本語をユーザープロンプトに含める。
+- パーサーは`smile mixed with ... expression`を`a faint smile`に置換し、
+  `in the center of ... face`を削除する。詳細は
+  [`M6_PROMPT_V7.md`](M6_PROMPT_V7.md)。
 - 出力形式:
 
 ```
@@ -135,7 +142,7 @@ TAGS: <comma-separated canonical Danbooru tags, max 20>
 - AIカードの文言・ボタンをバックエンドに合わせて切り替え。
 - ローカルモデル未準備なら設定画面へ誘導。
 - 生成結果はクラウドと同じ`AiPromptValidator`でタグ検証し、履歴・キャッシュにも保存。
-- キャッシュキーは`local:gemma-4-E2B-v2`。プロンプト設計を変えたらv3に上げる。
+- キャッシュキーは`local:gemma-4-E2B-v7`。プロンプト設計を変えたら番号を上げる。
 - 生成失敗時は`aiError`を表示し、オフライン結果は変更しない。
 
 ---
@@ -159,17 +166,30 @@ CIで以下が成功。
   - 拒否文の検出
   - 未置換テンプレートの検出
   - 日本語タグ・角括弧タグの除去
-  - 展開指示（90〜130語、6文構成）とキャッシュ版v2の確認
+  - 展開指示（95〜115語、6〜7文、16〜19語）とキャッシュ版v7の確認
+  - 色の保持・推測禁止ルールの確認
+  - `smile mixed with ...`と`in the center of ... face`の後処理（3パターン）
   - モデルサイズ・SHA・URLの固定確認
 - `AiSettingsTest`
   - バックエンドの既定値がCLOUD
   - LOCALの保存・復元
 
-実機では10ケースを生成し、平均89語・拒否0/10・暫定総合4.37/5を確認済み。単体テストは「パーサーと設定」の範囲で、生成品質・速度の再現性・長時間安定性は保証しない。ベンチ結果は6章と [`M6_LOCAL_EVAL.md`](M6_LOCAL_EVAL.md) に記録した。
+実機では10ケースを生成し、平均89語・拒否0/10・暫定総合4.37/5を確認済み。プロンプトv7の再評価では平均101.0語・80〜150語10/10・拒否0/10だった。単体テストは「パーサーと設定」の範囲で、生成品質・速度の再現性・長時間安定性は保証しない。ベンチ結果は6章、[`M6_LOCAL_EVAL.md`](M6_LOCAL_EVAL.md)、[`M6_PROMPT_V7.md`](M6_PROMPT_V7.md) に記録した。
 
 ---
 
 ## 5. APK
+
+### 最新（プロンプトv7）
+
+- パス: `/storage/emulated/0/Download/Prompter/Prompter-0.6.6-m6-debug.apk`
+- サイズ: 78,976,459 bytes（約79.0MB / 75.3MiB）
+- SHA-256: `bb3774f64cfb025bd3a96ce42354b253480f6018ae2bc5e77a29b71ff5e5c4eb`
+- versionCode 14 / versionName `0.6.6-m6`
+- ABI: arm64-v8aのみ
+- 署名: M5と同じ固定debug鍵。`adb install -r`で上書き可能。
+
+### 初回評価（v2）
 
 - パス: `/storage/emulated/0/Download/Prompter/Prompter-0.6.1-m6-debug.apk`
 - サイズ: 78,976,459 bytes（約79.0MB / 75.3MiB）
@@ -205,11 +225,12 @@ CIで以下が成功。
 - 9GBは端末全体の使用量で、アプリ単体は最大1.95GB。12GB端末では十分な余裕がある。
 - 10回でPSSが1.73GB→1.95GBに増えた。20〜30回で安定するか要確認。
 - ケース別の出力とスコアは [`M6_LOCAL_EVAL.md`](M6_LOCAL_EVAL.md)。
+- プロンプトv7の再評価（2026-10-26）は [`M6_PROMPT_V7.md`](M6_PROMPT_V7.md)。平均101語、生成平均30.3秒、拒否0/10。
 
 ### 6.1 インストール
 
 ```bash
-adb install -r /storage/emulated/0/Download/Prompter/Prompter-0.6.1-m6-debug.apk
+adb install -r /storage/emulated/0/Download/Prompter/Prompter-0.6.6-m6-debug.apk
 adb shell am force-stop com.prompter.app
 ```
 
@@ -275,18 +296,18 @@ adb logcat -d | grep -iE "litert|gemma|prompter" | tail -100
 | 制約 | 内容 | 次アクション |
 |---|---|---|
 | 外部保存のmmap | app-specific external上の2.59GBから実機で生成できたため、mmap/読み出しは成功 | 問題が出た場合のみ内部storageへコピー |
-| 品質評価 | 10ケースの暫定評価は総合4.37/5。人手による最終評価は未実施 | 10〜20件でユーザーが確認 |
-| 短文出力 | 3/10が80語未満（77・79・71語） | 許容するか、短文用の追指示を追加するか決定 |
-| 汎用補完 | 入力にない服装・髪・キッチンなどを補完する場合がある | 意図を変える具体物を減らすようプロンプト調整 |
-| 不自然な英語 | `in-color hair`、`center of her face`など | few-shotまたは表現の正規化 |
+| 品質評価 | 10ケースの暫定評価は総合4.37/5（v2）。v7は個別修正を確認したが、5点評価の再採点は未実施 | 10〜20件でユーザーが確認 |
+| 短文出力 | v7では80語未満0/10。ただし3/10が95語未満（87・92・93語） | 95語の下限を厳密にするか、現状を許容するか決定 |
+| 汎用補完 | 入力にない服装・髪・キッチンなどを補完する場合がある。v7でもID30で黒髪を補完 | 意図を変える具体物を減らすようプロンプト調整 |
+| 不自然な英語 | `in-color hair`と`smile mixed with ...`はv7で解消。ID21の`hair`重複、ID27のコンマ結合が残る | 必要ならサニタイザーの対象を追加 |
 | メモリ増加 | 2回→10回でPSS 1.73GB→1.95GB | 20〜30回で安定性を確認 |
-| 生成時間 | 12.8〜18.8秒、平均15.6秒 | 速度優先なら目標語数を下げるかGPU版へ |
+| 生成時間 | v7は26.8〜37.9秒、平均30.3秒。v2の15.6秒から悪化 | 速度優先なら語数を下げるかGPU版へ |
 | CPUのみ | GPU版モデル/バックエンドは未実装 | M6.1でMali-G615を検証 |
 | 2.59GB | Wi-Fi必須。ストレージを大きく使う | ダウンロード前に容量表示済み |
 | 8GB RAM要件 | 8GB未満は開始不可 | 実機12GBなので問題なし |
 | 初回ロード | コールド6.4秒 / ページキャッシュ後0.5秒 | 初回のみ進捗表示を検討 |
 | バックグラウンド | 生成中にOSがkillする可能性 | 必要ならForeground Service化 |
-| ストリーミングなし | 完了までスピナー。平均15.6秒 | 必要なら`sendMessageAsync`へ |
+| ストリーミングなし | 完了までスピナー。v7は平均30.3秒 | 必要なら`sendMessageAsync`へ |
 | 拒否検出は簡易 | 多様な拒否文を完全には検出できない | 実機の失敗例を収集して追加 |
 | 成人向け | 2/2で拒否なし・内容保持 | バリエーションを増やして確認 |
 | E4B未対応 | 12GB向け高品質パックは未実装 | E2Bの品質次第で追加 |
@@ -296,11 +317,10 @@ adb logcat -d | grep -iE "litert|gemma|prompter" | tail -100
 
 ## 8. 次の作業
 
-1. **ユーザーによる人手評価**を10〜20件で行い、意図・自然さ・構造を5段階で確定する。暫定スコアは [`M6_LOCAL_EVAL.md`](M6_LOCAL_EVAL.md) の4.37/5。
+1. **ユーザーによる人手評価**を10〜20件で行い、意図・自然さ・構造を5段階で確定する。v2の暫定スコアは [`M6_LOCAL_EVAL.md`](M6_LOCAL_EVAL.md) の4.37/5、v7の結果は [`M6_PROMPT_V7.md`](M6_PROMPT_V7.md)。
 2. **20〜30回連続生成**でPSSの増加が止まるか確認する。10回時点は1.95GB。
-3. 短文ケース（71〜79語）を許容するか、プロンプトに「最低90語」の追指示を入れるか決める。
-4. 不自然な英語（`in-color hair`、`center of her face`）をfew-shotで改善する。
-5. 0.6.1-m6でも機内モード生成を再確認する。
-6. ダウンロードが再現性なく失敗する場合のみ、`DownloadManager`の理由コードとHugging Faceのリダイレクトを確認し、必要なら独自のレジューム付きHTTPダウンロードに切り替える。
-7. CPUで安定しているため、次はGPU版モデル（2.01GB）と`Backend.GPU()`を任意設定で追加する。Mali-G615で失敗したらCPUへフォールバック。
-8. M6の最終Go/No-Go後、PixAI自然文の人手評価（`research/PIXAI_EVAL.md`）へ進む。
+3. v7の残り（ID24の87語、ID27の125語、ID30の黒髪補完）を許容するか、追加調整するか決める。
+4. 0.6.6-m6でも機内モード生成を再確認する。
+5. ダウンロードが再現性なく失敗する場合のみ、`DownloadManager`の理由コードとHugging Faceのリダイレクトを確認し、必要なら独自のレジューム付きHTTPダウンロードに切り替える。
+6. CPUで安定しているため、次はGPU版モデル（2.01GB）と`Backend.GPU()`を任意設定で追加する。Mali-G615で失敗したらCPUへフォールバック。
+7. M6の最終Go/No-Go後、PixAI自然文の人手評価（`research/PIXAI_EVAL.md`）へ進む。
