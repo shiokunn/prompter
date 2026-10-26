@@ -233,9 +233,12 @@ fun SettingsScreen(
                                 }
                             }
                             Spacer(Modifier.width(8.dp))
-                            QuietAction("キーを再発行") {
-                                runCatching { uriHandler.openUri(OPENROUTER_KEYS_URL) }
-                            }
+                            QuietAction(
+                                text = "キーを再発行",
+                                onClick = {
+                                    runCatching { uriHandler.openUri(OPENROUTER_KEYS_URL) }
+                                },
+                            )
                         }
                         testMessage?.let { message ->
                             Spacer(Modifier.height(8.dp))
@@ -247,7 +250,7 @@ fun SettingsScreen(
                         }
                         if (hasApiKey) {
                             Spacer(Modifier.height(4.dp))
-                            QuietAction("APIキーを削除") { confirmDelete = true }
+                            QuietAction("APIキーを削除", onClick = { confirmDelete = true })
                         }
                     }
                 }

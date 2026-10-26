@@ -778,8 +778,8 @@ private fun PrompterApp() {
         ScreenHeader(
             title = "Prompter",
             actions = {
-                QuietAction("履歴") { showHistory = true }
-                QuietAction("設定") { showSettings = true }
+                QuietAction("履歴", onClick = { showHistory = true })
+                QuietAction("設定", onClick = { showSettings = true })
             },
         )
 

@@ -54,7 +54,7 @@ fun HistoryScreen(
                 onBack = onBack,
                 actions = {
                     if (items.isNotEmpty()) {
-                        QuietAction("全削除") { confirmClear = true }
+                        QuietAction("全削除", onClick = { confirmClear = true })
                     }
                 },
             )
