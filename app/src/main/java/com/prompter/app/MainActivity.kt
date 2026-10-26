@@ -1224,6 +1224,8 @@ private fun UnmatchedBlock(
             text = unmatched,
             style = MaterialTheme.typography.bodySmall,
             color = MutedInk,
+            maxLines = 3,
+            overflow = TextOverflow.Ellipsis,
         )
         translated?.takeIf { it.isNotBlank() }?.let {
             Spacer(Modifier.height(4.dp))

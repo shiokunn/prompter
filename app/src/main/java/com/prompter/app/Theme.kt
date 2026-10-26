@@ -347,7 +347,7 @@ fun MiniAction(
 ) {
     Box(
         modifier = modifier
-            .size(32.dp)
+            .size(36.dp)
             .clip(CircleShape)
             .clickable(enabled = enabled, onClick = onClick),
         contentAlignment = Alignment.Center,

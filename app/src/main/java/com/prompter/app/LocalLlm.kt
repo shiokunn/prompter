@@ -28,7 +28,7 @@ object LocalModelSpec {
         "https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm/resolve/" +
             "$REVISION/$FILE_NAME"
     const val LICENSE = "Apache-2.0"
-    const val CACHE_KEY = "local:gemma-4-E2B-v8"
+    const val CACHE_KEY = "local:gemma-4-E2B-v9"
     const val MIN_RAM_BYTES = 8L * 1024 * 1024 * 1024
     const val EXTRA_FREE_BYTES = 1L * 1024 * 1024 * 1024
 
@@ -105,7 +105,9 @@ object LocalLlmPrompt {
           Never drop a stated color.
         - If the input states a hair or eye color, keep it in the same phrase as the hair
           or eyes. If it does not state one, write "her hair" or "her eyes" with no color
-          word. Never guess a color for hair, eyes, or clothing.
+          word. Never guess a color for hair, eyes, or clothing. You may add generic fabric
+          folds, trim, and background objects, but do not name a clothing color unless the
+          color is stated in the input.
         - Prefer the provided canonical tags when they are relevant.
 
         Fluency:
@@ -148,9 +150,9 @@ object LocalLlmPrompt {
         appendLine(
             "Write 8 to 12 sentences and 180 to 260 words, aiming for about 220 words. " +
                 "Count the words and expand the appearance, pose, setting, lighting, or " +
-                "background if the prompt is under 180 words. Keep every stated color and " +
-                "never guess a color that is not in the input. Vary sentence length and use " +
-                "correct punctuation. Then write the tags.",
+                "background if the prompt is under 180 words. Keep every stated color. " +
+                "Never guess a hair, eye, or clothing color that is not in the input. " +
+                "Vary sentence length and use correct punctuation. Then write the tags.",
         )
     }
 

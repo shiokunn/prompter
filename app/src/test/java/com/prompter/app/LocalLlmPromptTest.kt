@@ -180,6 +180,7 @@ class LocalLlmPromptTest {
         assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("Never return fewer than 180 words"))
         assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("Setting and background objects"))
         assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("Art style, rendering, and finish"))
+        assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("do not name a clothing color"))
     }
 
     @Test
@@ -211,7 +212,7 @@ class LocalLlmPromptTest {
         assertTrue(prompt.contains("8 to 12 sentences"))
         assertTrue(prompt.contains("Vary sentence length"))
         assertTrue(prompt.contains("Keep every stated color"))
-        assertTrue(prompt.contains("never guess a color", ignoreCase = true))
+        assertTrue(prompt.contains("Never guess a hair, eye, or clothing color", ignoreCase = true))
     }
 
     @Test
@@ -258,7 +259,7 @@ class LocalLlmPromptTest {
 
     @Test
     fun promptVersionIsBumpedWhenExpansionRulesChange() {
-        assertEquals("local:gemma-4-E2B-v8", LocalModelSpec.CACHE_KEY)
+        assertEquals("local:gemma-4-E2B-v9", LocalModelSpec.CACHE_KEY)
     }
 
     @Test
