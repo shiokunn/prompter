@@ -154,6 +154,47 @@ class OpenRouterClientTest {
     }
 
     @Test
+    fun testsTheKeyEndpointWithoutGeneratingTokens() {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody(
+                    """{"data":{"label":"sk-or-v1-test","usage":1.25,"limit":10.0,"is_free_tier":true}}""",
+                ),
+        )
+
+        val info = OpenRouterClient(server.url("/").toString()).testKey("test-key")
+
+        assertEquals("sk-or-v1-test", info.label)
+        assertEquals(1.25, info.usage!!, 0.001)
+        assertEquals(10.0, info.limit!!, 0.001)
+        assertEquals(true, info.isFreeTier)
+        assertTrue(info.summary().contains("接続OK"))
+
+        val request = server.takeRequest()
+        assertEquals("/key", request.path)
+        assertEquals("Bearer test-key", request.getHeader("Authorization"))
+    }
+
+    @Test
+    fun reportsAnExpiredKeyOnTheKeyEndpoint() {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(401)
+                .setBody("""{"error":{"message":"User not found."}}"""),
+        )
+
+        try {
+            OpenRouterClient(server.url("/").toString()).testKey("old-key")
+            fail("Expected OpenRouterException")
+        } catch (error: OpenRouterException) {
+            assertEquals(401, error.statusCode)
+            assertTrue(error.isUnauthorized)
+            assertTrue(error.message!!.contains("新しいキーを発行"))
+        }
+    }
+
+    @Test
     fun extractsJsonFromMarkdownFences() {
         val client = OpenRouterClient()
         val parsed = client.parseResult(

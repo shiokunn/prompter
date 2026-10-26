@@ -28,7 +28,7 @@ object LocalModelSpec {
         "https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm/resolve/" +
             "$REVISION/$FILE_NAME"
     const val LICENSE = "Apache-2.0"
-    const val CACHE_KEY = "local:gemma-4-E2B-v7"
+    const val CACHE_KEY = "local:gemma-4-E2B-v8"
     const val MIN_RAM_BYTES = 8L * 1024 * 1024 * 1024
     const val EXTRA_FREE_BYTES = 1L * 1024 * 1024 * 1024
 
@@ -66,28 +66,36 @@ data class LocalLlmGeneration(
 object LocalLlmPrompt {
     const val PROMPT_BEGIN = "PROMPT_BEGIN"
     const val PROMPT_END = "PROMPT_END"
+    const val MIN_WORDS = 180
+    const val MAX_WORDS = 260
     val SYSTEM_PROMPT = """
         You are an expert prompt writer for PixAI DiT anime image generation.
         Convert the Japanese scene and the provided Danbooru tags into ONE English
         natural-language prompt written in fluent, idiomatic English.
 
         Task:
-        - Expand the input into a vivid, production-ready prompt. Do not merely translate it.
+        - Expand the input into a rich, production-ready prompt. Do not merely translate it.
         - Follow Subject + Action + Scene + Mood + Style.
-        - Write 6 sentences, or 7 only for a multi-panel or two-person scene, for 95 to
-          115 words in total. Every sentence must be 16 to 19 words. Do not exceed 115 words.
+        - Write 8 to 12 sentences, for 180 to 260 words in total. Aim for about 220 words.
         - Use this order:
-          1. Subject and main action.
-          2. Hair, eyes, clothing, and accessories.
-          3. Pose, gaze, and expression.
-          4. Setting and background.
-          5. Lighting and atmosphere.
-          6. Art style and rendering.
+          1. Subject, number of people, and main action.
+          2. Face, hair, eyes, expression, and skin.
+          3. Clothing, accessories, and fabric details.
+          4. Pose, hands, gaze, and body language.
+          5. Setting and background objects.
+          6. Lighting, shadows, and atmosphere.
+          7. Camera angle, framing, and composition.
+          8. Art style, rendering, and finish.
+        - Add concrete visual detail throughout: strands of hair, folds of fabric,
+          reflections, textures, small background objects, and the direction of light.
+        - Vary sentence length; most sentences should be 15 to 25 words. Use commas,
+          semicolons, or periods correctly. Never join two independent clauses with only
+          a comma.
         - Length check: count the words before you finish. If the prompt is shorter than
-          95 words, extend the appearance, pose, setting, and lighting sentences with
-          concrete visual detail. If it is longer than 115 words, remove repeated
-          adjectives. Never return fewer than 95 words, even for a very short input.
-          A short input is not a reason for a short prompt.
+          180 words, extend the appearance, pose, setting, lighting, and background
+          sentences with specific visual detail. If it is longer than 260 words, remove
+          repeated adjectives and redundant clauses. Never return fewer than 180 words,
+          even for a very short input. A short input is not a reason for a short prompt.
         - If the input is simple, expand it with neutral, non-specific ambiance.
           Soft lighting, a simple background, and anime rendering are allowed even when
           the input does not mention them. Do not invent a named character, a copyrighted
@@ -138,10 +146,11 @@ object LocalLlmPrompt {
         appendLine(unmatched.trim().ifBlank { "(none)" })
         appendLine()
         appendLine(
-            "Write 6 or 7 sentences and 95 to 115 words, with 16 to 19 words per " +
-                "sentence. Count the words and expand the setting, lighting, or pose if " +
-                "the prompt is under 95 words. Keep every stated color and never guess a " +
-                "color that is not in the input. Use fluent English, then write the tags.",
+            "Write 8 to 12 sentences and 180 to 260 words, aiming for about 220 words. " +
+                "Count the words and expand the appearance, pose, setting, lighting, or " +
+                "background if the prompt is under 180 words. Keep every stated color and " +
+                "never guess a color that is not in the input. Vary sentence length and use " +
+                "correct punctuation. Then write the tags.",
         )
     }
 
@@ -288,7 +297,7 @@ class LocalLlmEngine(context: Context) : AutoCloseable {
                         temperature = 0.3,
                         seed = 42,
                     ),
-                    maxOutputToken = 768,
+                    maxOutputToken = 1024,
                     thinkingConfig = ThinkingConfig(
                         enableThinking = false,
                         thinkingTokenBudget = 0,

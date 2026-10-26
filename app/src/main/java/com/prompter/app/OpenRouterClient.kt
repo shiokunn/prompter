@@ -4,6 +4,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
+import java.util.Locale
 
 data class AiPromptResult(
     val pixaiPrompt: String,
@@ -22,6 +23,9 @@ class OpenRouterException(
                     responseBody.contains(it, ignoreCase = true)
             }
 
+    val isUnauthorized: Boolean
+        get() = statusCode == 401
+
     private companion object {
         val RETRY_HINTS = listOf(
             "json_schema",
@@ -30,6 +34,21 @@ class OpenRouterException(
             "not supported",
             "unsupported",
         )
+    }
+}
+
+/** Result of a lightweight GET /key call used by the settings screen. */
+data class OpenRouterKeyInfo(
+    val label: String?,
+    val usage: Double?,
+    val limit: Double?,
+    val isFreeTier: Boolean?,
+) {
+    fun summary(): String = buildString {
+        append("接続OK")
+        isFreeTier?.let { append(if (it) "（無料枠）" else "（有料枠）") }
+        usage?.let { append(" / 使用量 $${String.format(Locale.US, "%.2f", it)}") }
+        limit?.let { append(" / 上限 $${String.format(Locale.US, "%.2f", it)}") }
     }
 }
 
@@ -61,6 +80,51 @@ class OpenRouterClient(
             requestAndParse(apiKey, model, system, user, useJsonSchema = false)
         }
     }
+
+    /** Validates an API key without generating tokens. */
+    fun testKey(apiKey: String): OpenRouterKeyInfo {
+        val endpoint = AiDefaults.normalizeBaseUrl(baseUrl) + "/key"
+        val connection = URL(endpoint).openConnection() as HttpURLConnection
+        try {
+            connection.requestMethod = "GET"
+            connection.connectTimeout = 20_000
+            connection.readTimeout = 30_000
+            connection.setRequestProperty("Authorization", "Bearer $apiKey")
+            connection.setRequestProperty("Accept", "application/json")
+            connection.setRequestProperty(
+                "HTTP-Referer",
+                "https://github.com/shiokunn/prompter",
+            )
+            connection.setRequestProperty("X-Title", "Prompter")
+
+            val status = connection.responseCode
+            val stream = if (status in 200..299) connection.inputStream else connection.errorStream
+            val body = stream?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }.orEmpty()
+            if (status !in 200..299) {
+                throw OpenRouterException(
+                    message = errorMessage(status, body),
+                    statusCode = status,
+                    responseBody = body,
+                )
+            }
+            val data = JSONObject(body).optJSONObject("data") ?: JSONObject()
+            return OpenRouterKeyInfo(
+                label = data.optString("label").takeIf { it.isNotBlank() },
+                usage = data.optNullableDouble("usage"),
+                limit = data.optNullableDouble("limit"),
+                isFreeTier = if (data.has("is_free_tier") && !data.isNull("is_free_tier")) {
+                    data.optBoolean("is_free_tier")
+                } else {
+                    null
+                },
+            )
+        } finally {
+            connection.disconnect()
+        }
+    }
+
+    private fun JSONObject.optNullableDouble(name: String): Double? =
+        if (has(name) && !isNull(name)) optDouble(name) else null
 
     private fun requestAndParse(
         apiKey: String,
@@ -249,10 +313,10 @@ class OpenRouterClient(
             ""
         }
         val base = when (status) {
-            401 -> "APIキーが無効です。設定を確認してください。"
+            401 -> "APIキーが無効です。OpenRouterで新しいキーを発行してください。"
             402 -> "OpenRouterのクレジットが不足しています。"
             403 -> "このモデルへのアクセスが拒否されました。"
-            404 -> "APIまたはモデルが見つかりません。設定を確認してください。"
+            404 -> "モデルが見つかりません。設定のモデルIDを確認してください。"
             429 -> "レート制限に達しました。少し待って再試行してください。"
             in 500..599 -> "OpenRouter側でエラーが発生しました。時間をおいて再試行してください。"
             else -> "OpenRouter APIエラー (HTTP $status)"

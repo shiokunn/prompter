@@ -174,13 +174,12 @@ class LocalLlmPromptTest {
     @Test
     fun systemPromptRequiresExpansionRatherThanTranslation() {
         assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("Do not merely translate"))
-        assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("115 words in total"))
-        assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("16 to 19 words"))
-        assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("6 sentences, or 7"))
-        assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("Do not exceed 115 words"))
-        assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("Never return fewer than 95 words"))
-        assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("Setting and background"))
-        assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("Art style and rendering"))
+        assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("180 to 260 words"))
+        assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("15 to 25 words"))
+        assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("8 to 12 sentences"))
+        assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("Never return fewer than 180 words"))
+        assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("Setting and background objects"))
+        assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("Art style, rendering, and finish"))
     }
 
     @Test
@@ -208,8 +207,9 @@ class LocalLlmPromptTest {
             unmatched = "",
         )
 
-        assertTrue(prompt.contains("95 to 115 words"))
-        assertTrue(prompt.contains("16 to 19 words"))
+        assertTrue(prompt.contains("180 to 260 words"))
+        assertTrue(prompt.contains("8 to 12 sentences"))
+        assertTrue(prompt.contains("Vary sentence length"))
         assertTrue(prompt.contains("Keep every stated color"))
         assertTrue(prompt.contains("never guess a color", ignoreCase = true))
     }
@@ -258,7 +258,7 @@ class LocalLlmPromptTest {
 
     @Test
     fun promptVersionIsBumpedWhenExpansionRulesChange() {
-        assertEquals("local:gemma-4-E2B-v7", LocalModelSpec.CACHE_KEY)
+        assertEquals("local:gemma-4-E2B-v8", LocalModelSpec.CACHE_KEY)
     }
 
     @Test

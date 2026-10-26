@@ -1,24 +1,29 @@
 package com.prompter.app
 
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Card
-import androidx.compose.material3.FilterChip
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import java.util.Locale
 
-@OptIn(ExperimentalLayoutApi::class)
+/**
+ * Compact tag editor shown only in tag-output mode. Tapping the weight pill
+ * cycles 1.0 -> 1.2 -> 1.4; the arrows reorder and the cross removes.
+ */
 @Composable
 fun TagEditor(
     tags: List<EditableTag>,
@@ -27,68 +32,81 @@ fun TagEditor(
     onMove: (Int, Int) -> Unit,
     onRemove: (Int) -> Unit,
 ) {
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text("タグ編集", style = MaterialTheme.typography.titleMedium)
-            Text(
-                "チップをタップすると強調（1.2 → 1.4 → 1.0）。↑↓で並び替え、×で削除。重みはタグ出力に反映されます。チップ下の日本語は辞書の意味、辞書にない場合はML Kitの機械訳です。",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 4.dp),
-            )
-            FlowRow(
-                modifier = Modifier.padding(top = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
+    Column(modifier = Modifier.fillMaxWidth()) {
+        tags.forEachIndexed { index, editable ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 7.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                tags.forEachIndexed { index, editable ->
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        FilterChip(
-                            selected = editable.weight > 1.0f,
-                            onClick = { onCycleWeight(index) },
-                            label = {
-                                Column {
-                                    Text(
-                                        if (editable.weight > 1.0f) {
-                                            "${editable.tag}  ${editable.weight}"
-                                        } else {
-                                            editable.tag
-                                        },
-                                    )
-                                    meanings[editable.tag]?.let { meaning ->
-                                        Text(
-                                            text = meaning,
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            maxLines = 2,
-                                        )
-                                    }
-                                }
-                            },
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = editable.tag,
+                        style = MaterialTheme.typography.labelLarge.copy(
+                            fontFamily = FontFamily.Monospace,
+                        ),
+                        color = Ink,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    meanings[editable.tag]?.takeIf { it.isNotBlank() }?.let { meaning ->
+                        Text(
+                            text = meaning,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MutedInk,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
                         )
-                        TextButton(
-                            onClick = { onMove(index, -1) },
-                            enabled = index > 0,
-                            contentPadding = PaddingValues(horizontal = 4.dp),
-                        ) {
-                            Text("↑")
-                        }
-                        TextButton(
-                            onClick = { onMove(index, 1) },
-                            enabled = index < tags.lastIndex,
-                            contentPadding = PaddingValues(horizontal = 4.dp),
-                        ) {
-                            Text("↓")
-                        }
-                        TextButton(
-                            onClick = { onRemove(index) },
-                            contentPadding = PaddingValues(horizontal = 4.dp),
-                        ) {
-                            Text("×")
-                        }
                     }
                 }
+                WeightPill(
+                    weight = editable.weight,
+                    onClick = { onCycleWeight(index) },
+                )
+                MiniAction(
+                    label = "↑",
+                    onClick = { onMove(index, -1) },
+                    enabled = index > 0,
+                )
+                MiniAction(
+                    label = "↓",
+                    onClick = { onMove(index, 1) },
+                    enabled = index < tags.lastIndex,
+                )
+                MiniAction(
+                    label = "×",
+                    onClick = { onRemove(index) },
+                )
+            }
+            if (index != tags.lastIndex) {
+                HorizontalDivider(thickness = 1.dp, color = Hairline)
             }
         }
+    }
+}
+
+@Composable
+private fun WeightPill(weight: Float, onClick: () -> Unit) {
+    val emphasized = weight > 1.0f
+    Surface(
+        modifier = Modifier
+            .clip(RoundedCornerShape(6.dp))
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(6.dp),
+        color = if (emphasized) TerracottaSoft else CardCream,
+        border = BorderStroke(
+            1.dp,
+            if (emphasized) Terracotta.copy(alpha = 0.45f) else Hairline,
+        ),
+    ) {
+        Text(
+            text = String.format(Locale.US, "%.1f", weight),
+            modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp),
+            style = MaterialTheme.typography.labelMedium.copy(
+                fontFamily = FontFamily.Monospace,
+            ),
+            color = if (emphasized) Terracotta else MutedInk,
+        )
     }
 }

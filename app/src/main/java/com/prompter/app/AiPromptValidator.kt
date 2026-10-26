@@ -16,6 +16,8 @@ object AiPromptValidator {
 
     fun validate(
         result: AiPromptResult,
+        minWords: Int = MIN_WORDS,
+        maxWords: Int = MAX_WORDS,
         isKnownTag: (String) -> Boolean,
     ): AiValidation {
         val prompt = result.pixaiPrompt.trim()
@@ -39,7 +41,7 @@ object AiPromptValidator {
             tags = valid,
             removedTags = removed,
             wordCount = words,
-            wordCountOk = words in MIN_WORDS..MAX_WORDS,
+            wordCountOk = words in minWords..maxWords,
         )
     }
 

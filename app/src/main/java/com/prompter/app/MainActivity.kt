@@ -7,34 +7,37 @@ import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
-import androidx.compose.material3.AssistChip
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -47,8 +50,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -60,9 +65,8 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            val dark = isSystemInDarkTheme()
-            MaterialTheme(colorScheme = if (dark) darkColorScheme() else lightColorScheme()) {
-                Surface(modifier = Modifier.fillMaxSize()) {
+            PrompterTheme {
+                Surface(color = Paper, modifier = Modifier.fillMaxSize()) {
                     PrompterApp()
                 }
             }
@@ -72,11 +76,10 @@ class MainActivity : ComponentActivity() {
 
 private enum class OutputMode(val label: String) {
     BOTH("両方"),
-    PIXAI("PixAI自然文"),
-    TAGS("Danbooruタグ"),
+    PIXAI("自然文"),
+    TAGS("タグ"),
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun PrompterApp() {
     val context = LocalContext.current
@@ -392,6 +395,15 @@ private fun PrompterApp() {
         }
     }
 
+    suspend fun testOpenRouterConnection(apiKey: String, baseUrl: String): String {
+        val settings = aiSettings ?: throw OpenRouterException("AI設定を読み込めませんでした。")
+        val key = apiKey.trim().ifBlank { settings.getApiKey().orEmpty().trim() }
+        if (key.isBlank()) throw OpenRouterException("APIキーが入力されていません。")
+        return withContext(Dispatchers.IO) {
+            OpenRouterClient(baseUrl).testKey(key).summary()
+        }
+    }
+
     fun saveAiSettings(
         apiKey: String,
         model: String,
@@ -594,7 +606,22 @@ private fun PrompterApp() {
                     withContext(Dispatchers.IO) { cache.put(cacheKey, aiResult) }
                 }
 
-                val validation = AiPromptValidator.validate(aiResult) { tag ->
+                val local = backend == AiBackend.LOCAL
+                val minWords = if (local) {
+                    LocalLlmPrompt.MIN_WORDS
+                } else {
+                    AiPromptValidator.MIN_WORDS
+                }
+                val maxWords = if (local) {
+                    LocalLlmPrompt.MAX_WORDS
+                } else {
+                    AiPromptValidator.MAX_WORDS
+                }
+                val validation = AiPromptValidator.validate(
+                    result = aiResult,
+                    minWords = minWords,
+                    maxWords = maxWords,
+                ) { tag ->
                     currentEngine.isKnownTag(tag)
                 }
                 if (validation.prompt.isBlank()) {
@@ -628,7 +655,7 @@ private fun PrompterApp() {
                     )
                     append(" / ${validation.wordCount}語")
                     if (!validation.wordCountOk) {
-                        append("（目標80〜150語）")
+                        append("（目標${minWords}〜${maxWords}語）")
                     }
                     if (backend == AiBackend.LOCAL && !fromCache) {
                         append(" / 生成${formatDuration(generateMillis)}")
@@ -731,6 +758,7 @@ private fun PrompterApp() {
             onBack = { showSettings = false },
             onSave = ::saveAiSettings,
             onDeleteKey = ::deleteAiKey,
+            onTestConnection = ::testOpenRouterConnection,
             onDownloadTranslation = ::downloadTranslationModels,
             onDownloadLocalModel = ::downloadLocalModel,
             onCancelLocalModelDownload = ::cancelLocalModelDownload,
@@ -741,228 +769,187 @@ private fun PrompterApp() {
         return
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Column {
-                        Text("Prompter", fontWeight = FontWeight.SemiBold)
-                        Text(
-                            "日本語 → PixAI DiT / Danbooru tags",
-                            style = MaterialTheme.typography.labelSmall,
-                        )
-                    }
-                },
-                actions = {
-                    TextButton(onClick = { showSettings = true }) {
-                        Text("設定")
-                    }
-                    TextButton(onClick = { showHistory = true }) {
-                        Text("履歴")
-                    }
-                },
-            )
-        },
-    ) { padding ->
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Paper)
+            .imePadding(),
+    ) {
+        ScreenHeader(
+            title = "Prompter",
+            actions = {
+                QuietAction("履歴") { showHistory = true }
+                QuietAction("設定") { showSettings = true }
+            },
+        )
+
         LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .imePadding()
-                .padding(horizontal = 16.dp),
-            contentPadding = PaddingValues(vertical = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(
+                start = 20.dp,
+                end = 20.dp,
+                top = 4.dp,
+                bottom = 40.dp,
+            ),
+            verticalArrangement = Arrangement.spacedBy(22.dp),
         ) {
             item {
-                IntroCard()
-            }
-
-            item {
-                OutlinedTextField(
-                    value = input,
-                    onValueChange = { input = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text("日本語の情景") },
-                    placeholder = {
-                        Text("例: 長い黒髪の少女が青いドレスを着て、椅子に座っている")
-                    },
-                    minLines = 4,
-                    maxLines = 8,
-                )
-            }
-
-            item {
-                ExampleChips(
-                    onPick = {
-                        input = it
-                        result = null
-                        editableTags = emptyList()
-                        currentHistoryId = null
-                        naturalPromptOverride = null
-                        translatedUnmatched = null
-                        translationNotice = null
-                        aiError = null
-                        aiNotice = null
-                        error = null
-                    },
-                )
-            }
-
-            item {
-                ModeRow(mode = mode, onMode = { modeName = it.name })
-            }
-
-            item {
-                Button(
-                    onClick = ::convert,
-                    enabled = input.isNotBlank() && engine != null && !loading && !aiLoading,
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text(if (loading) "変換中…" else "変換する")
+                Column {
+                    Text("情景を、", style = MaterialTheme.typography.displaySmall)
+                    Text("ことばに。", style = MaterialTheme.typography.displaySmall)
                 }
             }
 
-            if (loading) {
-                item {
-                    Row(
+            item {
+                Column {
+                    EditorialLabel("情景")
+                    Spacer(Modifier.height(10.dp))
+                    OutlinedTextField(
+                        value = input,
+                        onValueChange = { input = it },
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        CircularProgressIndicator(modifier = Modifier.padding(8.dp))
-                    }
+                        placeholder = {
+                            Text(
+                                "長い黒髪の少女が、青いドレスで椅子に座っている",
+                                style = MaterialTheme.typography.bodyLarge,
+                            )
+                        },
+                        textStyle = MaterialTheme.typography.bodyLarge,
+                        minLines = 5,
+                        maxLines = 10,
+                        shape = RoundedCornerShape(14.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = Ink,
+                            unfocusedBorderColor = Hairline,
+                            focusedContainerColor = CardCream,
+                            unfocusedContainerColor = CardCream,
+                            cursorColor = Terracotta,
+                            focusedPlaceholderColor = MutedInk.copy(alpha = 0.6f),
+                            unfocusedPlaceholderColor = MutedInk.copy(alpha = 0.6f),
+                        ),
+                    )
+                    Spacer(Modifier.height(10.dp))
+                    ExampleRow(
+                        onPick = {
+                            input = it
+                            result = null
+                            editableTags = emptyList()
+                            currentHistoryId = null
+                            naturalPromptOverride = null
+                            translatedUnmatched = null
+                            translationNotice = null
+                            aiError = null
+                            aiNotice = null
+                            error = null
+                        },
+                    )
+                }
+            }
+
+            item {
+                Column {
+                    EditorialLabel("形式")
+                    Spacer(Modifier.height(10.dp))
+                    SegmentedControl(
+                        options = OutputMode.entries,
+                        selected = mode,
+                        onSelect = { modeName = it.name },
+                        label = { it.label },
+                    )
+                    Spacer(Modifier.height(14.dp))
+                    PrimaryAction(
+                        text = if (loading) "変換中…" else "変換する",
+                        onClick = ::convert,
+                        enabled = input.isNotBlank() && engine != null && !aiLoading,
+                        loading = loading,
+                    )
                 }
             }
 
             error?.let { message ->
                 item {
-                    ErrorCard(message)
+                    Text(
+                        text = message,
+                        color = ErrorRed,
+                        style = MaterialTheme.typography.bodySmall,
+                    )
                 }
             }
 
             result?.let { res ->
                 val hasAiPrompt = !naturalPromptOverride.isNullOrBlank()
                 val hasTranslatedContext = !translatedUnmatched.isNullOrBlank()
-                when {
-                    res.tags.isEmpty() && !hasAiPrompt && !hasTranslatedContext -> {
-                        item { NoMatchCard(res.unmatched) }
-                        item {
-                            AiCard(
-                                backend = aiBackend,
-                                hasApiKey = apiKeyConfigured,
-                                model = aiModel,
-                                localModelStatus = localModelStatus,
-                                loading = aiLoading,
-                                error = aiError,
-                                notice = aiNotice,
-                                enabled = !aiLoading,
-                                onOpenSettings = { showSettings = true },
-                                onRefine = ::refineWithAi,
-                            )
-                        }
-                        if (res.unmatched.isNotBlank() && !translationReady) {
-                            item {
-                                TranslationSetupCard(
-                                    downloading = translationDownloading,
-                                    error = translationError,
-                                    onOpenSettings = { showSettings = true },
-                                )
-                            }
-                        }
+                val hasContent = res.tags.isNotEmpty() ||
+                    editableTags.isNotEmpty() ||
+                    hasAiPrompt ||
+                    hasTranslatedContext
+
+                if (!hasContent) {
+                    item {
+                        EmptyResult(unmatched = res.unmatched)
                     }
-                    editableTags.isEmpty() && !hasAiPrompt && !hasTranslatedContext -> {
-                        item { EmptyTagsCard() }
+                } else {
+                    if (mode != OutputMode.TAGS) {
                         item {
-                            AiCard(
-                                backend = aiBackend,
-                                hasApiKey = apiKeyConfigured,
-                                model = aiModel,
-                                localModelStatus = localModelStatus,
-                                loading = aiLoading,
-                                error = aiError,
-                                notice = aiNotice,
-                                enabled = !aiLoading,
-                                onOpenSettings = { showSettings = true },
-                                onRefine = ::refineWithAi,
+                            NaturalPromptBlock(
+                                text = editedPixaiPrompt,
+                                onCopy = { copyText(context, "自然文", editedPixaiPrompt) },
                             )
                         }
                     }
-                    else -> {
-                        val emphasized = editableTags.count { it.weight > 1.0f }
-                        val subtitle = when {
-                            editableTags.isEmpty() -> "ML Kit翻訳 / タグなし"
-                            emphasized > 0 -> "${editableTags.size} tags / $emphasized emphasized"
-                            else -> "${editableTags.size} tags"
-                        }
-                        if (mode != OutputMode.TAGS) {
-                            item {
-                                OutputCard(
-                                    title = "PixAI DiT 自然文",
-                                    subtitle = subtitle,
-                                    text = editedPixaiPrompt,
-                                )
-                            }
-                        }
-                        if (mode != OutputMode.PIXAI && editableTags.isNotEmpty()) {
-                            item {
-                                OutputCard(
-                                    title = "Danbooru タグ",
-                                    subtitle = subtitle,
-                                    text = editedTagText,
-                                )
-                            }
-                        }
-                        if (editableTags.isNotEmpty()) {
-                            item {
-                                TagEditor(
-                                    tags = editableTags,
-                                    meanings = tagMeanings,
-                                    onCycleWeight = ::cycleWeight,
-                                    onMove = ::moveTag,
-                                    onRemove = ::removeTag,
-                                )
-                            }
-                        } else {
-                            item { AiNoTagsCard() }
-                        }
+                    if (mode != OutputMode.PIXAI) {
                         item {
-                            AiCard(
-                                backend = aiBackend,
-                                hasApiKey = apiKeyConfigured,
-                                model = aiModel,
-                                localModelStatus = localModelStatus,
-                                loading = aiLoading,
-                                error = aiError,
-                                notice = aiNotice,
-                                enabled = !aiLoading,
-                                onOpenSettings = { showSettings = true },
-                                onRefine = ::refineWithAi,
+                            TagBlock(
+                                tags = editableTags,
+                                onCopy = { copyText(context, "タグ", editedTagText) },
                             )
                         }
-                        if (res.unmatched.isNotBlank()) {
+                        if (mode == OutputMode.TAGS && editableTags.isNotEmpty()) {
                             item {
-                                UnmatchedCard(
-                                    unmatched = res.unmatched,
-                                    translated = translatedUnmatched,
-                                    notice = translationNotice,
-                                )
-                            }
-                            if (!translationReady && !hasAiPrompt) {
-                                item {
-                                    TranslationSetupCard(
-                                        downloading = translationDownloading,
-                                        error = translationError,
-                                        onOpenSettings = { showSettings = true },
+                                Column {
+                                    EditorialLabel("タグ編集")
+                                    Spacer(Modifier.height(4.dp))
+                                    TagEditor(
+                                        tags = editableTags,
+                                        meanings = tagMeanings,
+                                        onCycleWeight = ::cycleWeight,
+                                        onMove = ::moveTag,
+                                        onRemove = ::removeTag,
                                     )
                                 }
                             }
                         }
                     }
                 }
-            }
 
-            item {
-                Footer(engine)
+                item {
+                    AiRefineBlock(
+                        backend = aiBackend,
+                        hasApiKey = apiKeyConfigured,
+                        model = aiModel,
+                        localReady = localModelStatus.isReady,
+                        localState = localModelStatus.state,
+                        loading = aiLoading,
+                        error = aiError,
+                        notice = aiNotice,
+                        onOpenSettings = { showSettings = true },
+                        onRefine = ::refineWithAi,
+                    )
+                }
+
+                if (res.unmatched.isNotBlank() && !hasAiPrompt) {
+                    item {
+                        UnmatchedBlock(
+                            unmatched = res.unmatched,
+                            translated = translatedUnmatched,
+                            notice = translationNotice,
+                            translationReady = translationReady,
+                            translationDownloading = translationDownloading,
+                            translationError = translationError,
+                            onOpenSettings = { showSettings = true },
+                        )
+                    }
+                }
             }
         }
     }
@@ -972,25 +959,11 @@ private fun formatDuration(millis: Long): String =
     String.format(Locale.US, "%.1f秒", millis / 1000.0)
 
 @Composable
-private fun IntroCard() {
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text("オフラインで下書き", style = MaterialTheme.typography.titleMedium)
-            Text(
-                "日本語の情景を端末内の辞書でタグに変換し、PixAI DiT 向けの英語プロンプトを組み立てます。ネット接続は不要です。",
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.padding(top = 6.dp),
-            )
-        }
-    }
-}
-
-@Composable
-private fun ExampleChips(onPick: (String) -> Unit) {
+private fun ExampleRow(onPick: (String) -> Unit) {
     val examples = listOf(
-        "長い黒髪の少女が青いドレスを着て、椅子に座っている",
-        "白いドレスを着た少女が野原に立って、こちらを見ている",
-        "二人の少女がベッドに座って、軽く微笑んでいる",
+        "黒髪の少女" to "長い黒髪の少女が青いドレスを着て、椅子に座っている",
+        "白いドレス" to "白いドレスを着た少女が野原に立って、こちらを見ている",
+        "二人の少女" to "二人の少女がベッドに座って、軽く微笑んでいる",
     )
     Row(
         modifier = Modifier
@@ -998,55 +971,20 @@ private fun ExampleChips(onPick: (String) -> Unit) {
             .horizontalScroll(rememberScrollState()),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        examples.forEach { example ->
-            AssistChip(
-                onClick = { onPick(example) },
-                label = { Text(example.take(18) + "…", style = MaterialTheme.typography.labelSmall) },
-            )
-        }
-    }
-}
-
-@Composable
-private fun ModeRow(mode: OutputMode, onMode: (OutputMode) -> Unit) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .horizontalScroll(rememberScrollState()),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        OutputMode.entries.forEach { entry ->
-            FilterChip(
-                selected = mode == entry,
-                onClick = { onMode(entry) },
-                label = { Text(entry.label) },
-            )
-        }
-    }
-}
-
-@Composable
-private fun OutputCard(title: String, subtitle: String, text: String) {
-    val context = LocalContext.current
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
+        examples.forEach { (label, full) ->
+            Surface(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(20.dp))
+                    .clickable { onPick(full) },
+                shape = RoundedCornerShape(20.dp),
+                color = CardCream,
+                border = BorderStroke(1.dp, Hairline),
             ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(title, style = MaterialTheme.typography.titleMedium)
-                    Text(subtitle, style = MaterialTheme.typography.labelSmall)
-                }
-                TextButton(onClick = { copyText(context, title, text) }) {
-                    Text("コピー")
-                }
-            }
-            SelectionContainer {
                 Text(
-                    text = text,
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(top = 10.dp),
+                    text = label,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MutedInk,
                 )
             }
         }
@@ -1054,283 +992,273 @@ private fun OutputCard(title: String, subtitle: String, text: String) {
 }
 
 @Composable
-private fun AiNoTagsCard() {
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text("有効なタグなし", style = MaterialTheme.typography.titleMedium)
+private fun EmptyResult(unmatched: String) {
+    PaperCard {
+        Text("辞書に一致しませんでした", style = MaterialTheme.typography.titleMedium)
+        Spacer(Modifier.height(6.dp))
+        Text(
+            "髪色・服装・ポーズ・場所を、もう少し具体的に。",
+            style = MaterialTheme.typography.bodySmall,
+            color = MutedInk,
+        )
+        if (unmatched.isNotBlank()) {
+            Spacer(Modifier.height(8.dp))
             Text(
-                "辞書に存在するタグがありません。自然文を確認するか、入力文を変えて再試行してください。",
+                "辞書外: $unmatched",
                 style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.padding(top = 4.dp),
+                color = MutedInk,
             )
         }
     }
 }
 
 @Composable
-private fun AiCard(
+private fun NaturalPromptBlock(text: String, onCopy: () -> Unit) {
+    Column {
+        EditorialLabel(
+            text = "自然文",
+            trailing = { QuietAction("コピー", onCopy) },
+        )
+        Spacer(Modifier.height(10.dp))
+        SelectionContainer {
+            Text(
+                text = text,
+                style = MaterialTheme.typography.bodyLarge,
+                color = Ink,
+            )
+        }
+        Spacer(Modifier.height(6.dp))
+        Text(
+            text = "${AiPromptValidator.countWords(text)} words",
+            style = MaterialTheme.typography.labelSmall,
+            color = MutedInk,
+        )
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun TagBlock(tags: List<EditableTag>, onCopy: () -> Unit) {
+    Column {
+        EditorialLabel(
+            text = "タグ",
+            trailing = { QuietAction("コピー", onCopy) },
+        )
+        Spacer(Modifier.height(10.dp))
+        if (tags.isEmpty()) {
+            Text(
+                "有効なタグがありません",
+                style = MaterialTheme.typography.bodySmall,
+                color = MutedInk,
+            )
+        } else {
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                tags.forEach { tag ->
+                    TagPill(tag)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TagPill(tag: EditableTag) {
+    Surface(
+        shape = RoundedCornerShape(7.dp),
+        color = CardCream,
+        border = BorderStroke(1.dp, Hairline),
+    ) {
+        Text(
+            text = if (tag.weight > 1.0f) {
+                "${tag.tag} ×${String.format(Locale.US, "%.1f", tag.weight)}"
+            } else {
+                tag.tag
+            },
+            modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp),
+            style = MaterialTheme.typography.labelMedium.copy(
+                fontFamily = FontFamily.Monospace,
+            ),
+            color = Ink,
+        )
+    }
+}
+
+@Composable
+private fun AiRefineBlock(
     backend: AiBackend,
     hasApiKey: Boolean,
     model: String,
-    localModelStatus: LocalModelStatus,
+    localReady: Boolean,
+    localState: LocalModelState,
     loading: Boolean,
     error: String?,
     notice: String?,
-    enabled: Boolean,
     onOpenSettings: () -> Unit,
     onRefine: () -> Unit,
 ) {
     val local = backend == AiBackend.LOCAL
-    val localStateLabel = when (localModelStatus.state) {
-        LocalModelState.NOT_DOWNLOADED -> "未ダウンロード"
+    val localStateLabel = when (localState) {
+        LocalModelState.NOT_DOWNLOADED -> "モデル未準備"
         LocalModelState.DOWNLOADING -> "ダウンロード中"
         LocalModelState.NEEDS_VERIFICATION -> "検証待ち"
         LocalModelState.VERIFYING -> "検証中"
-        LocalModelState.READY -> "準備完了"
-        LocalModelState.ERROR -> "エラー"
+        LocalModelState.READY -> "端末内 / CPU"
+        LocalModelState.ERROR -> "モデルエラー"
     }
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                if (local) "ローカルLLM補完（任意）" else "AI補完（任意）",
-                style = MaterialTheme.typography.titleMedium,
-            )
-            Text(
-                if (local) {
-                    "オフライン結果を端末内のGemma 4 E2Bで整えます。機内モードでも使えます。初回はモデルの読み込みに時間がかかります。"
-                } else {
-                    "オフライン結果をOpenRouterのモデルで整えます。"
-                },
-                style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.padding(top = 4.dp),
-            )
+    val title = if (local) LocalModelSpec.DISPLAY_NAME else "OpenRouter"
+    val status = when {
+        local -> localStateLabel
+        !hasApiKey -> "APIキー未設定"
+        else -> model
+    }
+
+    PaperCard {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = Ink,
+                )
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    text = status,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MutedInk,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            Spacer(Modifier.width(12.dp))
             when {
-                local && !localModelStatus.isReady -> {
-                    Text(
-                        "モデルの状態: $localStateLabel。設定から約2.59GBのモデルを準備してください。",
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.padding(top = 8.dp),
-                    )
-                    localModelStatus.error?.let { message ->
-                        Text(
-                            text = message,
-                            color = MaterialTheme.colorScheme.error,
-                            style = MaterialTheme.typography.bodySmall,
-                            modifier = Modifier.padding(top = 6.dp),
-                        )
-                    }
-                    TextButton(
+                local && !localReady -> {
+                    OutlinedButton(
                         onClick = onOpenSettings,
-                        modifier = Modifier.padding(top = 4.dp),
+                        shape = RoundedCornerShape(10.dp),
+                        border = BorderStroke(1.dp, Ink),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Ink),
                     ) {
-                        Text("AI設定を開く")
+                        Text("準備", style = MaterialTheme.typography.labelLarge)
                     }
                 }
-
-                local -> {
-                    Text(
-                        "モデル: ${LocalModelSpec.DISPLAY_NAME} / CPU",
-                        style = MaterialTheme.typography.labelSmall,
-                        modifier = Modifier.padding(top = 8.dp),
-                    )
-                    Button(
-                        onClick = onRefine,
-                        enabled = enabled && !loading,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 8.dp),
-                    ) {
-                        Text(
-                            if (loading) {
-                                "ローカルLLMで整え中…"
-                            } else {
-                                "ローカルLLMで整える"
-                            },
-                        )
-                    }
-                }
-
-                !hasApiKey -> {
-                    Text(
-                        "OpenRouter APIキーを設定すると使えます。キーは端末内で暗号化して保存します。",
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.padding(top = 8.dp),
-                    )
-                    TextButton(
+                !local && !hasApiKey -> {
+                    OutlinedButton(
                         onClick = onOpenSettings,
-                        modifier = Modifier.padding(top = 4.dp),
+                        shape = RoundedCornerShape(10.dp),
+                        border = BorderStroke(1.dp, Ink),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Ink),
                     ) {
-                        Text("AI設定を開く")
+                        Text("キー設定", style = MaterialTheme.typography.labelLarge)
                     }
                 }
-
                 else -> {
-                    Text(
-                        "モデル: $model",
-                        style = MaterialTheme.typography.labelSmall,
-                        modifier = Modifier.padding(top = 8.dp),
-                    )
-                    Button(
+                    OutlinedButton(
                         onClick = onRefine,
-                        enabled = enabled && !loading,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 8.dp),
+                        enabled = !loading,
+                        shape = RoundedCornerShape(10.dp),
+                        border = BorderStroke(1.dp, Ink),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Ink),
+                        contentPadding = PaddingValues(horizontal = 16.dp),
                     ) {
-                        Text(if (loading) "AIで整え中…" else "AIで整える")
+                        if (loading) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(14.dp),
+                                strokeWidth = 2.dp,
+                                color = Ink,
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text("整え中", style = MaterialTheme.typography.labelLarge)
+                        } else {
+                            Text("整える", style = MaterialTheme.typography.labelLarge)
+                        }
                     }
                 }
             }
-            if (loading) {
-                CircularProgressIndicator(modifier = Modifier.padding(top = 8.dp))
-            }
-            error?.let {
-                Text(
-                    text = it,
-                    color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.padding(top = 8.dp),
-                )
-            }
-            notice?.let {
-                Text(
-                    text = it,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 8.dp),
-                )
-            }
         }
-    }
-}
-
-@Composable
-private fun ErrorCard(message: String) {
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Text(
-            text = message,
-            color = MaterialTheme.colorScheme.error,
-            style = MaterialTheme.typography.bodyMedium,
-            modifier = Modifier.padding(16.dp),
-        )
-    }
-}
-
-@Composable
-private fun NoMatchCard(unmatched: String) {
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text("辞書に一致するタグがありません", style = MaterialTheme.typography.titleMedium)
-            Text(
-                "髪色・服装・ポーズ・場所など、具体的な言葉を入れてください。",
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.padding(top = 6.dp),
+        if (loading) {
+            Spacer(Modifier.height(10.dp))
+            LinearProgressIndicator(
+                modifier = Modifier.fillMaxWidth(),
+                color = Terracotta,
+                trackColor = PaperDeep,
             )
-            if (unmatched.isNotBlank()) {
-                Text(
-                    "未変換: $unmatched",
-                    style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.padding(top = 8.dp),
-                )
-            }
         }
-    }
-}
-
-@Composable
-private fun EmptyTagsCard() {
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text("タグをすべて削除しました", style = MaterialTheme.typography.titleMedium)
+        error?.let { message ->
+            Spacer(Modifier.height(10.dp))
             Text(
-                "入力文を変えて、もう一度変換してください。",
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.padding(top = 6.dp),
+                text = message,
+                color = ErrorRed,
+                style = MaterialTheme.typography.bodySmall,
+            )
+        }
+        notice?.let { message ->
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = message,
+                color = MutedInk,
+                style = MaterialTheme.typography.labelSmall,
             )
         }
     }
 }
 
 @Composable
-private fun UnmatchedCard(
+private fun UnmatchedBlock(
     unmatched: String,
     translated: String?,
     notice: String?,
-) {
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            Text(
-                text = "辞書外: $unmatched",
-                style = MaterialTheme.typography.bodySmall,
-            )
-            if (!translated.isNullOrBlank()) {
-                Text(
-                    text = "ML Kit翻訳: $translated",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 6.dp),
-                )
-            }
-            if (!notice.isNullOrBlank()) {
-                Text(
-                    text = notice,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 4.dp),
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun TranslationSetupCard(
-    downloading: Boolean,
-    error: String?,
+    translationReady: Boolean,
+    translationDownloading: Boolean,
+    translationError: String?,
     onOpenSettings: () -> Unit,
 ) {
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text("辞書外を翻訳できます", style = MaterialTheme.typography.titleSmall)
+    Column {
+        EditorialLabel("辞書外")
+        Spacer(Modifier.height(8.dp))
+        Text(
+            text = unmatched,
+            style = MaterialTheme.typography.bodySmall,
+            color = MutedInk,
+        )
+        translated?.takeIf { it.isNotBlank() }?.let {
+            Spacer(Modifier.height(4.dp))
             Text(
-                "ML Kitの翻訳モデル（約60MB）をダウンロードすると、辞書にない日本語も英訳して自然文とタグに反映します。",
+                text = "ML Kit: $it",
                 style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.padding(top = 4.dp),
+                color = MutedInk,
             )
-            TextButton(
-                onClick = onOpenSettings,
-                enabled = !downloading,
-                modifier = Modifier.padding(top = 4.dp),
-            ) {
-                Text(if (downloading) "ダウンロード中…" else "設定で翻訳モデルを準備")
-            }
-            error?.let {
-                Text(
-                    text = it,
-                    color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.labelSmall,
-                    modifier = Modifier.padding(top = 4.dp),
+        }
+        notice?.takeIf { it.isNotBlank() }?.let {
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = it,
+                style = MaterialTheme.typography.labelSmall,
+                color = MutedInk,
+            )
+        }
+        if (!translationReady) {
+            Spacer(Modifier.height(4.dp))
+            if (translationDownloading) {
+                LinearProgressIndicator(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = Terracotta,
+                    trackColor = PaperDeep,
                 )
+            } else {
+                QuietAction("翻訳モデルを準備", onOpenSettings)
             }
         }
-    }
-}
-
-@Composable
-private fun Footer(engine: PromptEngine?) {
-    Column(modifier = Modifier.fillMaxWidth()) {
-        Text(
-            text = engine?.let { "オフライン辞書: ${it.tagCount} タグ / ${it.aliasCount} 別名" }
-                ?: "辞書を読み込み中…",
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Text(
-            text = "M1 fresh holdout: Recall 51.9% / Precision 76.2%",
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(top = 2.dp),
-        )
+        translationError?.takeIf { it.isNotBlank() }?.let {
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = it,
+                style = MaterialTheme.typography.bodySmall,
+                color = ErrorRed,
+            )
+        }
     }
 }
 

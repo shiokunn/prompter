@@ -43,6 +43,24 @@ class AiPromptValidatorTest {
     }
 
     @Test
+    fun acceptsLongLocalPromptsUpToTheLocalLimit() {
+        val validation = AiPromptValidator.validate(
+            AiPromptResult("word ".repeat(220).trim(), listOf("1girl")),
+            minWords = LocalLlmPrompt.MIN_WORDS,
+            maxWords = LocalLlmPrompt.MAX_WORDS,
+        ) { it in known }
+        assertEquals(220, validation.wordCount)
+        assertTrue(validation.wordCountOk)
+
+        val shortForLocal = AiPromptValidator.validate(
+            AiPromptResult("word ".repeat(150).trim(), listOf("1girl")),
+            minWords = LocalLlmPrompt.MIN_WORDS,
+            maxWords = LocalLlmPrompt.MAX_WORDS,
+        ) { it in known }
+        assertFalse(shortForLocal.wordCountOk)
+    }
+
+    @Test
     fun keepsAdultTagsWhenTheyExistInTheDictionary() {
         val adultKnown = known + setOf("nude", "nipples")
         val validation = AiPromptValidator.validate(
