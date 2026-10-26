@@ -186,7 +186,8 @@ class LocalLlmPromptTest {
     @Test
     fun systemPromptPinsFluentRewritesForKnownWeakSpots() {
         assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("inner-color"))
-        assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("never write \"mixed with\""))
+        assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("a faint smile"))
+        assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("Never write \"mixed with\""))
         assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("center of her face"))
         assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("never a word-for-word translation"))
         assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("repeat it for each person"))
@@ -215,7 +216,7 @@ class LocalLlmPromptTest {
 
     @Test
     fun promptVersionIsBumpedWhenExpansionRulesChange() {
-        assertEquals("local:gemma-4-E2B-v5", LocalModelSpec.CACHE_KEY)
+        assertEquals("local:gemma-4-E2B-v6", LocalModelSpec.CACHE_KEY)
     }
 
     @Test

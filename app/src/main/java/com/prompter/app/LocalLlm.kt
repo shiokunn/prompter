@@ -28,7 +28,7 @@ object LocalModelSpec {
         "https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm/resolve/" +
             "$REVISION/$FILE_NAME"
     const val LICENSE = "Apache-2.0"
-    const val CACHE_KEY = "local:gemma-4-E2B-v5"
+    const val CACHE_KEY = "local:gemma-4-E2B-v6"
     const val MIN_RAM_BYTES = 8L * 1024 * 1024 * 1024
     const val EXTRA_FREE_BYTES = 1L * 1024 * 1024 * 1024
 
@@ -104,9 +104,10 @@ object LocalLlmPrompt {
         - Write natural English, never a word-for-word translation of the Japanese.
         - Inner-color or two-tone hair: when the input mentions it, write "inner-color
           highlights" or "two-tone hair" using only the color named in the input.
-        - Mixed expression: never write "mixed with" and never place an expression "in the
-          center of her face". Choose the dominant emotion and describe the whole face in
-          one natural clause.
+        - Expression between two states (for example a smile and a neutral face): write
+          only "a faint smile" and do not describe both states. Never write "mixed with",
+          "blend", or "combination" for a face, and never place an expression "in the
+          center of her face".
         - Intimate action: name the action with a direct verb and a clear object, for
           example "she caresses her chest" or "she teases her nipples slowly".
         - Start sentences with different words. Do not begin consecutive sentences with the
