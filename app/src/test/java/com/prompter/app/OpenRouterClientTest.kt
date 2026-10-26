@@ -63,8 +63,8 @@ class OpenRouterClientTest {
         val userPrompt = body.getJSONArray("messages")
             .getJSONObject(1)
             .getString("content")
-        assertTrue(userPrompt.contains("at least 180 words"))
         assertTrue(userPrompt.contains("no upper word limit"))
+        assertTrue(userPrompt.contains("Do not add new furniture"))
         assertEquals(
             "json_schema",
             body.getJSONObject("response_format").getString("type"),

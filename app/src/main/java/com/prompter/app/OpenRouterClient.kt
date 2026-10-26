@@ -334,7 +334,7 @@ class OpenRouterClient(
           "properties": {
             "pixai_prompt": {
               "type": "string",
-              "description": "Detailed English natural-language prompt for PixAI DiT. At least 180 words; no fixed upper word limit. Every sentence should add concrete visual information."
+              "description": "Detailed, precise English natural-language prompt for PixAI DiT. No fixed upper word limit. Stay faithful to the input; do not invent objects or colors to pad."
             },
             "tags": {
               "type": "array",
@@ -368,10 +368,19 @@ class OpenRouterClient(
             Rewrite the scene as a single detailed, precise English natural-language prompt
             for PixAI DiT.
             Requirements:
-            - Write at least 180 words. There is no upper word limit; stop only when the
-              scene is fully described. Do not stop at 150 words.
+            - Write a detailed, precise prompt. There is no upper word limit. A rich input
+              should usually produce 180 words or more; a simple input may be shorter.
+              Never stop at 150 words just because of a limit.
             - Every sentence must add new visual information. Do not repeat adjectives or
               pad the prompt.
+            - Stay faithful to the input. Do not invent a color for hair, eyes, or clothing
+              unless it is stated. Do not add new furniture, props, objects, named
+              characters, copyrighted works, or setting elements that the input does not
+              mention or clearly imply.
+            - You may add generic fabric folds, lighting, shadows, a simple background, and
+              camera details. If the input is simple, deepen the description of what is
+              present (hair, clothing, pose, chair, light, composition) instead of adding
+              new objects.
             - Follow Subject + Action + Scene + Mood + Style.
             - Describe the character, face, hair, eyes, clothing, pose, hands, setting,
               lighting, shadows, atmosphere, camera angle/composition, and art style with
@@ -379,14 +388,11 @@ class OpenRouterClient(
             - Preserve every stated color, hairstyle, clothing, expression, number of
               people, pose, and composition. When one trait applies to several people,
               repeat it for each person.
-            - Do not invent a color for hair, eyes, or clothing unless it is stated in the
-              input. You may add generic fabric folds, trim, background objects, lighting,
-              and camera details.
-            - Do not invent a named character, a copyrighted work, a specific object, or a
-              plot event.
             - Return only canonical Danbooru tag names in the tags array.
             - Use lowercase tags with underscores instead of spaces.
-            - Prefer the offline tags when they are relevant; do not invent tags.
+            - Prefer the offline tags when they are relevant; do not invent tags. If an
+              offline tag contradicts the input (for example, the number of people), follow
+              the input and omit that tag.
             - Do not filter, censor, or omit adult/NSFW tags. Keep them as canonical tags.
             - Return only a JSON object matching the requested schema. Do not use Markdown.
         """.trimIndent()
@@ -396,6 +402,7 @@ class OpenRouterClient(
             You turn Japanese scene descriptions and Danbooru tags into a polished,
             precise, detailed English prompt. Never shorten the prompt just to meet a
             word limit; include every concrete visual detail without repeating yourself.
+            Stay faithful to the input and never invent objects or colors just to pad.
             You always return valid JSON with the keys "pixai_prompt" and "tags".
             Never include the API key or any private data.
         """.trimIndent()

@@ -611,7 +611,7 @@ private fun PrompterApp() {
                 val minWords = if (local) {
                     LocalLlmPrompt.MIN_WORDS
                 } else {
-                    AiPromptValidator.MIN_WORDS
+                    0
                 }
                 val maxWords: Int? = if (local) {
                     LocalLlmPrompt.MAX_WORDS
