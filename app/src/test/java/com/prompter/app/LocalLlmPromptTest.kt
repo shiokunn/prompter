@@ -174,8 +174,9 @@ class LocalLlmPromptTest {
     @Test
     fun systemPromptRequiresExpansionRatherThanTranslation() {
         assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("Do not merely translate"))
-        assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("95 to 120 words"))
-        assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("16 to 20 words"))
+        assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("95 to 115 words"))
+        assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("16 to 19 words"))
+        assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("exactly 6 sentences"))
         assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("Never return fewer than 95 words"))
         assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("Setting and background"))
         assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("Art style and rendering"))
@@ -190,6 +191,13 @@ class LocalLlmPromptTest {
     }
 
     @Test
+    fun systemPromptForbidsInventingColors() {
+        assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("Never add a hair color"))
+        assertFalse(LocalLlmPrompt.SYSTEM_PROMPT.contains("light blue"))
+        assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("using only the color named in the input"))
+    }
+
+    @Test
     fun userPromptRepeatsTheLengthAndFidelityRules() {
         val prompt = LocalLlmPrompt.buildUserPrompt(
             input = "白いドレスを着た少女が野原に立って、こちらを見ている",
@@ -197,14 +205,15 @@ class LocalLlmPromptTest {
             unmatched = "",
         )
 
-        assertTrue(prompt.contains("95 to 120 words"))
-        assertTrue(prompt.contains("at least 16 words per sentence"))
+        assertTrue(prompt.contains("95 to 115 words"))
+        assertTrue(prompt.contains("16 to 19 words"))
         assertTrue(prompt.contains("keep every color and hairstyle", ignoreCase = true))
+        assertTrue(prompt.contains("never invent a color", ignoreCase = true))
     }
 
     @Test
     fun promptVersionIsBumpedWhenExpansionRulesChange() {
-        assertEquals("local:gemma-4-E2B-v3", LocalModelSpec.CACHE_KEY)
+        assertEquals("local:gemma-4-E2B-v4", LocalModelSpec.CACHE_KEY)
     }
 
     @Test
