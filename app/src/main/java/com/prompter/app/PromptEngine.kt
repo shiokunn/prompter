@@ -21,12 +21,17 @@ class PromptEngine(context: Context) {
 
     fun convert(input: String): ConversionResult {
         val conversion = matcher.convert(input)
-        val tagText = conversion.tags.joinToString(", ")
-        val pixai = if (conversion.tags.isEmpty()) "" else PromptComposer.compose(conversion.tags)
+        val tags = FidelityGuard.correctTags(
+            input = input,
+            tags = conversion.tags,
+            isKnownTag = matcher::isKnownTag,
+        ).tags
+        val tagText = tags.joinToString(", ")
+        val pixai = if (tags.isEmpty()) "" else PromptComposer.compose(tags)
         return ConversionResult(
             pixaiPrompt = pixai,
             tagText = tagText,
-            tags = conversion.tags,
+            tags = tags,
             unmatched = conversion.unmatched,
         )
     }

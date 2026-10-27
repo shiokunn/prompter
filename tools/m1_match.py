@@ -361,7 +361,21 @@ class Matcher:
         male_present = "1boy" in tags or bool(tags & MALE_CUES)
         female_context = bool(tags & FEMALE_CUES) or "1girl" in tags
         if not multiple:
-            if re.search(r"二人|2人|ふたり|もう一人|両者", text):
+            person_mentions = len(
+                re.findall(r"少女|女の子|女性|男の子|少年|男性", text)
+            )
+            explicit_two = bool(
+                re.search(r"二人|2人|ふたり|もう一人|両者|複数", text)
+            )
+            split_two = (
+                "右半分" in text
+                and "左半分" in text
+                and person_mentions >= 2
+            )
+            repeated_two = person_mentions >= 2 and any(
+                cue in text for cue in ("それぞれ", "一方", "もう一方")
+            )
+            if explicit_two or split_two or repeated_two:
                 if female_context and not male_present:
                     self._add_inferred(matches, tags, "2girls", 0.7, "two people")
                     self._add_inferred(matches, tags, "multiple_girls", 0.65, "two people")
@@ -371,13 +385,14 @@ class Matcher:
                 if female_context and not male_present:
                     self._add_inferred(matches, tags, "3girls", 0.65, "three people")
                     self._add_inferred(matches, tags, "multiple_girls", 0.6, "three people")
-            elif "それぞれ" in text and "と" in text and female_context and not male_present:
-                # Two named characters are often described with それぞれ
-                # rather than 二人.
-                self._add_inferred(matches, tags, "2girls", 0.6, "それぞれ")
-                self._add_inferred(matches, tags, "multiple_girls", 0.55, "それぞれ")
 
         multiple = tags & MULTIPLE_TAGS
+        if multiple:
+            # A two-girl composition must not keep the single-person tags that
+            # were matched before count inference.
+            for tag in ("1girl", "solo"):
+                tags.discard(tag)
+            matches[:] = [m for m in matches if m.tag not in {"1girl", "solo"}]
         # Gender inference from strong visual cues. Danbooru captions usually
         # use 1girl for a single female subject, even when the character name is
         # the only explicit subject.

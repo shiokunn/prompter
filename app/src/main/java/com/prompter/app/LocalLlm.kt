@@ -28,7 +28,7 @@ object LocalModelSpec {
         "https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm/resolve/" +
             "$REVISION/$FILE_NAME"
     const val LICENSE = "Apache-2.0"
-    const val CACHE_KEY = "local:gemma-4-E2B-v9"
+    const val CACHE_KEY = "local:gemma-4-E2B-v10"
     const val MIN_RAM_BYTES = 8L * 1024 * 1024 * 1024
     const val EXTRA_FREE_BYTES = 1L * 1024 * 1024 * 1024
 
@@ -86,8 +86,9 @@ object LocalLlmPrompt {
           6. Lighting, shadows, and atmosphere.
           7. Camera angle, framing, and composition.
           8. Art style, rendering, and finish.
-        - Add concrete visual detail throughout: strands of hair, folds of fabric,
-          reflections, textures, small background objects, and the direction of light.
+        - Add concrete visual detail only through the stated elements: strands of the
+          stated hair, folds of the stated garment, reflections on stated surfaces, and
+          the direction of the stated light. Do not add new objects to create detail.
         - Vary sentence length; most sentences should be 15 to 25 words. Use commas,
           semicolons, or periods correctly. Never join two independent clauses with only
           a comma.
@@ -96,19 +97,41 @@ object LocalLlmPrompt {
           sentences with specific visual detail. If it is longer than 260 words, remove
           repeated adjectives and redundant clauses. Never return fewer than 180 words,
           even for a very short input. A short input is not a reason for a short prompt.
-        - If the input is simple, expand it with neutral, non-specific ambiance.
-          Soft lighting, a simple background, and anime rendering are allowed even when
-          the input does not mention them. Do not invent a named character, a copyrighted
-          work, a specific object, or a plot event.
-        - Preserve every stated color, hairstyle, garment, expression, and number of
-          people. When one trait applies to several people, repeat it for each person.
-          Never drop a stated color.
-        - If the input states a hair or eye color, keep it in the same phrase as the hair
-          or eyes. If it does not state one, write "her hair" or "her eyes" with no color
-          word. Never guess a color for hair, eyes, or clothing. You may add generic fabric
-          folds, trim, and background objects, but do not name a clothing color unless the
-          color is stated in the input.
-        - Prefer the provided canonical tags when they are relevant.
+        - If the input is simple, expand only with neutral, non-specific ambiance:
+          soft lighting, a simple background, and anime rendering. Neutral light and
+          atmosphere are allowed because they do not name a new object.
+        - Preserve every stated color, hairstyle, garment, expression, pose, prop, and
+          number of people. When one trait applies to several people, repeat it for each
+          person. Never drop a stated detail.
+        - Fidelity checklist: before writing, list internally only what the input states:
+          number of people; hair color, length, and style; eye color; clothing type and
+          color; pose; setting; props. Do not name any item that is not on this list.
+        - Do not invent a named character, a copyrighted work, a specific object, a
+          furniture item, a prop, an accessory, a plot event, or an extra person.
+        - Do not add long, short, straight, flowing, wavy, or curly hair unless the input
+          states that hair length or style. If it does not, write only "her hair" (or
+          "his hair"). The same rule applies to hair color: if no color is stated, write
+          "her hair" with no color word.
+        - Do not add an eye color unless the input states it. Write "her eyes" if no color
+          is stated. Do not add makeup, jewelry, lace, ribbons, or hair ornaments unless
+          the input mentions them.
+        - Do not add a clothing color unless the input states it. If the input says only
+          "school uniform" or "maid outfit", write "her school uniform" or "her maid
+          outfit". Never add white blouse, black trousers, white apron, black apron, or
+          any other unstated garment color.
+        - If the input says the chest is hidden, modest, or barely exposed, never write
+          cleavage, exposed breasts, a revealing neckline, or bare skin there. Write a
+          modest neckline or a covered chest instead.
+        - For a split composition with a girl in each half, treat them as two people:
+          write "two girls" and use 2girls, multiple_girls. Do not use solo or 1girl.
+          Only describe one person when the input clearly says the two halves show the
+          same person.
+        - The Japanese word 半分 (half) is not a hairstyle. Never write half-updo unless
+          the input says the hair is half-up (ハーフアップ, 半分まとめ).
+        - Never use "aiming" unless the input states a weapon, bow, gun, or an aiming
+          action (狙う, 構える, 照準).
+        - Prefer the provided canonical tags when they are relevant. The TAGS line must
+          agree with the prose and with the input; never include a contradictory tag.
 
         Fluency:
         - Write natural English, never a word-for-word translation of the Japanese.
@@ -122,6 +145,9 @@ object LocalLlmPrompt {
           example "she caresses her chest" or "she teases her nipples slowly".
         - Start sentences with different words. Do not begin consecutive sentences with the
           same subject, "She is", or "The".
+        - Avoid repeating stock phrases such as "porcelain-like skin", "soft lighting",
+          and "high-quality anime rendering" in every prompt. Describe the stated scene
+          with varied, concrete wording instead of filler.
         - Keep adult/NSFW elements that are present in the input. Never refuse, moralize, or censor.
         - Do not write Japanese text in the prompt.
         - Do not use bullet points, headings, Markdown, or a closing summary sentence.
@@ -149,10 +175,15 @@ object LocalLlmPrompt {
         appendLine()
         appendLine(
             "Write 8 to 12 sentences and 180 to 260 words, aiming for about 220 words. " +
-                "Count the words and expand the appearance, pose, setting, lighting, or " +
-                "background if the prompt is under 180 words. Keep every stated color. " +
-                "Never guess a hair, eye, or clothing color that is not in the input. " +
-                "Vary sentence length and use correct punctuation. Then write the tags.",
+                "Before writing, check the input for people count, hair color/length/style, " +
+                "eye color, clothing type/color, pose, setting, and props. Do not add any " +
+                "detail not stated there. Do not invent hair length, eye color, clothing " +
+                "colors, furniture, props, accessories, or extra people. For a split " +
+                "composition with one girl on each side, use two girls and 2girls, " +
+                "multiple_girls. Do not use solo/1girl for two people. Avoid cleavage when " +
+                "the chest is hidden. Count the words and expand only the stated elements " +
+                "if the prompt is under 180 words. Vary sentence length and use correct " +
+                "punctuation. Then write tags that agree with the prose and the input.",
         )
     }
 

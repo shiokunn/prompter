@@ -68,6 +68,8 @@ MACHINE_BLOCKLIST = {
     "snow",
     "sky",
     "bare_arms",
+    # 半分 is too ambiguous for half_updo (e.g. 縦半分, 半分閉じた目).
+    "half_updo",
 }
 
 # Colour base -> canonical prefix. Hair/eyes have special mappings below.

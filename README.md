@@ -19,6 +19,9 @@
 - **M6 プロンプトv7 再評価**: [`research/M6_PROMPT_V7.md`](research/M6_PROMPT_V7.md)
 - **M7 UI刷新・OpenRouter診断・ローカルv9**: [`research/M7_REPORT.md`](research/M7_REPORT.md)
 - **M7 クラウド生成検証（有効キー・上限なし）**: [`research/M7_CLOUD_VERIFY.md`](research/M7_CLOUD_VERIFY.md)
+- **M7 ローカルv9 10ケース評価**: [`research/M7_LOCAL_V9_EVAL.md`](research/M7_LOCAL_V9_EVAL.md)
+- **PixAI自然文 人手評価結果（8ケース）**: [`research/PIXAI_EVAL.md`](research/PIXAI_EVAL.md)
+- **M7 ローカルv9 20回連続生成の安定性**: [`research/M7_STABILITY.md`](research/M7_STABILITY.md)
 - **引き継ぎ指示書**: [`HANDOFF.md`](HANDOFF.md)
 - **プロトタイプ**: [`tools/spike_match.py`](tools/spike_match.py)
 
@@ -58,11 +61,27 @@
   150語上限がないことを確認。`max_tokens` とクラウドの語数上限を撤廃した。
   3回目の連続生成は無料枠のレート制限に当たり、0.7.3の忠実さ改善は未検証。
   詳細は [`research/M7_CLOUD_VERIFY.md`](research/M7_CLOUD_VERIFY.md)。
+- 2026-10-27: **M7 ローカルv9 10ケース評価（0.7.3-m7）**。平均 **195.5語**、
+  **180〜260語 9/10**、260語超 0/10、拒否 **0/10**、日本語混入 0/10、
+  平均生成 **35.6秒**（30.5〜39.1秒）。複雑な3分割・縦分割・成人向けも保持。
+  課題は157語の成人向け短文1件、服色の捏造2件、オフラインタグの誤り。
+  詳細は [`research/M7_LOCAL_V9_EVAL.md`](research/M7_LOCAL_V9_EVAL.md)。
+- 2026-10-27: **M7 ローカルv9 20回連続生成の安定性（0.7.3-m7）**。
+  PSSはモデルロード後 2103.6MB → 1972.5MB（範囲1937.5〜2143.5MB）で単調増加なし。
+  RSS/ SWAPも減少。平均生成 **43.1秒**（32.9〜63.2秒）、
+  180〜260語 **15/20**、クラッシュ・OOM・拒否 0/20。
+  最高温度 BATTERY 36.9°C / SKIN 39.7°C / CPU 51.5°C。
+  詳細は [`research/M7_STABILITY.md`](research/M7_STABILITY.md)。
+- 2026-10-27: **PixAI自然文の人手評価（8ケース）**。総合 **3.63/5** で暫定合格、
+  意図4.38、自然さ3.63、構造4.50、**忠実さ2.88（未達）**。8/8件が180〜260語。
+  最優先課題は自然文とタグの矛盾（25の `cleavage`、27の `solo,1girl`）と、
+  未指定の身体的特徴・服色の追加。詳細は [`research/PIXAI_EVAL.md`](research/PIXAI_EVAL.md)。
 - APK: `/storage/emulated/0/Download/Prompter/Prompter-0.7.3-m7-debug.apk`
   （SHA-256 `1c26459d52a0cd1e78db1b47255bf27f67fe4c24da85bb8fc5db8fd41b57e4e9`、
   約76MB、versionCode 18）。
-- 次の作業: レート制限の解除後に0.7.3の入力忠実さ・タグ入力優先を再検証、v9の10ケース再評価、
-  20〜30回連続生成でのメモリ安定性、人手評価。その後M6.1のGPU/E4B検討へ。
+- 次の作業: タグ整合性チェックとv10プロンプトで忠実さを改善し、同じ8〜10ケースを再評価。
+  機内モードはユーザー指定により実施しない。クラウドは代替なので低優先。
+  その後M6.1のGPU/E4B検討へ。
 
 ## 要約
 
@@ -84,9 +103,13 @@
   失敗時はオフライン結果を保持する。モデルはAPKに同梱しない。
 - M7 で **UIを紙面調に刷新**し、タグ編集をタグモードだけに限定。OpenRouterの
   「接続テスト」とキー再発行リンクを追加。ローカルプロンプトv9は **180〜260語** で、
-  実機1ケースで198語・生成40.5秒。クラウドは **語数上限なし** に変更し、有効キーで
-  224語・183語を確認。詳細は [`research/M7_REPORT.md`](research/M7_REPORT.md) と
-  [`research/M7_CLOUD_VERIFY.md`](research/M7_CLOUD_VERIFY.md)。
+  10ケース評価は **平均195.5語・9/10が範囲内・拒否0/10・平均35.6秒**。
+  20回連続生成はPSSが約2.0GBで安定し、クラッシュ・OOMなし（平均43.1秒）。
+  クラウドは **語数上限なし** に変更し、有効キーで224語・183語を確認。
+  詳細は [`research/M7_REPORT.md`](research/M7_REPORT.md)、
+  [`research/M7_CLOUD_VERIFY.md`](research/M7_CLOUD_VERIFY.md)、
+  [`research/M7_LOCAL_V9_EVAL.md`](research/M7_LOCAL_V9_EVAL.md)、
+  [`research/M7_STABILITY.md`](research/M7_STABILITY.md)。
 - AI 補完は **OpenAI API 互換（既定: OpenRouter）** または **端末内Gemma 4 E2B** を任意 ON。
 - クラウドAIを使いたくない人向けの **ML Kit翻訳**、およびネットなしで動く **ローカルLLM** を用意。
 - APK は GitHub Actions でビルドし、Termux から `adb install` する。
@@ -167,6 +190,7 @@ APKはarm64-v8a専用のため、x86/x86_64のエミュレータにはインス�
 入力が単純な場合は短くてもよい）、オフラインは **80〜150語** を目安にする。
 クラウドの既定モデルは無料モデル自動ルーター `openrouter/free`。設定で
 `google/gemini-3.1-flash-lite` などの有料モデルにも変更できる。
+**クラウドはローカルLLMが使えないときの代替**で、品質の作り込みは最小限にしている。
 無料枠はレート制限があり、連続実行すると
 `レート制限に達しました。少し待って再試行してください。 Provider returned error`
 が出ることがある。時間を置くか、設定の詳細で特定の無料モデル

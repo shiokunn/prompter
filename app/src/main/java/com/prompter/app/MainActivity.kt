@@ -618,8 +618,22 @@ private fun PrompterApp() {
                 } else {
                     null
                 }
+                val guardedTags = FidelityGuard.correctTags(
+                    input = sourceInput,
+                    tags = aiResult.tags,
+                    isKnownTag = currentEngine::isKnownTag,
+                    statedTags = offlineTags,
+                ).tags
+                val guardedPrompt = FidelityGuard.sanitizePrompt(
+                    input = sourceInput,
+                    prompt = aiResult.pixaiPrompt,
+                    offlineTags = offlineTags,
+                )
                 val validation = AiPromptValidator.validate(
-                    result = aiResult,
+                    result = aiResult.copy(
+                        pixaiPrompt = guardedPrompt,
+                        tags = guardedTags,
+                    ),
                     minWords = minWords,
                     maxWords = maxWords,
                 ) { tag ->

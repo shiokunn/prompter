@@ -182,6 +182,9 @@ class M1Matcher private constructor(
         tags.add(tag)
     }
 
+    private fun personMentions(text: String): Int =
+        Regex("少女|女の子|女性|男の子|少年|男性").findAll(text).count()
+
     private fun infer(text: String, matches: MutableList<TagMatch>, tags: MutableSet<String>) {
         // Count inference must run before gender inference: 二人の少女 is
         // 2girls, not 1girl + solo.
@@ -190,7 +193,11 @@ class M1Matcher private constructor(
         val femaleContext = tags.any { it in FEMALE_CUES } || "1girl" in tags
 
         if (!multiple) {
-            if (Regex("二人|2人|ふたり|もう一人|両者").containsMatchIn(text)) {
+            val explicitTwo = Regex("二人|2人|ふたり|もう一人|両者|複数").containsMatchIn(text)
+            val splitTwo = "右半分" in text && "左半分" in text && personMentions(text) >= 2
+            val repeatedTwo = personMentions(text) >= 2 &&
+                ("それぞれ" in text || "一方" in text || "もう一方" in text)
+            if (explicitTwo || splitTwo || repeatedTwo) {
                 if (femaleContext && !malePresent) {
                     addInferred(matches, tags, "2girls", 0.7, "two people")
                     addInferred(matches, tags, "multiple_girls", 0.65, "two people")
@@ -202,9 +209,6 @@ class M1Matcher private constructor(
                     addInferred(matches, tags, "3girls", 0.65, "three people")
                     addInferred(matches, tags, "multiple_girls", 0.6, "three people")
                 }
-            } else if ("それぞれ" in text && "と" in text && femaleContext && !malePresent) {
-                addInferred(matches, tags, "2girls", 0.6, "それぞれ")
-                addInferred(matches, tags, "multiple_girls", 0.55, "それぞれ")
             }
         }
 
