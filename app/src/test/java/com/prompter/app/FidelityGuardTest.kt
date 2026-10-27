@@ -124,6 +124,22 @@ class FidelityGuardTest {
     }
 
     @Test
+    fun removedOfflineColorIsNotRestoredFromStatedTags() {
+        val input = "学生服を着た少女"
+        val tags = listOf("1girl", "school_uniform", "white_shirt")
+        val result = FidelityGuard.correctTags(
+            input = input,
+            tags = tags,
+            isKnownTag = known(tags),
+            statedTags = tags,
+            preserveStatedColors = false,
+        )
+
+        assertFalse(result.tags.contains("white_shirt"))
+        assertTrue(result.tags.contains("school_uniform"))
+    }
+
+    @Test
     fun statedClothingColorTagIsKept() {
         val input = "白いシャツを着た少女"
         val tags = listOf("1girl", "white_shirt")
@@ -246,6 +262,21 @@ class FidelityGuardTest {
         assertTrue(result.contains("Her hair falls naturally"))
         assertTrue(result.contains("Her gaze is directed"))
         assertTrue(result.contains("Her hands hang naturally"))
+    }
+
+    @Test
+    fun missingStatedAttributeTagsAreRestored() {
+        val input = "白いボブカットの少女"
+        val tags = listOf("1girl", "solo", "bob_cut")
+        val result = FidelityGuard.correctTags(
+            input = input,
+            tags = tags,
+            isKnownTag = known(tags + listOf("white_hair")),
+            statedTags = listOf("1girl", "solo", "white_hair", "bob_cut"),
+        )
+
+        assertTrue(result.tags.contains("white_hair"))
+        assertTrue(result.tags.contains("bob_cut"))
     }
 
     @Test

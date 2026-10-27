@@ -25,6 +25,7 @@ class PromptEngine(context: Context) {
             input = input,
             tags = conversion.tags,
             isKnownTag = matcher::isKnownTag,
+            preserveStatedColors = false,
         ).tags
         val tagText = tags.joinToString(", ")
         val pixai = if (tags.isEmpty()) "" else PromptComposer.compose(tags)

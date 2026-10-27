@@ -28,6 +28,7 @@ object FidelityGuard {
         tags: List<String>,
         isKnownTag: (String) -> Boolean,
         statedTags: List<String> = tags,
+        preserveStatedColors: Boolean = true,
     ): TagCorrection {
         val text = normalizeJapanese(input)
         val current = tags.toMutableList()
@@ -77,6 +78,14 @@ object FidelityGuard {
             }
         }
 
+        // The AI sometimes drops a stated hair/eye/clothing attribute from its
+        // tag line even though the prose keeps it. Restore those attributes so
+        // the tags and the prose stay consistent.
+        for (tag in statedTags) {
+            if (tag in current || tag in removed || !isAttributeTag(tag) || !isKnownTag(tag)) continue
+            add(tag)
+        }
+
         // 胸元を隠す / 露出が少ない must not carry cleavage or exposed-nipple
         // tags. `breasts` itself is still a valid body tag.
         if (concealsChest(text) || "covering_breasts" in current) {
@@ -111,7 +120,9 @@ object FidelityGuard {
             val color = match.groupValues[1]
             val noun = match.groupValues[2]
             if (noun !in CLOTHING_NOUNS) continue
-            if (tag !in stated && !colorStatedInJapanese(text, color, noun)) {
+            if ((!preserveStatedColors || tag !in stated) &&
+                !colorStatedInJapanese(text, color, noun)
+            ) {
                 remove(tag)
             }
         }
@@ -320,6 +331,12 @@ object FidelityGuard {
         if (tag in CLOTHING_TAGS) return true
         return tag.substringAfterLast('_') in CLOTHING_NOUNS
     }
+
+    private fun isAttributeTag(tag: String): Boolean =
+        tag.endsWith("_hair") ||
+            tag == "bob_cut" ||
+            tag.endsWith("_eyes") ||
+            isClothingTag(tag)
 
     private fun colorTagStated(color: String, noun: String, tags: Set<String>): Boolean =
         colorAliases(color).any { "${it}_$noun" in tags }
