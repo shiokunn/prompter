@@ -180,7 +180,7 @@ class LocalLlmPromptTest {
         assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("Never return fewer than 180 words"))
         assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("Setting and background objects"))
         assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("Art style, rendering, and finish"))
-        assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("do not name a clothing color"))
+        assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("Do not add a clothing color"))
     }
 
     @Test
@@ -190,13 +190,14 @@ class LocalLlmPromptTest {
         assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("Never write \"mixed with\""))
         assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("center of her face"))
         assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("never a word-for-word translation"))
-        assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("repeat it for each person"))
+        assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("When one trait applies to several people"))
     }
 
     @Test
     fun systemPromptForbidsInventingColors() {
-        assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("Never guess a color"))
-        assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("Never drop a stated color"))
+        assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("Do not add a clothing color"))
+        assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("Do not add an eye color"))
+        assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("Never drop a stated detail"))
         assertFalse(LocalLlmPrompt.SYSTEM_PROMPT.contains("light blue"))
     }
 
@@ -211,8 +212,8 @@ class LocalLlmPromptTest {
         assertTrue(prompt.contains("180 to 260 words"))
         assertTrue(prompt.contains("8 to 12 sentences"))
         assertTrue(prompt.contains("Vary sentence length"))
-        assertTrue(prompt.contains("Keep every stated color"))
-        assertTrue(prompt.contains("Never guess a hair, eye, or clothing color", ignoreCase = true))
+        assertTrue(prompt.contains("Do not add any detail not stated there"))
+        assertTrue(prompt.contains("Do not invent hair length, eye color, clothing colors"))
     }
 
     @Test
@@ -259,7 +260,7 @@ class LocalLlmPromptTest {
 
     @Test
     fun promptVersionIsBumpedWhenExpansionRulesChange() {
-        assertEquals("local:gemma-4-E2B-v9", LocalModelSpec.CACHE_KEY)
+        assertEquals("local:gemma-4-E2B-v10", LocalModelSpec.CACHE_KEY)
     }
 
     @Test
