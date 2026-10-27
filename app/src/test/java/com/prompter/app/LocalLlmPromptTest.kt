@@ -174,9 +174,9 @@ class LocalLlmPromptTest {
     @Test
     fun systemPromptRequiresExpansionRatherThanTranslation() {
         assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("Do not merely translate"))
-        assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("200 to 240 words"))
-        assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("15 to 25 words"))
-        assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("10 to 12 sentences"))
+        assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("210 to 240 words"))
+        assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("18 to 26 words"))
+        assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("11 to 12 sentences"))
         assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("Never return fewer than 180 words"))
         assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("Setting and background objects"))
         assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("Art style, rendering, and finish"))
@@ -209,8 +209,8 @@ class LocalLlmPromptTest {
             unmatched = "",
         )
 
-        assertTrue(prompt.contains("200 to 240 words"))
-        assertTrue(prompt.contains("10 to 12 sentences"))
+        assertTrue(prompt.contains("210 to 240 words"))
+        assertTrue(prompt.contains("11 to 12 sentences"))
         assertTrue(prompt.contains("Vary sentence length"))
         assertTrue(prompt.contains("Do not add any detail not stated there"))
         assertTrue(prompt.contains("Do not invent hair length, eye color, clothing colors"))
@@ -274,7 +274,7 @@ class LocalLlmPromptTest {
 
     @Test
     fun promptVersionIsBumpedWhenExpansionRulesChange() {
-        assertEquals("local:gemma-4-E2B-v11", LocalModelSpec.CACHE_KEY)
+        assertEquals("local:gemma-4-E2B-v12", LocalModelSpec.CACHE_KEY)
     }
 
     @Test

@@ -28,7 +28,7 @@ object LocalModelSpec {
         "https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm/resolve/" +
             "$REVISION/$FILE_NAME"
     const val LICENSE = "Apache-2.0"
-    const val CACHE_KEY = "local:gemma-4-E2B-v11"
+    const val CACHE_KEY = "local:gemma-4-E2B-v12"
     const val MIN_RAM_BYTES = 8L * 1024 * 1024 * 1024
     const val EXTRA_FREE_BYTES = 1L * 1024 * 1024 * 1024
 
@@ -76,7 +76,7 @@ object LocalLlmPrompt {
         Task:
         - Expand the input into a rich, production-ready prompt. Do not merely translate it.
         - Follow Subject + Action + Scene + Mood + Style.
-        - Write 10 to 12 sentences, for 200 to 240 words in total. Aim for about 220 words.
+        - Write 11 to 12 sentences, for 210 to 240 words in total. Aim for about 225 words.
         - Use this order:
           1. Subject, number of people, and main action.
           2. Face, hair, eyes, expression, and skin.
@@ -89,13 +89,14 @@ object LocalLlmPrompt {
         - Add concrete visual detail only through the stated elements: strands of the
           stated hair, folds of the stated garment, reflections on stated surfaces, and
           the direction of the stated light. Do not add new objects to create detail.
-        - Vary sentence length; most sentences should be 15 to 25 words. Use commas,
+        - Vary sentence length; most sentences should be 18 to 26 words. Use commas,
           semicolons, or periods correctly. Never join two independent clauses with only
           a comma.
         - Length check: count the words before you finish. If the prompt is shorter than
-          200 words, extend the description of the stated hair, face, fabric, pose,
-          lighting, and background. Do not add a new object to gain length; describe the
-          existing elements more fully. If it is longer than 260 words, remove repeated
+          210 words, extend the description of the stated hair, eyes, skin, expression,
+          fabric folds, pose, lighting, shadows, and background. Do not add a new object to
+          gain length; deepen the existing elements instead. A simple input still needs 11
+          sentences. If it is longer than 260 words, remove repeated
           adjectives and redundant clauses. Never return fewer than 180 words, even for a
           very short input. A short input is not a reason for a short prompt.
         - If the input is simple, expand only with neutral, non-specific ambiance:
@@ -175,14 +176,15 @@ object LocalLlmPrompt {
         appendLine(unmatched.trim().ifBlank { "(none)" })
         appendLine()
         appendLine(
-            "Write 10 to 12 sentences and 200 to 240 words, aiming for about 220 words. " +
+            "Write 11 to 12 sentences and 210 to 240 words, aiming for about 225 words. " +
                 "Before writing, check the input for people count, hair color/length/style, " +
                 "eye color, clothing type/color, pose, setting, and props. Do not add any " +
                 "detail not stated there. Do not invent hair length, eye color, clothing " +
                 "colors, furniture, props, accessories, or extra people. For a split " +
                 "composition with one girl on each side, use two girls and 2girls, " +
                 "multiple_girls. Do not use solo/1girl for two people. Avoid cleavage when " +
-                "the chest is hidden. If the prompt is under 180 words, continue with more " +
+                "the chest is hidden. A simple input still needs 11 sentences. If the prompt is " +
+                "under 180 words, continue with more " +
                 "detail about the same stated elements; never add a new object for length. " +
                 "Vary sentence length and use correct punctuation. Then write tags that " +
                 "agree with the prose and the input.",

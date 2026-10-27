@@ -419,7 +419,7 @@ object FidelityGuard {
         "はーふあっぷ|half[- ]?updo|半分まとめ|半分にまとめ|半分だけまとめ|半分アップ",
     )
     private val SIDE_CUE = Regex("左側から|右側から|左から|右から|横から|側面|横顔|よこから")
-    private val ABOVE_CUE = Regex("上から|俯瞰|見下ろ|高い位置|ふかん|みおろ")
+    private val ABOVE_CUE = Regex("上から見|上から撮|上から描|俯瞰|見下ろ|高い位置|ふかん|みおろ")
 
     private val COLOR_CLOTHING_TAG = Regex(
         "^(white|black|red|blue|green|yellow|blonde|purple|pink|brown|grey|gray|" +
