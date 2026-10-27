@@ -1,8 +1,8 @@
 # Prompter 引き継ぎ指示書
 
-- 最終更新: 2026-10-26
+- 最終更新: 2026-10-27
 - リポジトリ: <https://github.com/shiokunn/prompter>（private）
-- 状態: **M1〜M6 完了・実機確認済み。M7 UI刷新・ローカルプロンプトv9実装完了（実機1ケース198語）。OpenRouterは有効キー待ち。最終人手評価・v9の10ケース再評価・長時間メモリ確認を残す。**
+- 状態: **M1〜M6 完了・実機確認済み。M7 UI刷新・ローカルv9・クラウド上限撤廃を実装（0.7.3-m7）。有効キーでクラウド生成2ケース成功（224語・183語）。無料枠のレート制限により0.7.3の忠実さ検証は未完。v9の10ケース再評価・長時間メモリ確認・最終人手評価を残す。**
 - 実機: arrows Alpha（arm64-v8a / 12GB RAM / 512GB）
 - 最新コミットは `git log -1 --oneline` で確認する。
 
@@ -20,8 +20,8 @@ adb devices -l
 - APKの場所とハッシュを確認する。
 
 ```bash
-ls -lh /storage/emulated/0/Download/Prompter/Prompter-0.7.1-m7-debug.apk
-sha256sum /storage/emulated/0/Download/Prompter/Prompter-0.7.1-m7-debug.apk
+ls -lh /storage/emulated/0/Download/Prompter/Prompter-0.7.3-m7-debug.apk
+sha256sum /storage/emulated/0/Download/Prompter/Prompter-0.7.3-m7-debug.apk
 ```
 
 ## 2. 現在の到達点
@@ -34,20 +34,21 @@ sha256sum /storage/emulated/0/Download/Prompter/Prompter-0.7.1-m7-debug.apk
 | M4 OpenRouter AI | 完了。BYOK、Keystore暗号化、既定 `openrouter/free` |
 | M5 ML Kit翻訳 | **完了・実機確認済み**。辞書外の英訳、英語→タグ、タグ和訳 |
 | M6 ローカルLLM | **実機検証完了**。v7で10ケース平均101語、80〜150語10/10、拒否0/10、生成平均30.3秒。v9で198語（1ケース、40.5秒）。アプリPSS最大1.95GB |
-| M7 UI刷新・OpenRouter診断 | **実装・実機確認中**。紙面調UI、タグ編集のモード限定、接続テスト、ローカルv9。APK `0.7.1-m7` |
+| M7 UI刷新・クラウド上限撤廃 | **実装・実機確認済み（一部）**。紙面調UI、タグ編集のモード限定、接続テスト、ローカルv9、クラウド語数上限なし。APK `0.7.3-m7`。有効キーで224語・183語。忠実さ検証は無料枠レート制限待ち |
 | debug署名 | 固定済み。`keystore/prompter-debug.jks` で上書き更新可能 |
 
 ### 現在のAPK
 
-- パス: `/storage/emulated/0/Download/Prompter/Prompter-0.7.1-m7-debug.apk`
-- SHA-256: `594273793abbde4db52df82d21f107856b9af18b6b9448538789700378727828`
+- パス: `/storage/emulated/0/Download/Prompter/Prompter-0.7.3-m7-debug.apk`
+- SHA-256: `1c26459d52a0cd1e78db1b47255bf27f67fe4c24da85bb8fc5db8fd41b57e4e9`
 - サイズ: 約76MB（arm64-v8aのみ）
-- versionCode 16 / versionName `0.7.1-m7`
-- コード: コミット `4768434`（この後のコミットはドキュメントのみ）
-- CI: <https://github.com/shiokunn/prompter/actions/runs/40318320648>
+- versionCode 18 / versionName `0.7.3-m7`
+- コード: コミット `1449737`（この後のコミットはドキュメントのみ）
+- CI: <https://github.com/shiokunn/prompter/actions/runs/40324242059>
 - 署名証明書SHA-256:
   `6B:8A:27:78:33:4F:4F:49:A2:E1:5D:2E:40:1F:89:49:05:FF:0F:BB:2A:88:2F:1B:68:7C:02:B5:29:95:CC:33`
 - 旧APKも残っている:
+  `Prompter-0.7.1-m7-debug.apk`（SHA-256 `594273793abbde4db52df82d21f107856b9af18b6b9448538789700378727828`）
   `Prompter-0.6.6-m6-debug.apk`（SHA-256 `bb3774f64cfb025bd3a96ce42354b253480f6018ae2bc5e77a29b71ff5e5c4eb`）
 
 ### M6/M7でできること
@@ -57,6 +58,7 @@ sha256sum /storage/emulated/0/Download/Prompter/Prompter-0.7.1-m7-debug.apk
 - ダウンロード後にサイズとSHA-256を検証
 - 端末内CPU推論で、オフライン結果を英語PixAIプロンプトに整形
 - M7のローカルプロンプト **v9** は **180〜260語・8〜12文**。実機1ケースで **198語・生成40.5秒**、服装色の追加なし
+- M7のクラウドは **`max_tokens` と語数上限を撤廃**。有効キーで **224語・44.3秒**、**183語・191.2秒** を確認。3回目の連続生成は無料枠のレート制限に当たった
 - M6のv7実績: 10ケース平均101語、80〜150語10/10、拒否0/10、生成平均30.3秒（`research/M6_PROMPT_V7.md`）
 - v2の初回評価は平均89語・生成平均15.6秒・暫定4.37/5（`research/M6_LOCAL_EVAL.md`）
 - 初回ロード6.4秒（コールド）/0.5秒（ページキャッシュ後）。機内モード生成成功
@@ -73,29 +75,32 @@ sha256sum /storage/emulated/0/Download/Prompter/Prompter-0.7.1-m7-debug.apk
 
 ### M7の残る確認事項
 
-- **有効なOpenRouterキー**でのクラウド生成。保存済みキーは `401 User not found.` で、再発行が必要
+- **0.7.3のクラウド忠実さ**をレート制限の解除後に再検証する。単純な入力（黒髪・青ドレス・椅子）で入力にない家具・小道具・色を足さないこと、白髪メイドで `2girls` / `multiple_girls` の誤タグを引き継がないことを確認する
+- 無料枠のレート制限（`Provider returned error`）が解消するまで、クラウドの連続実行は控える
 - v9で10ケースを再評価し、平均語数・180〜260語の達成率・拒否数・生成時間を測る
 - v9の服装色ルールを複数ケースで確認する（1ケースのみ）
 - 20〜30回連続生成でPSSの増加が止まるか（v9は40.5秒/198語で、v7より長い）
-- 0.7.1-m7で機内モードを再確認する
+- 0.7.3-m7で機内モードを再確認する
 - 10〜20件の人手による最終評価（目標3.5/5以上）
 - GPUは未実装。今回はCPU / 4 threadsのみ。
 
 ## 3. 次のセッションでやること（推奨順）
 
-### 最優先: OpenRouterの有効キーとv9評価
+### 最優先: OpenRouterの忠実さ再検証とv9評価
 
 現状:
 
-- 保存済みOpenRouterキーは実通信で `401 User not found.`。モデルID・Base URLは有効。
-- 設定の「接続テスト」は401を検出し、「キーを再発行」から <https://openrouter.ai/keys> を開ける。
+- 有効なOpenRouterキーで接続テスト成功（無料枠 / 使用量$0.00 / 上限$0.00）。
+- `openrouter/free` で224語・44.3秒、183語・191.2秒を生成。150語上限がないことを確認。
+- 3回目の連続生成で無料枠のレート制限（`Provider returned error`）。特定の無料モデル `google/gemma-4-31b-it:free` でも同じ。
+- 0.7.3の入力忠実さ（家具・小道具・色の捏造抑制）とタグ入力優先（`2girls` 誤タグ）は未検証。
 - ローカルはv9で198語・40.5秒を1ケース確認。白髪・赤目・メイド服・オムライス・三分割を保持し、服装色の追加はなくなった。
-- 詳細は [`research/M7_REPORT.md`](research/M7_REPORT.md)。
+- 詳細は [`research/M7_CLOUD_VERIFY.md`](research/M7_CLOUD_VERIFY.md) と [`research/M7_REPORT.md`](research/M7_REPORT.md)。
 
 手順:
 
-1. 有効なOpenRouterキーを発行し、設定 → クラウド → キー入力 → **接続テスト** → **保存**。
-2. 同じ入力でクラウド生成を1回行い、80〜150語・JSON・タグ検証を確認。
+1. レート制限が解消するまで待ち、設定 → クラウド → **接続テスト** → **保存** を確認。
+2. 0.7.3で単純入力（黒髪・青ドレス・椅子）と白髪メイドを生成し、語数上限なし・JSON・タグ検証・入力への忠実さ・`2girls` 誤タグの解消を確認。
 3. ローカルv9でM6の10ケースを再実行する。語数・生成時間・拒否・色の保持を記録。
 4. 20〜30回連続生成でPSSと発熱を確認。
 5. 機内モードでv9を再確認。
@@ -104,6 +109,7 @@ sha256sum /storage/emulated/0/Download/Prompter/Prompter-0.7.1-m7-debug.apk
 失敗時の切り分け:
 
 - クラウド401 → キー再発行。モデルIDやBase URLの問題ではない。
+- `レート制限 ... Provider returned error` → 無料枠の制限。時間を置くか、設定の詳細で別の無料モデルを指定する。
 - ダウンロード失敗 → DownloadManagerの理由コード、Hugging Faceの302/CDNリダイレクト。
 - SHA不一致 → ファイル削除→再取得。必要なら独自レジュームDLへ。
 - 初期化失敗 → `liblitertlm_jni.so` のロード、ABI、モデルパス、`adb logcat`。
@@ -134,13 +140,13 @@ M7の実機検証後、または並行して実施する。目標は **3.5/5以�
 
 ## 4. 守る制約
 
-- 主対象は **PixAI DiT**。既定出力は英語自然文（クラウド/オフライン80〜150語、ローカルLLM180〜260語）、`Subject + Action + Scene + Mood + Style`。
+- 主対象は **PixAI DiT**。既定出力は英語自然文（オフライン80〜150語、クラウドは語数上限なし、ローカルLLM180〜260語）、`Subject + Action + Scene + Mood + Style`。
 - タグ出力はSDXL / Pony / A1111 / ComfyUI / NovelAI向けに残す。
 - AIは任意ON・BYOK。APIキーはAndroid Keystoreで暗号化し、ログ・履歴・APK・CIに残さない。
 - 成人向けタグはアプリ側でフィルタしない。
 - 画像生成API、独自IME、クラウド同期、アカウントはMVPに含めない。
 - 辞書は同梱の上位5,003タグ。AIが返した辞書外タグは除去する。
-- 語数はクラウド/オフライン80〜150、ローカル180〜260を外れると警告を出すが、生成自体は保持する。
+- 語数はオフライン80〜150、ローカル180〜260を外れると警告を出すが、生成自体は保持する。クラウドは語数上限なしで、語数警告を出さない。
 - UIは強制ライトテーマ。ステータスバー・ナビゲーションバーも紙色に統一する。
 - タグ編集はタグモードのときだけ表示する。自然文モード・両方モードでは結果のタグだけを見せる。
 - ML Kitモデルは必要時ダウンロード。Google Play Servicesが使えなくても辞書のみで動く。
@@ -181,7 +187,7 @@ sha256sum /storage/emulated/0/Download/Prompter/Prompter-<version>-debug.apk
 ```
 
 次回APKでは `app/build.gradle.kts` の `versionCode` と `versionName` を上げる。
-現在は `versionCode 16` / `0.7.1-m7`。次回は `17` / `0.7.2-m7`。
+現在は `versionCode 18` / `0.7.3-m7`。次回は `19` / `0.7.4-m7`。
 
 インストール:
 
@@ -209,7 +215,7 @@ adb install -r /storage/emulated/0/Download/Prompter/Prompter-<version>-debug.ap
 | `LocalModelManager.kt` | モデルDL、SHA-256検証、状態管理 |
 | `TagEditor.kt` | タグ編集、重み、並び替え、削除、日本語表示 |
 | `OpenRouterClient.kt` | OpenAI互換クライアント、`/key` 接続テスト、401判定 |
-| `AiPromptValidator.kt` | クラウド80〜150語 / ローカル180〜260語の検証 |
+| `AiPromptValidator.kt` | オフライン/ローカルの語数検証。クラウドは上限なし |
 | `AiSettings.kt` / `AiCache.kt` | キー保存、AIキャッシュ |
 | `app/src/test/java/com/prompter/app/OpenRouterClientTest.kt` | `/key` 成功・401のMockWebServerテスト |
 | `keystore/prompter-debug.jks` | 固定debug署名鍵 |
@@ -218,11 +224,12 @@ adb install -r /storage/emulated/0/Download/Prompter/Prompter-<version>-debug.ap
 | `research/M6_LOCAL_EVAL.md` | M6の10ケース実機評価・出力全文・暫定スコア（v2） |
 | `research/M6_PROMPT_V7.md` | プロンプトv7の変更点と10ケース再評価 |
 | `research/M7_REPORT.md` | M7 UI刷新・OpenRouter診断・ローカルv9 |
+| `research/M7_CLOUD_VERIFY.md` | 有効キーでのクラウド生成・語数上限撤廃・レート制限の記録 |
 | `README.md` | ビルド・インストール手順 |
 
 ## 7. 既知の未完了・リスク
 
-- **OpenRouterの保存キーは無効**。実通信で `401 User not found.`。モデルID・Base URLは有効で、<https://openrouter.ai/keys> で再発行が必要。クラウド生成は有効キー待ち。
+- **OpenRouterの有効キーは確認済み**（無料枠 / 使用量$0.00）。ただし無料モデルはレート制限が厳しく、3回目の連続生成で `レート制限に達しました。少し待って再試行してください。 Provider returned error` が出た。0.7.3の入力忠実さ・タグ入力優先は未検証。時間を置くか、特定の無料モデルを指定して再試行する。
 - M7のローカルv9は1ケースのみ（198語・40.5秒）。10ケース再評価、服装色ルールの複数確認、人手評価が未完了。
 - v9の生成時間は40.5秒で、v7の平均30.3秒より長い。詳細化とのバランス、発熱・メモリは再測定が必要。
 - M6のv7実績は10ケース平均101語・80〜150語10/10・拒否0/10。v7のID24（87語）、ID27（125語）、ID30（黒髪補完）はv9で解消したか未確認。
@@ -242,7 +249,8 @@ adb install -r /storage/emulated/0/Download/Prompter/Prompter-<version>-debug.ap
 ## 8. 次セッションの最初の一言（例）
 
 > `HANDOFF.md` を読んで、M7の仕上げから進めてください。
-> まず有効なOpenRouterキーを設定し、「接続テスト」→「保存」→クラウド生成を確認してください。
+> まず無料枠のレート制限が解消するのを待ち、0.7.3でクラウド生成を再試行してください。
+> 単純入力で家具・小道具・色の捏造がないこと、白髪メイドで `2girls` 誤タグを引き継がないことを確認します。
 > 次にローカルv9で10ケースを再評価し、語数・生成時間・拒否・服装色の保持を記録してください。
 > 20〜30回連続生成のメモリ安定性と機内モードも再確認します。
-> 0.7.1-m7は実機にインストール済み、AIバックエンドはLOCALです。詳細は `research/M7_REPORT.md`。
+> 0.7.3-m7は実機にインストール済み、AIバックエンドはCLOUDです。詳細は `research/M7_CLOUD_VERIFY.md`。

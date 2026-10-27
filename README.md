@@ -18,6 +18,7 @@
 - **M6 実機評価（10ケース）**: [`research/M6_LOCAL_EVAL.md`](research/M6_LOCAL_EVAL.md)
 - **M6 プロンプトv7 再評価**: [`research/M6_PROMPT_V7.md`](research/M6_PROMPT_V7.md)
 - **M7 UI刷新・OpenRouter診断・ローカルv9**: [`research/M7_REPORT.md`](research/M7_REPORT.md)
+- **M7 クラウド生成検証（有効キー・上限なし）**: [`research/M7_CLOUD_VERIFY.md`](research/M7_CLOUD_VERIFY.md)
 - **引き継ぎ指示書**: [`HANDOFF.md`](HANDOFF.md)
 - **プロトタイプ**: [`tools/spike_match.py`](tools/spike_match.py)
 
@@ -52,10 +53,15 @@
   401の説明を改善した。ローカルLLMは **180〜260語・8〜12文** に拡張し、
   実機1ケースで **198語・生成40.5秒**、服装色の追加なしを確認。
   詳細は [`research/M7_REPORT.md`](research/M7_REPORT.md)。
-- APK: `/storage/emulated/0/Download/Prompter/Prompter-0.7.1-m7-debug.apk`
-  （SHA-256 `594273793abbde4db52df82d21f107856b9af18b6b9448538789700378727828`、
-  約76MB）。
-- 次の作業: 有効なOpenRouterキーでのクラウド生成確認、v9の10ケース再評価、
+- 2026-10-27: **M7 クラウド上限撤廃（0.7.3-m7）**。有効なOpenRouterキーで接続OK
+  （無料枠 / 使用量$0.00）。`openrouter/free` で **224語・44.3秒** と **183語・191.2秒** を生成し、
+  150語上限がないことを確認。`max_tokens` とクラウドの語数上限を撤廃した。
+  3回目の連続生成は無料枠のレート制限に当たり、0.7.3の忠実さ改善は未検証。
+  詳細は [`research/M7_CLOUD_VERIFY.md`](research/M7_CLOUD_VERIFY.md)。
+- APK: `/storage/emulated/0/Download/Prompter/Prompter-0.7.3-m7-debug.apk`
+  （SHA-256 `1c26459d52a0cd1e78db1b47255bf27f67fe4c24da85bb8fc5db8fd41b57e4e9`、
+  約76MB、versionCode 18）。
+- 次の作業: レート制限の解除後に0.7.3の入力忠実さ・タグ入力優先を再検証、v9の10ケース再評価、
   20〜30回連続生成でのメモリ安定性、人手評価。その後M6.1のGPU/E4B検討へ。
 
 ## 要約
@@ -65,7 +71,7 @@
 - M1 のオフライン辞書は上位5,000タグ + 別名14,587件（SQLite 2.18MB）。
   将来は14万タグ規模へ拡張し、ML Kit 翻訳と組み合わせる。
 - M2 で **Compose UI + Kotlin トライ + オフライン自然文合成** を実装済み。
-  日本語入力から PixAI 向け英文（オフライン80〜150語、ローカルLLM180〜260語）とタグ列を同時に生成できる。
+  日本語入力から PixAI 向け英文（オフライン80〜150語、クラウドは語数上限なし、ローカルLLM180〜260語）とタグ列を同時に生成できる。
 - M3 で **タグ編集（重み・並び替え・削除）と履歴・お気に入り** を追加。
   履歴は端末内のSQLiteに保存し、変換結果をすぐ呼び出せる。
 - M4 で **OpenRouter AI補完** を追加。設定画面でBYOKのAPIキーを登録し、
@@ -78,7 +84,9 @@
   失敗時はオフライン結果を保持する。モデルはAPKに同梱しない。
 - M7 で **UIを紙面調に刷新**し、タグ編集をタグモードだけに限定。OpenRouterの
   「接続テスト」とキー再発行リンクを追加。ローカルプロンプトv9は **180〜260語** で、
-  実機1ケースで198語・生成40.5秒。詳細は [`research/M7_REPORT.md`](research/M7_REPORT.md)。
+  実機1ケースで198語・生成40.5秒。クラウドは **語数上限なし** に変更し、有効キーで
+  224語・183語を確認。詳細は [`research/M7_REPORT.md`](research/M7_REPORT.md) と
+  [`research/M7_CLOUD_VERIFY.md`](research/M7_CLOUD_VERIFY.md)。
 - AI 補完は **OpenAI API 互換（既定: OpenRouter）** または **端末内Gemma 4 E2B** を任意 ON。
 - クラウドAIを使いたくない人向けの **ML Kit翻訳**、およびネットなしで動く **ローカルLLM** を用意。
 - APK は GitHub Actions でビルドし、Termux から `adb install` する。
@@ -127,9 +135,9 @@ adb install -r app-debug.apk
 
 ブラウザからダウンロードした場合は ZIP を展開してからインストールする。
 
-現在の APK は `0.7.1-m7`（versionCode 16、debug 署名、arm64-v8a）。M1 の辞書、M2 のオフライン変換、
+現在の APK は `0.7.3-m7`（versionCode 18、debug 署名、arm64-v8a）。M1 の辞書、M2 のオフライン変換、
 M3 のタグ編集・履歴、M4 のAI補完、M5 のML Kit翻訳フォールバック、M6 のローカルLLM、
-M7 のUI刷新・ローカルv9を含む。
+M7 のUI刷新・ローカルv9・クラウド語数上限なしを含む。
 
 M5以降はdebug署名鍵をリポジトリ内の `keystore/prompter-debug.jks` に固定した。
 そのため、**0.5.0以降**のAPKは `adb install -r` で上書きできる。
@@ -155,9 +163,16 @@ APKはarm64-v8a専用のため、x86/x86_64のエミュレータにはインス�
 5. 結果の下にある **整える** を押す
 
 ローカルを選ぶと、設定画面からGemma 4 E2B（約2.59GB）を任意ダウンロードできる。
-ローカル生成は **180〜260語・8〜12文**、クラウド/オフラインは **80〜150語** を目安にする。
+ローカル生成は **180〜260語・8〜12文**、クラウドは **語数上限なし**（目安180語以上、
+入力が単純な場合は短くてもよい）、オフラインは **80〜150語** を目安にする。
 クラウドの既定モデルは無料モデル自動ルーター `openrouter/free`。設定で
 `google/gemini-3.1-flash-lite` などの有料モデルにも変更できる。
+無料枠はレート制限があり、連続実行すると
+`レート制限に達しました。少し待って再試行してください。 Provider returned error`
+が出ることがある。時間を置くか、設定の詳細で特定の無料モデル
+（例: `google/gemma-4-31b-it:free`）を指定する。
+クラウドは `max_tokens` を送らず、語数上限も設けない。入力にない家具・小道具・色を
+足して語数を埋めないようプロンプトで指示する。
 旧既定のGemini 3.1 Flash Lite、または旧無料プリセットのGemmaを保存している場合は、
 初回起動時に一度だけ `openrouter/free` へ移行する（カスタムモデルは維持）。
 APIキーはチャット・リポジトリ・APK・履歴には保存しない。
@@ -191,7 +206,7 @@ python3 tools/build_db_spike.py
 | 項目 | 決定 |
 |---|---|
 | 第一対象 | PixAI DiT（Tsubaki.3 / Tsubaki.2） |
-| 既定出力 | 英語自然文 80〜150語（クラウド/オフライン）、180〜260語（ローカルLLM） |
+| 既定出力 | 英語自然文（オフライン80〜150語、クラウドは上限なし、ローカルLLM180〜260語） |
 | タグ出力 | PixAI Haruka v2 / SDXL / Pony / A1111 / ComfyUI / NovelAI |
 | AI | OpenRouter / OpenAI 互換、任意 ON、BYOK |
 | オフライン翻訳 | ML Kit（M5、約60MB、任意ダウンロード） |
