@@ -45,26 +45,36 @@ object FidelityGuard {
             }
         }
 
-        val three = THREE_PEOPLE.containsMatchIn(text)
-        val multiple = three || twoPeople(text)
-        if (multiple) {
+        val stated = statedTags.toSet()
+        val people = peopleCount(text, stated)
+        if (people.multiple) {
             remove("solo")
             if (femalePresent(text)) {
                 remove("1girl")
-                val expected = if (three) "3girls" else "2girls"
+                val expected = if (people.three) "3girls" else "2girls"
                 for (tag in GIRL_COUNT_TAGS) {
                     if (tag != expected) remove(tag)
                 }
                 add(expected)
                 add("multiple_girls")
             }
-        } else if (singlePerson(text)) {
+        } else if (people.single) {
             for (tag in GIRL_COUNT_TAGS) remove(tag)
             remove("multiple_girls")
-            if ("1boy" !in current && "1girl" !in current && femalePresent(text)) {
+            if ("1boy" !in current && "1girl" !in current &&
+                femalePresent(text) && !malePresent(text)
+            ) {
                 add("1girl")
             }
             if ("1girl" in current && "1boy" !in current) add("solo")
+        }
+
+        // If the input names no clothing at all, clothing tags from the AI are
+        // inventions even when they carry no color (for example school_uniform).
+        if (!hasClothingCue(text)) {
+            for (tag in current.toList()) {
+                if (tag !in stated && isClothingTag(tag)) remove(tag)
+            }
         }
 
         // 胸元を隠す / 露出が少ない must not carry cleavage or exposed-nipple
@@ -90,7 +100,6 @@ object FidelityGuard {
 
         // A color on a garment that is neither stated nor extracted is an
         // invention. Keep the garment tag, remove the color tag.
-        val stated = statedTags.toSet()
         for (tag in current.toList()) {
             val match = COLOR_CLOTHING_TAG.matchEntire(tag) ?: continue
             val color = match.groupValues[1]
@@ -139,9 +148,12 @@ object FidelityGuard {
                 .replace(Regex("(?i)\\brevealing\\s+neckline\\b"), "modest neckline")
         }
 
+        out = removeUnstatedClothingSentences(text, out)
         out = removeUnstatedClothingColors(text, out, offlineTags)
         out = normalizeHairPhrases(text, out, offlineTags)
         out = normalizeEyePhrases(text, out, offlineTags)
+        val people = peopleCount(text, offlineTags.toSet())
+        if (people.single) out = singularizePrompt(out)
         return out
             .replace(Regex("(?i)\\bwith hair and eyes\\b"), "with delicate features")
             .replace(Regex("(?i)\\bher hair and eyes\\b"), "her features")
@@ -205,6 +217,82 @@ object FidelityGuard {
         }
     }
 
+    private fun removeUnstatedClothingSentences(text: String, prompt: String): String {
+        if (hasClothingCue(text)) return prompt
+        return prompt
+            .split(Regex("(?<=[.!?])\\s+"))
+            .filterNot { CLOTHING_SENTENCE.containsMatchIn(it) }
+            .joinToString(" ")
+    }
+
+    private fun singularizePrompt(prompt: String): String {
+        var out = prompt
+            .replace(Regex("(?i)\\btwo girls are\\b"), "a girl is")
+            .replace(Regex("(?i)\\bthe two girls are\\b"), "the girl is")
+            .replace(Regex("(?i)\\bboth girls are\\b"), "the girl is")
+            .replace(Regex("(?i)\\btwo girls\\b"), "a girl")
+            .replace(Regex("(?i)\\bthe two girls\\b"), "the girl")
+            .replace(Regex("(?i)\\bboth girls\\b"), "the girl")
+            .replace(Regex("(?i)\\bthe girls\\b"), "the girl")
+            .replace(Regex("(?i)\\bone girl\\b"), "she")
+            .replace(Regex("(?i)\\bthe other\\b"), "she")
+            .replace(Regex("(?i)\\bboth possessing\\b"), "possessing")
+            .replace(Regex("(?i)\\bboth have\\b"), "she has")
+            .replace(Regex("(?i)\\bboth are\\b"), "she is")
+            .replace(Regex("(?i)\\btheir bodies\\b"), "her body")
+            .replace(Regex("(?i)\\btheir faces\\b"), "her face")
+            .replace(Regex("(?i)\\btheir hands\\b"), "her hands")
+            .replace(Regex("(?i)\\btheir hair\\b"), "her hair")
+            .replace(Regex("(?i)\\btheir eyes\\b"), "her eyes")
+            .replace(Regex("(?i)\\btheir\\b"), "her")
+            .replace(Regex("(?i)\\bthey\\b"), "she")
+            .replace(Regex("(?i)\\bthem\\b"), "her")
+            .replace(Regex("(?i)\\bschool uniforms\\b"), "school uniform")
+            .replace(Regex("(?i)\\buniforms\\b"), "uniform")
+            .replace(Regex("(?i)\\bpositioned close together\\b"), "positioned calmly")
+            .replace(Regex("(?i)\\bstanding side-by-side\\b"), "standing gracefully")
+            .replace(Regex("(?i)\\bside-by-side\\b"), "gracefully")
+            .replace(Regex("(?i)\\beach other's\\b"), "her own")
+            .replace(Regex("(?i)\\beach other\\b"), "herself")
+        out = out
+            .replace(Regex("(?i)\\ba girl are\\b"), "a girl is")
+            .replace(Regex("(?i)\\bthe girl are\\b"), "the girl is")
+            .replace(Regex("(?i)\\bshe are\\b"), "she is")
+            .replace(Regex("(?i)\\bshe have\\b"), "she has")
+            .replace(Regex("(?i)\\bshe is both\\b"), "she is")
+            .replace(Regex("(^|[.!?]\\s+)([a-z])")) { match ->
+                match.groupValues[1] + match.groupValues[2].uppercase(Locale.ROOT)
+            }
+        return out
+    }
+
+    private data class PeopleCount(
+        val multiple: Boolean,
+        val single: Boolean,
+        val three: Boolean,
+    )
+
+    private fun peopleCount(text: String, statedTags: Set<String>): PeopleCount {
+        val three = THREE_PEOPLE.containsMatchIn(text)
+        val inputMultiple = three || twoPeople(text)
+        val inputSingle = singlePerson(text)
+        val statedMultiple = statedTags.any {
+            it in GIRL_COUNT_TAGS || it in BOY_COUNT_TAGS ||
+                it == "multiple_girls" || it == "multiple_boys"
+        }
+        val statedSingle = statedTags.any { it == "1girl" || it == "1boy" || it == "solo" }
+        val multiple = inputMultiple || (!inputSingle && statedMultiple && !statedSingle)
+        val single = !multiple && (inputSingle || statedSingle)
+        return PeopleCount(multiple = multiple, single = single, three = three)
+    }
+
+    private fun hasClothingCue(text: String): Boolean = CLOTHING_CUE.containsMatchIn(text)
+
+    private fun isClothingTag(tag: String): Boolean {
+        if (tag in CLOTHING_TAGS) return true
+        return tag.substringAfterLast('_') in CLOTHING_NOUNS
+    }
+
     private fun colorTagStated(color: String, noun: String, tags: Set<String>): Boolean =
         colorAliases(color).any { "${it}_$noun" in tags }
 
@@ -259,10 +347,13 @@ object FidelityGuard {
 
     private fun femalePresent(text: String): Boolean = FEMALE_CUE.containsMatchIn(text)
 
+    private fun malePresent(text: String): Boolean = MALE_CUE.containsMatchIn(text)
+
     private fun singlePerson(text: String): Boolean {
+        if (twoPeople(text)) return false
         if (SINGLE_CUE.containsMatchIn(text)) return true
         return when (personMentions(text)) {
-            0 -> femalePresent(text)
+            0 -> femalePresent(text) || PERSON_FEATURE_CUE.containsMatchIn(text)
             1 -> true
             else -> false
         }
@@ -300,10 +391,16 @@ object FidelityGuard {
     private val THREE_PEOPLE = Regex("三人|３人|3人|みたり")
     private val SINGLE_CUE = Regex("一人|１人|ひとり|単独|そろ")
     private val GIRL_COUNT_TAGS = setOf("2girls", "3girls", "4girls", "5girls", "6+girls")
+    private val BOY_COUNT_TAGS = setOf("2boys", "3boys", "4boys", "5boys", "6+boys")
 
     private val FEMALE_CUE = Regex(
         "少女|女の子|女性|彼女|お嬢さん|めいど|どれす|すかーと|ぶらうす|" +
-            "りぼん|にーそ|みずぎ|びきに|きもの|ゆかた|胸元|乳房|乳首|おっぱい",
+            "りぼん|にーそ|みずぎ|びきに|きもの|ゆかた|胸元|乳房|乳首|おっぱい|" +
+            "髪|目|瞳|顔|表情|肌|唇|口",
+    )
+    private val MALE_CUE = Regex("少年|男の子|男性|ぺにす|男性器|勃起|精液")
+    private val PERSON_FEATURE_CUE = Regex(
+        "髪|目|瞳|顔|表情|肌|唇|口|首|腕|手|脚|足|胸|乳房|乳首|お腹|背中|腰",
     )
     private val CONCEAL_CUE = Regex(
         "胸元?を(?:隠|覆)|胸を(?:隠|覆)|胸元は隠|" +
@@ -326,6 +423,25 @@ object FidelityGuard {
         "gloves", "hat", "vest", "swimsuit", "bikini", "kimono", "yukata",
         "uniform", "cardigan", "hoodie", "sweater", "scarf", "necktie", "ribbon",
         "frills", "lace", "sleeves", "collar", "trim", "fabric",
+    )
+    private val CLOTHING_TAGS = setOf(
+        "maid", "school_uniform", "serafuku", "japanese_clothes",
+        "military_uniform", "nurse", "waitress", "chef", "apron", "dress",
+    )
+    private val CLOTHING_CUE = Regex(
+        "服|どれす|しゃつ|すかーと|ぶらうす|じゃけっと|こーと|えぷろん|" +
+            "ずぼん|ぱんつ|くつした|にーそ|くつ|ぶーつ|てぶくろ|ぼうし|べすと|" +
+            "みずぎ|びきに|きもの|ゆかた|せいふく|がくせいふく|めいど|" +
+            "かーでぃがん|ぱーかー|せーたー|まふらー|ねくたい|りぼん|ふりる|" +
+            "れーす|そで|えり|とりむ|ぬの|きじ|着て|着ている|身につけ|着用|" +
+            "衣装|装束",
+    )
+    private val CLOTHING_SENTENCE = Regex(
+        "(?i)\\b(?:dress|shirt|skirt|blouse|jacket|coat|apron|pants|trousers|" +
+            "shorts|socks|thighhighs|pantyhose|shoes|boots|gloves|hat|vest|" +
+            "swimsuit|bikini|kimono|yukata|uniforms?|cardigan|hoodie|sweater|" +
+            "scarf|necktie|ribbon|frills|lace|sleeves|collar|trim|fabric|" +
+            "attire|outfit|dressed|garment|clothes|clothing)\\b",
     )
 
     private val COLOR_WORDS =

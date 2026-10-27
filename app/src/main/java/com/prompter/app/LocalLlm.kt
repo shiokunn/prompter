@@ -28,7 +28,7 @@ object LocalModelSpec {
         "https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm/resolve/" +
             "$REVISION/$FILE_NAME"
     const val LICENSE = "Apache-2.0"
-    const val CACHE_KEY = "local:gemma-4-E2B-v10"
+    const val CACHE_KEY = "local:gemma-4-E2B-v11"
     const val MIN_RAM_BYTES = 8L * 1024 * 1024 * 1024
     const val EXTRA_FREE_BYTES = 1L * 1024 * 1024 * 1024
 
@@ -76,7 +76,7 @@ object LocalLlmPrompt {
         Task:
         - Expand the input into a rich, production-ready prompt. Do not merely translate it.
         - Follow Subject + Action + Scene + Mood + Style.
-        - Write 8 to 12 sentences, for 180 to 260 words in total. Aim for about 220 words.
+        - Write 10 to 12 sentences, for 200 to 240 words in total. Aim for about 220 words.
         - Use this order:
           1. Subject, number of people, and main action.
           2. Face, hair, eyes, expression, and skin.
@@ -93,10 +93,11 @@ object LocalLlmPrompt {
           semicolons, or periods correctly. Never join two independent clauses with only
           a comma.
         - Length check: count the words before you finish. If the prompt is shorter than
-          180 words, extend the appearance, pose, setting, lighting, and background
-          sentences with specific visual detail. If it is longer than 260 words, remove
-          repeated adjectives and redundant clauses. Never return fewer than 180 words,
-          even for a very short input. A short input is not a reason for a short prompt.
+          200 words, extend the description of the stated hair, face, fabric, pose,
+          lighting, and background. Do not add a new object to gain length; describe the
+          existing elements more fully. If it is longer than 260 words, remove repeated
+          adjectives and redundant clauses. Never return fewer than 180 words, even for a
+          very short input. A short input is not a reason for a short prompt.
         - If the input is simple, expand only with neutral, non-specific ambiance:
           soft lighting, a simple background, and anime rendering. Neutral light and
           atmosphere are allowed because they do not name a new object.
@@ -174,16 +175,17 @@ object LocalLlmPrompt {
         appendLine(unmatched.trim().ifBlank { "(none)" })
         appendLine()
         appendLine(
-            "Write 8 to 12 sentences and 180 to 260 words, aiming for about 220 words. " +
+            "Write 10 to 12 sentences and 200 to 240 words, aiming for about 220 words. " +
                 "Before writing, check the input for people count, hair color/length/style, " +
                 "eye color, clothing type/color, pose, setting, and props. Do not add any " +
                 "detail not stated there. Do not invent hair length, eye color, clothing " +
                 "colors, furniture, props, accessories, or extra people. For a split " +
                 "composition with one girl on each side, use two girls and 2girls, " +
                 "multiple_girls. Do not use solo/1girl for two people. Avoid cleavage when " +
-                "the chest is hidden. Count the words and expand only the stated elements " +
-                "if the prompt is under 180 words. Vary sentence length and use correct " +
-                "punctuation. Then write tags that agree with the prose and the input.",
+                "the chest is hidden. If the prompt is under 180 words, continue with more " +
+                "detail about the same stated elements; never add a new object for length. " +
+                "Vary sentence length and use correct punctuation. Then write tags that " +
+                "agree with the prose and the input.",
         )
     }
 
@@ -265,6 +267,7 @@ object LocalLlmPrompt {
         value = value
             .replace(Regex("(?im)^\\s*(prompt|english prompt)\\s*:\\s*"), "")
             .replace(EXPRESSION_BLEND_REGEX, "a faint smile")
+            .replace(EXPRESSION_BLEND_REVERSE_REGEX, "a faint smile")
             .replace(FACE_CENTER_REGEX, "")
             .replace(Regex("\\s+"), " ")
             .trim()
@@ -276,6 +279,10 @@ object LocalLlmPrompt {
         "(?i)\\b(?:a|an|the|her|his)\\s+(?:[\\w-]+(?:,\\s*|\\s+)){0,3}smile\\s+" +
             "mixed with\\s+(?:[\\w-]+(?:,\\s*|\\s+)){0,4}" +
             "(?:expression|demeanor|look|face)\\b",
+    )
+    private val EXPRESSION_BLEND_REVERSE_REGEX = Regex(
+        "(?i)\\b(?:a|an|the|her|his)\\s+(?:[\\w-]+(?:,\\s*|\\s+)){0,3}expression\\s+" +
+            "mixed with\\s+(?:[\\w-]+(?:,\\s*|\\s+)){0,4}smile\\b",
     )
     private val FACE_CENTER_REGEX = Regex(
         "(?i)\\s+in the center of (?:her|his|their|the) face\\b",

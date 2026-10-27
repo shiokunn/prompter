@@ -124,6 +124,45 @@ class FidelityGuardTest {
     }
 
     @Test
+    fun featureOnlyInputIsSingleAndHasNoInventedClothingTags() {
+        val input = "明るい黄色の髪の毛、紫の目、ロングヘアー、"
+        val tags = listOf(
+            "blonde_hair", "purple_eyes", "long_hair", "school_uniform", "multiple_girls",
+        )
+        val result = FidelityGuard.correctTags(
+            input = input,
+            tags = tags,
+            isKnownTag = known(tags + listOf("1girl", "solo")),
+            statedTags = listOf("blonde_hair", "purple_eyes"),
+        )
+
+        assertFalse(result.tags.contains("multiple_girls"))
+        assertFalse(result.tags.contains("school_uniform"))
+        assertTrue(result.tags.contains("1girl"))
+        assertTrue(result.tags.contains("solo"))
+        assertTrue(result.tags.contains("long_hair"))
+    }
+
+    @Test
+    fun promptFeatureOnlyInputDoesNotBecomeTwoGirlsOrAWearerOfUniforms() {
+        val input = "明るい黄色の髪の毛、紫の目、ロングヘアー、"
+        val prompt = "Two girls are featured in this scene. They are dressed in their " +
+            "respective school uniforms. Their eyes are a vivid purple."
+        val result = FidelityGuard.sanitizePrompt(
+            input = input,
+            prompt = prompt,
+            offlineTags = listOf("blonde_hair", "purple_eyes"),
+        )
+
+        assertFalse(result.contains("Two girls"))
+        assertFalse(result.contains("school uniform"))
+        assertFalse(result.contains("They are"))
+        assertFalse(result.contains("Their"))
+        assertTrue(result.contains("A girl is featured"))
+        assertTrue(result.contains("Her eyes are a vivid purple"))
+    }
+
+    @Test
     fun promptDoesNotInventHairEyesOrClothing() {
         val input = "白いドレスを着た少女が野原に立っている"
         val prompt = "A girl with long, straight blonde hair and blue eyes wears a white " +
