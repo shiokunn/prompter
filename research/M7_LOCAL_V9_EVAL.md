@@ -1,5 +1,8 @@
 # M7 ローカルLLM v9 10ケース評価
 
+> 追記: 忠実さ・タグ整合性を修正したv13の再評価は
+> [`research/M7_LOCAL_V13_EVAL.md`](M7_LOCAL_V13_EVAL.md) を参照。
+
 - 日付: 2026-10-27
 - APK: `0.7.3-m7`（versionCode 18）
 - モデル: Gemma 4 E2B IT / LiteRT-LM 0.18.1 / CPU 4 threads

@@ -20,6 +20,7 @@
 - **M7 UI刷新・OpenRouter診断・ローカルv9**: [`research/M7_REPORT.md`](research/M7_REPORT.md)
 - **M7 クラウド生成検証（有効キー・上限なし）**: [`research/M7_CLOUD_VERIFY.md`](research/M7_CLOUD_VERIFY.md)
 - **M7 ローカルv9 10ケース評価**: [`research/M7_LOCAL_V9_EVAL.md`](research/M7_LOCAL_V9_EVAL.md)
+- **M7 ローカルv13 忠実さ・タグ整合性の再評価**: [`research/M7_LOCAL_V13_EVAL.md`](research/M7_LOCAL_V13_EVAL.md)
 - **PixAI自然文 人手評価結果（8ケース）**: [`research/PIXAI_EVAL.md`](research/PIXAI_EVAL.md)
 - **M7 ローカルv9 20回連続生成の安定性**: [`research/M7_STABILITY.md`](research/M7_STABILITY.md)
 - **引き継ぎ指示書**: [`HANDOFF.md`](HANDOFF.md)
@@ -76,18 +77,25 @@
   意図4.38、自然さ3.63、構造4.50、**忠実さ2.88（未達）**。8/8件が180〜260語。
   最優先課題は自然文とタグの矛盾（25の `cleavage`、27の `solo,1girl`）と、
   未指定の身体的特徴・服色の追加。詳細は [`research/PIXAI_EVAL.md`](research/PIXAI_EVAL.md)。
-- APK: `/storage/emulated/0/Download/Prompter/Prompter-0.7.3-m7-debug.apk`
-  （SHA-256 `1c26459d52a0cd1e78db1b47255bf27f67fe4c24da85bb8fc5db8fd41b57e4e9`、
-  約76MB、versionCode 18）。
-- 次の作業: タグ整合性チェックとv10プロンプトで忠実さを改善し、同じ8〜10ケースを再評価。
-  機内モードはユーザー指定により実施しない。クラウドは代替なので低優先。
-  その後M6.1のGPU/E4B検討へ。
+- 2026-10-27: **M7 ローカルv13 忠実さ・タグ整合性の再評価（0.7.4-m7）**。
+  人数・未指定服装・服色・メタ説明を決定論的に補正し、辞書アセットの更新を
+  SHA-256比較に修正。同じ8ケースで **平均230.4語、180〜260語 8/8、
+  拒否0/8、日本語混入0/8、平均38.8秒**。27は `2girls, multiple_girls,
+  white_hair, bob_cut`、25は `cleavage` なし、29は `multiple_girls` なし。
+  詳細は [`research/M7_LOCAL_V13_EVAL.md`](research/M7_LOCAL_V13_EVAL.md)。
+- APK: `/storage/emulated/0/Download/Prompter/Prompter-0.7.4-m7-debug.apk`
+  （SHA-256 `ff2f0afbda2cb48f5122bc35ff75faa1b2471a21abbf3ef44a8e4a1febe949b9`、
+  約76MB、versionCode 19）。
+- 次の作業: v13の8ケースを人手で再採点し、忠実さ3.5以上を確認する。
+  残課題は25の未指定カメラタグ、29の具体的な料理工程、24の単数代名詞、
+  27の長文化（251語）。機内モードはユーザー指定により実施しない。
+  クラウドは代替なので低優先。その後M6.1のGPU/E4B検討へ。
 
 ## 要約
 
 - 主対象は **PixAI DiT（Tsubaki.3 / Tsubaki.2）**。DiT はタグ列より **英語の自然文** が向く。
 - 既定出力は `Subject + Action + Scene + Mood + Style` の英文。タグモードも併設。
-- M1 のオフライン辞書は上位5,000タグ + 別名14,587件（SQLite 2.18MB）。
+- M1 のオフライン辞書は上位5,000タグ + 別名14,596件（SQLite 2.29MB）。
   将来は14万タグ規模へ拡張し、ML Kit 翻訳と組み合わせる。
 - M2 で **Compose UI + Kotlin トライ + オフライン自然文合成** を実装済み。
   日本語入力から PixAI 向け英文（オフライン80〜150語、クラウドは語数上限なし、ローカルLLM180〜260語）とタグ列を同時に生成できる。
@@ -158,9 +166,9 @@ adb install -r app-debug.apk
 
 ブラウザからダウンロードした場合は ZIP を展開してからインストールする。
 
-現在の APK は `0.7.3-m7`（versionCode 18、debug 署名、arm64-v8a）。M1 の辞書、M2 のオフライン変換、
+現在の APK は `0.7.4-m7`（versionCode 19、debug 署名、arm64-v8a）。M1 の辞書、M2 のオフライン変換、
 M3 のタグ編集・履歴、M4 のAI補完、M5 のML Kit翻訳フォールバック、M6 のローカルLLM、
-M7 のUI刷新・ローカルv9・クラウド語数上限なしを含む。
+M7 のUI刷新・ローカルv13・忠実さ/タグ整合性補正・クラウド語数上限なしを含む。
 
 M5以降はdebug署名鍵をリポジトリ内の `keystore/prompter-debug.jks` に固定した。
 そのため、**0.5.0以降**のAPKは `adb install -r` で上書きできる。
