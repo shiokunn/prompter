@@ -213,6 +213,42 @@ class FidelityGuardTest {
     }
 
     @Test
+    fun promptDropsUnstatedOutfitSentence() {
+        val input = "二人の少女がベッドに座って、軽く微笑んでいる"
+        val prompt = "Two girls sit on a bed. They are both wearing their respective " +
+            "outfits, which are simple and comfortable. Their smiles are gentle."
+        val result = FidelityGuard.sanitizePrompt(
+            input = input,
+            prompt = prompt,
+            offlineTags = listOf("2girls", "multiple_girls", "bed", "sitting", "smile"),
+        )
+
+        assertFalse(result.contains("outfits"))
+        assertFalse(result.contains("wearing"))
+        assertTrue(result.contains("Two girls sit on a bed"))
+        assertTrue(result.contains("smiles are gentle"))
+    }
+
+    @Test
+    fun promptRemovesNotSpecifiedMetaCommentary() {
+        val input = "白いドレスを着た少女が野原に立って、こちらを見ている"
+        val prompt = "Her hair is not specified, so it is described simply as her hair, " +
+            "falling naturally around her shoulders. Her eyes are not specified, so she " +
+            "is left as a neutral gaze directed straight out of the frame. Her hands are " +
+            "not specified, so she hang naturally by her sides."
+        val result = FidelityGuard.sanitizePrompt(
+            input = input,
+            prompt = prompt,
+            offlineTags = listOf("1girl", "white_dress", "dress", "field", "standing"),
+        )
+
+        assertFalse(result.contains("not specified"))
+        assertTrue(result.contains("Her hair falls naturally"))
+        assertTrue(result.contains("Her gaze is directed"))
+        assertTrue(result.contains("Her hands hang naturally"))
+    }
+
+    @Test
     fun tagsRemainInOrderWhenNothingChanges() {
         val tags = listOf("1girl", "solo", "blue_dress")
         val result = FidelityGuard.correctTags(

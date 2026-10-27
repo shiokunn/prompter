@@ -161,6 +161,28 @@ object FidelityGuard {
         val people = peopleCount(text, offlineTags.toSet())
         if (people.single) out = singularizePrompt(out)
         return out
+            .replace(
+                Regex(
+                    "(?i)\\b(?:her|his)\\s+hair\\s+is\\s+not\\s+specified,\\s+so\\s+" +
+                        "it\\s+is\\s+described\\s+simply\\s+as\\s+(?:her|his)\\s+hair,?\\s*",
+                ),
+                "Her hair ",
+            )
+            .replace(Regex("(?i)\\bHer hair\\s+falling\\b"), "Her hair falls")
+            .replace(
+                Regex(
+                    "(?i)\\b(?:her|his)\\s+eyes\\s+are\\s+not\\s+specified,\\s+so\\s+" +
+                        "(?:she|he)\\s+is\\s+left\\s+as\\s+a\\s+neutral\\s+gaze\\s+",
+                ),
+                "Her gaze is ",
+            )
+            .replace(
+                Regex(
+                    "(?i)\\b(?:her|his)\\s+hands\\s+are\\s+not\\s+specified,\\s+so\\s+" +
+                        "(?:she|he)\\s+hang\\s+naturally\\s+by\\s+(?:her|his)\\s+sides\\b",
+                ),
+                "Her hands hang naturally by her sides",
+            )
             .replace(Regex("(?i)\\bwith hair and eyes\\b"), "with delicate features")
             .replace(Regex("(?i)\\bher hair and eyes\\b"), "her features")
             .replace(Regex("\\s+"), " ")
@@ -445,11 +467,11 @@ object FidelityGuard {
             "衣装|装束",
     )
     private val CLOTHING_SENTENCE = Regex(
-        "(?i)\\b(?:dress|shirt|skirt|blouse|jacket|coat|apron|pants|trousers|" +
-            "shorts|socks|thighhighs|pantyhose|shoes|boots|gloves|hat|vest|" +
-            "swimsuit|bikini|kimono|yukata|uniforms?|cardigan|hoodie|sweater|" +
-            "scarf|necktie|ribbon|frills|lace|sleeves|collar|trim|fabric|" +
-            "attire|outfit|dressed|garment|clothes|clothing)\\b",
+        "(?i)\\b(?:dress(?:es)?|shirts?|skirts?|blouses?|jackets?|coats?|aprons?|" +
+            "pants|trousers|shorts|socks?|thighhighs|pantyhose|shoes?|boots?|gloves?|" +
+            "hats?|vests?|swimsuits?|bikinis?|kimonos?|yukatas?|uniforms?|cardigans?|" +
+            "hoodies?|sweaters?|scarves?|neckties?|ribbons?|frills?|lace|sleeves?|" +
+            "collars?|trim|fabrics?|attire|outfits?|dressed|garments?|clothes|clothing)\\b",
     )
 
     private val COLOR_WORDS =

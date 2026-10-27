@@ -1,0 +1,250 @@
+{
+  "output": "app/src/main/assets/promptdb.sqlite",
+  "size_bytes": 2289664,
+  "build_seconds": 1.35,
+  "tags": 5003,
+  "aliases": 14596,
+  "tags_with_japanese_alias": 3857,
+  "japanese_coverage": 0.7709,
+  "by_source": {
+    "canonical": 4977,
+    "curated": 756,
+    "generated": 1786,
+    "machine": 3362,
+    "manual": 264,
+    "official": 3451
+  },
+  "by_lang": {
+    "en": 8428,
+    "ja": 6168
+  },
+  "by_tier": {
+    "A": 5997,
+    "B": 5237,
+    "C": 3362
+  },
+  "collisions": {
+    "input_aliases": 20885,
+    "kept_aliases": 14596,
+    "dropped_aliases": 6289,
+    "collision_groups": 14654,
+    "ambiguous_groups": 58,
+    "dropped_examples": [
+      {
+        "norm": "thighhigh",
+        "surface": "thighhigh",
+        "tags": [
+          "thighhighs",
+          "single_thighhigh"
+        ],
+        "reason": "ambiguous_same_tier"
+      },
+      {
+        "norm": "animaltails",
+        "surface": "animal_tails",
+        "tags": [
+          "tail",
+          "multiple_tails"
+        ],
+        "reason": "ambiguous_same_tier"
+      },
+      {
+        "norm": "tails",
+        "surface": "tails",
+        "tags": [
+          "tail",
+          "multiple_tails"
+        ],
+        "reason": "ambiguous_same_tier"
+      },
+      {
+        "norm": "d",
+        "surface": ":d",
+        "tags": [
+          ":d",
+          ";d",
+          "d:"
+        ],
+        "reason": "ambiguous_same_tier"
+      },
+      {
+        "norm": "elfears",
+        "surface": "elf_ears",
+        "tags": [
+          "pointy_ears",
+          "elf"
+        ],
+        "reason": "ambiguous_same_tier"
+      },
+      {
+        "norm": "elvenears",
+        "surface": "elven_ears",
+        "tags": [
+          "pointy_ears",
+          "elf"
+        ],
+        "reason": "ambiguous_same_tier"
+      },
+      {
+        "norm": "o",
+        "surface": ":o",
+        "tags": [
+          ":o",
+          ";o"
+        ],
+        "reason": "ambiguous_same_tier"
+      },
+      {
+        "norm": "3",
+        "surface": ":3",
+        "tags": [
+          ":3",
+          "3:"
+        ],
+        "reason": "ambiguous_same_tier"
+      },
+      {
+        "norm": "rings",
+        "surface": "rings",
+        "tags": [
+          "ring",
+          "multiple_rings"
+        ],
+        "reason": "ambiguous_same_tier"
+      },
+      {
+        "norm": "p",
+        "surface": ":p",
+        "tags": [
+          ":p",
+          ";p"
+        ],
+        "reason": "ambiguous_same_tier"
+      },
+      {
+        "norm": "q",
+        "surface": ":q",
+        "tags": [
+          ":q",
+          ";q"
+        ],
+        "reason": "ambiguous_same_tier"
+      },
+      {
+        "norm": "||",
+        "surface": "|_|",
+        "tags": [
+          "|_|",
+          "\\||/"
+        ],
+        "reason": "ambiguous_same_tier"
+      },
+      {
+        "norm": "robotarms",
+        "surface": "robot_arms",
+        "tags": [
+          "mechanical_arms",
+          "single_mechanical_arm"
+        ],
+        "reason": "ambiguous_same_tier"
+      },
+      {
+        "norm": "roboticarms",
+        "surface": "robotic_arms",
+        "tags": [
+          "mechanical_arms",
+          "single_mechanical_arm"
+        ],
+        "reason": "ambiguous_same_tier"
+      },
+      {
+        "norm": ">",
+        "surface": ":>",
+        "tags": [
+          ":>",
+          ">:)",
+          ">:("
+        ],
+        "reason": "ambiguous_same_tier"
+      },
+      {
+        "norm": "aura",
+        "surface": "aura",
+        "tags": [
+          "aura",
+          "au_ra"
+        ],
+        "reason": "ambiguous_same_tier"
+      },
+      {
+        "norm": "saberextra",
+        "surface": "saber_extra",
+        "tags": [
+          "nero_claudius_(fate)",
+          "nero_claudius_(fate/extra)"
+        ],
+        "reason": "ambiguous_same_tier"
+      },
+      {
+        "norm": "rulerfateapocrypha",
+        "surface": "ruler_(fate/apocrypha)",
+        "tags": [
+          "jeanne_d'arc_(fate)",
+          "jeanne_d'arc_(ruler)_(fate)"
+        ],
+        "reason": "ambiguous_same_tier"
+      },
+      {
+        "norm": "sakurasaber",
+        "surface": "sakura_saber",
+        "tags": [
+          "okita_souji_(fate)",
+          "okita_souji_(koha-ace)"
+        ],
+        "reason": "ambiguous_same_tier"
+      },
+      {
+        "norm": "saberofred",
+        "surface": "saber_of_red",
+        "tags": [
+          "mordred_(fate)",
+          "mordred_(fate/apocrypha)"
+        ],
+        "reason": "ambiguous_same_tier"
+      }
+    ]
+  },
+  "missing_lexicon_tags": [
+    "areola",
+    "argyle",
+    "arrow",
+    "background",
+    "breast_squeeze",
+    "covering_mouth",
+    "creampie",
+    "cum_on_face",
+    "doctor",
+    "flame",
+    "garden",
+    "hand_on_hip",
+    "hand_to_mouth",
+    "hands_on_hips",
+    "lifting",
+    "open_umbrella",
+    "pirate",
+    "plaid",
+    "samurai",
+    "sheet",
+    "star_background",
+    "striped",
+    "swing",
+    "tracksuit",
+    "wizard"
+  ],
+  "source_hashes": {
+    "danbooru.csv": "f936684fa0b041e9a55d35f2052588e28d95eef8672be6829241f8b1a7214732",
+    "danbooru-jp.csv": "d7523b81e3c62219fc12f2d5a99b4be76e89c7a96d08e70fc30cedea3e058d24",
+    "danbooru-only-machine-jp.csv": "b6183b0b5cf15bfce0ddb01ead2a2d3f4ce7efd03477cfca5eafe53a29f9b2f4",
+    "ja_lexicon.tsv": "0e73c8c0bc9c474c0c7e5506eeb3a561faab75b7b0cc583566275a6e14556826"
+  }
+}
