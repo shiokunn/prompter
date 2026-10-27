@@ -175,7 +175,7 @@ class LocalLlmPromptTest {
     fun systemPromptRequiresExpansionRatherThanTranslation() {
         assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("Do not merely translate"))
         assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("210 to 240 words"))
-        assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("18 to 26 words"))
+        assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("at least 18 words"))
         assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("11 to 12 sentences"))
         assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("Never return fewer than 180 words"))
         assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("Setting and background objects"))
@@ -274,7 +274,7 @@ class LocalLlmPromptTest {
 
     @Test
     fun promptVersionIsBumpedWhenExpansionRulesChange() {
-        assertEquals("local:gemma-4-E2B-v12", LocalModelSpec.CACHE_KEY)
+        assertEquals("local:gemma-4-E2B-v13", LocalModelSpec.CACHE_KEY)
     }
 
     @Test

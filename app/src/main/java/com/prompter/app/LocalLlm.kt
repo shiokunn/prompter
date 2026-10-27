@@ -28,7 +28,7 @@ object LocalModelSpec {
         "https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm/resolve/" +
             "$REVISION/$FILE_NAME"
     const val LICENSE = "Apache-2.0"
-    const val CACHE_KEY = "local:gemma-4-E2B-v12"
+    const val CACHE_KEY = "local:gemma-4-E2B-v13"
     const val MIN_RAM_BYTES = 8L * 1024 * 1024 * 1024
     const val EXTRA_FREE_BYTES = 1L * 1024 * 1024 * 1024
 
@@ -89,9 +89,9 @@ object LocalLlmPrompt {
         - Add concrete visual detail only through the stated elements: strands of the
           stated hair, folds of the stated garment, reflections on stated surfaces, and
           the direction of the stated light. Do not add new objects to create detail.
-        - Vary sentence length; most sentences should be 18 to 26 words. Use commas,
-          semicolons, or periods correctly. Never join two independent clauses with only
-          a comma.
+        - Each sentence must contain at least 18 words. Vary length from 18 to 26 words;
+          do not write short 10-word sentences. Use commas, semicolons, or periods
+          correctly. Never join two independent clauses with only a comma.
         - Length check: count the words before you finish. If the prompt is shorter than
           210 words, extend the description of the stated hair, eyes, skin, expression,
           fabric folds, pose, lighting, shadows, and background. Do not add a new object to
@@ -177,6 +177,7 @@ object LocalLlmPrompt {
         appendLine()
         appendLine(
             "Write 11 to 12 sentences and 210 to 240 words, aiming for about 225 words. " +
+                "Every sentence must be at least 18 words. " +
                 "Before writing, check the input for people count, hair color/length/style, " +
                 "eye color, clothing type/color, pose, setting, and props. Do not add any " +
                 "detail not stated there. Do not invent hair length, eye color, clothing " +

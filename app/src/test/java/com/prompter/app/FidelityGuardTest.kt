@@ -32,6 +32,7 @@ class FidelityGuardTest {
         assertFalse(result.tags.contains("half_updo"))
         assertTrue(result.tags.contains("2girls"))
         assertTrue(result.tags.contains("multiple_girls"))
+        assertTrue(result.tags.contains("bob_cut"))
     }
 
     @Test
@@ -262,6 +263,20 @@ class FidelityGuardTest {
         assertTrue(result.contains("Her hair falls naturally"))
         assertTrue(result.contains("Her gaze is directed"))
         assertTrue(result.contains("Her hands hang naturally"))
+    }
+
+    @Test
+    fun bobCutIsAddedWhenCompoundAliasOnlyReturnsColor() {
+        val input = "白いボブカットの少女"
+        val tags = listOf("1girl", "solo", "white_hair")
+        val result = FidelityGuard.correctTags(
+            input = input,
+            tags = tags,
+            isKnownTag = known(tags + listOf("bob_cut")),
+            statedTags = tags,
+        )
+
+        assertTrue(result.tags.contains("bob_cut"))
     }
 
     @Test

@@ -78,6 +78,12 @@ object FidelityGuard {
             }
         }
 
+        // A long compound hair alias can consume the ボブカット part, leaving
+        // only the color tag. Add the style back when the input names it.
+        if (BOB_CUE.containsMatchIn(text) && "bob_cut" !in current && isKnownTag("bob_cut")) {
+            add("bob_cut")
+        }
+
         // The AI sometimes drops a stated hair/eye/clothing attribute from its
         // tag line even though the prose keeps it. Restore those attributes so
         // the tags and the prose stay consistent.
@@ -458,6 +464,7 @@ object FidelityGuard {
         "はーふあっぷ|half[- ]?updo|半分まとめ|半分にまとめ|半分だけまとめ|半分アップ",
     )
     private val SIDE_CUE = Regex("左側から|右側から|左から|右から|横から|側面|横顔|よこから")
+    private val BOB_CUE = Regex("ぼぶ|ボブ|bob")
     private val ABOVE_CUE = Regex("上から見|上から撮|上から描|俯瞰|見下ろ|高い位置|ふかん|みおろ")
 
     private val COLOR_CLOTHING_TAG = Regex(
