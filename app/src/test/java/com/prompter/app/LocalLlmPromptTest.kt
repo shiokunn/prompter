@@ -174,7 +174,7 @@ class LocalLlmPromptTest {
     @Test
     fun systemPromptRequiresExpansionRatherThanTranslation() {
         assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("Do not merely translate"))
-        assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("180 to 260 words"))
+        assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("200 to 240 words"))
         assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("15 to 25 words"))
         assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("10 to 12 sentences"))
         assertTrue(LocalLlmPrompt.SYSTEM_PROMPT.contains("Never return fewer than 180 words"))
@@ -209,7 +209,7 @@ class LocalLlmPromptTest {
             unmatched = "",
         )
 
-        assertTrue(prompt.contains("180 to 260 words"))
+        assertTrue(prompt.contains("200 to 240 words"))
         assertTrue(prompt.contains("10 to 12 sentences"))
         assertTrue(prompt.contains("Vary sentence length"))
         assertTrue(prompt.contains("Do not add any detail not stated there"))
@@ -228,6 +228,20 @@ class LocalLlmPromptTest {
         )
 
         assertEquals("She has a faint smile.", result.pixaiPrompt)
+    }
+
+    @Test
+    fun collapsesReverseTwoStateExpressions() {
+        val result = LocalLlmPrompt.parse(
+            """
+            PROMPT_BEGIN
+            She wears a gentle, neutral expression mixed with a subtle smile on her face.
+            PROMPT_END
+            TAGS: 1girl
+            """.trimIndent(),
+        )
+
+        assertEquals("She wears a faint smile on her face.", result.pixaiPrompt)
     }
 
     @Test

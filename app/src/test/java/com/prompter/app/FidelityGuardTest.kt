@@ -95,6 +95,20 @@ class FidelityGuardTest {
     }
 
     @Test
+    fun sideViewDoesNotKeepHighAngleTag() {
+        val input = "左側から見た構図、上目遣い"
+        val tags = listOf("1girl", "solo", "from_above")
+        val result = FidelityGuard.correctTags(
+            input = input,
+            tags = tags,
+            isKnownTag = known(tags + listOf("from_side")),
+        )
+
+        assertFalse(result.tags.contains("from_above"))
+        assertTrue(result.tags.contains("from_side"))
+    }
+
+    @Test
     fun unstatedClothingColorTagsAreRemoved() {
         val input = "学生服を着た少女"
         val tags = listOf("1girl", "school_uniform", "white_shirt", "black_pants")

@@ -98,6 +98,12 @@ object FidelityGuard {
         // 半分 alone (縦半分, 半分閉じた目) must not become half_updo.
         if (!HALF_UPDO_CUE.containsMatchIn(text)) remove("half_updo")
 
+        // 左側から見た / 横から is a side view, not a high-angle view.
+        if (SIDE_CUE.containsMatchIn(text) && !ABOVE_CUE.containsMatchIn(text)) {
+            remove("from_above")
+            add("from_side")
+        }
+
         // A color on a garment that is neither stated nor extracted is an
         // invention. Keep the garment tag, remove the color tag.
         for (tag in current.toList()) {
@@ -412,6 +418,8 @@ object FidelityGuard {
     private val HALF_UPDO_CUE = Regex(
         "はーふあっぷ|half[- ]?updo|半分まとめ|半分にまとめ|半分だけまとめ|半分アップ",
     )
+    private val SIDE_CUE = Regex("左側から|右側から|左から|右から|横から|側面|横顔|よこから")
+    private val ABOVE_CUE = Regex("上から|俯瞰|見下ろ|高い位置|ふかん|みおろ")
 
     private val COLOR_CLOTHING_TAG = Regex(
         "^(white|black|red|blue|green|yellow|blonde|purple|pink|brown|grey|gray|" +
