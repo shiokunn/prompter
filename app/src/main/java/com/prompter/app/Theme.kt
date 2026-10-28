@@ -42,9 +42,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-// A warm paper palette with a single terracotta accent. The UI is intentionally
-// light-only: the brief calls for a calm, editorial surface rather than a
-// system-following dark mode.
+// A light-only blue and teal palette shared across the app's screens.
 val Paper = Color(0xFFF0F4F8)
 val PaperDeep = Color(0xFFE1EAF2)
 val CardCream = Color(0xFFFFFFFF)
