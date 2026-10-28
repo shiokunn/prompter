@@ -263,4 +263,5 @@ adb install -r /storage/emulated/0/Download/Prompter/Prompter-<version>-debug.ap
 > v9の人手評価は総合3.63/5・忠実さ2.88/5でした。v13の同じ8ケースを再採点し、忠実さ3.5以上を確認してください。
 > 残課題は25の未指定カメラタグ、29の具体的な料理工程、24の単数代名詞、27の251語です。
 > 機内モードは実施しないでください。0.7.4-m7は実機にインストール済み、AIバックエンドはLOCALです。
+> 採点キット（基準・評価用プロンプト・8ケース全文）は `research/M7_V13_RERATE.md` を使ってください。
 > 詳細は `research/M7_LOCAL_V13_EVAL.md`、`research/PIXAI_EVAL.md`、`research/M7_LOCAL_V9_EVAL.md`。

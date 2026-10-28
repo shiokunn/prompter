@@ -22,6 +22,7 @@
 - **M7 ローカルv9 10ケース評価**: [`research/M7_LOCAL_V9_EVAL.md`](research/M7_LOCAL_V9_EVAL.md)
 - **M7 ローカルv13 忠実さ・タグ整合性の再評価**: [`research/M7_LOCAL_V13_EVAL.md`](research/M7_LOCAL_V13_EVAL.md)
 - **PixAI自然文 人手評価結果（8ケース）**: [`research/PIXAI_EVAL.md`](research/PIXAI_EVAL.md)
+- **v13 人手再採点キット（基準・プロンプト・8ケース全文）**: [`research/M7_V13_RERATE.md`](research/M7_V13_RERATE.md)
 - **M7 ローカルv9 20回連続生成の安定性**: [`research/M7_STABILITY.md`](research/M7_STABILITY.md)
 - **引き継ぎ指示書**: [`HANDOFF.md`](HANDOFF.md)
 - **プロトタイプ**: [`tools/spike_match.py`](tools/spike_match.py)
@@ -87,6 +88,7 @@
   （SHA-256 `ff2f0afbda2cb48f5122bc35ff75faa1b2471a21abbf3ef44a8e4a1febe949b9`、
   約76MB、versionCode 19）。
 - 次の作業: v13の8ケースを人手で再採点し、忠実さ3.5以上を確認する。
+  採点基準と評価用プロンプトは [`research/M7_V13_RERATE.md`](research/M7_V13_RERATE.md)。
   残課題は25の未指定カメラタグ、29の具体的な料理工程、24の単数代名詞、
   27の長文化（251語）。機内モードはユーザー指定により実施しない。
   クラウドは代替なので低優先。その後M6.1のGPU/E4B検討へ。
