@@ -395,6 +395,7 @@ object FidelityGuard {
         tag.endsWith("_hair") ||
             tag == "bob_cut" ||
             tag.endsWith("_eyes") ||
+            tag in RESTORABLE_SUBJECT_TAGS ||
             isClothingTag(tag)
 
     private fun colorTagStated(color: String, noun: String, tags: Set<String>): Boolean =
@@ -529,6 +530,14 @@ object FidelityGuard {
             "巻き髪|ストレート|ウェーブ|カーリー",
     )
     private val BOB_CUE = Regex("ぼぶ|ボブ|bob")
+
+    // Objects and composition tags that the AI drops from its tag line even
+    // though the offline conversion extracted them from the input. They are
+    // not hair/eye/clothing attributes, so they need an explicit allow-list.
+    private val RESTORABLE_SUBJECT_TAGS = setOf(
+        "tray", "holding_tray", "juice", "omurice", "split_screen",
+        "drink", "glass", "food", "cooking",
+    )
     private val ABOVE_CUE = Regex("上から見|上から撮|上から描|俯瞰|見下ろ|高い位置|ふかん|みおろ")
 
     private val COLOR_CLOTHING_TAG = Regex(

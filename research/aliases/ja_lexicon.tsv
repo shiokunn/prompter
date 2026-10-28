@@ -845,3 +845,7 @@ V字の腕のポーズ	v_arms	curated	1.0
 縦半分	split_screen	curated	0.9
 分割構図	split_screen	curated	0.9
 画面を真ん中で縦半分	split_screen	curated	1.0
+# Tag coverage found in the 2026-10-28 re-rating.
+フリルつき	frills	curated	1.0
+振り向いている	looking_back	curated	1.0
+振り向き	looking_back	curated	0.9

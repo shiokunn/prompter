@@ -1,14 +1,14 @@
 {
   "output": "/data/data/com.termux/files/home/prompter/app/src/main/assets/promptdb.sqlite",
   "size_bytes": 2297856,
-  "build_seconds": 1.28,
+  "build_seconds": 1.26,
   "tags": 5006,
-  "aliases": 14615,
+  "aliases": 14618,
   "tags_with_japanese_alias": 3861,
   "japanese_coverage": 0.7713,
   "by_source": {
     "canonical": 4980,
-    "curated": 769,
+    "curated": 772,
     "generated": 1786,
     "machine": 3364,
     "manual": 264,
@@ -16,18 +16,18 @@
   },
   "by_lang": {
     "en": 8432,
-    "ja": 6183
+    "ja": 6186
   },
   "by_tier": {
-    "A": 6013,
+    "A": 6016,
     "B": 5238,
     "C": 3364
   },
   "collisions": {
-    "input_aliases": 20909,
-    "kept_aliases": 14615,
+    "input_aliases": 20912,
+    "kept_aliases": 14618,
     "dropped_aliases": 6294,
-    "collision_groups": 14673,
+    "collision_groups": 14676,
     "ambiguous_groups": 58,
     "dropped_examples": [
       {
@@ -245,6 +245,6 @@
     "danbooru.csv": "f936684fa0b041e9a55d35f2052588e28d95eef8672be6829241f8b1a7214732",
     "danbooru-jp.csv": "d7523b81e3c62219fc12f2d5a99b4be76e89c7a96d08e70fc30cedea3e058d24",
     "danbooru-only-machine-jp.csv": "b6183b0b5cf15bfce0ddb01ead2a2d3f4ce7efd03477cfca5eafe53a29f9b2f4",
-    "ja_lexicon.tsv": "c92ab781786d3a04b516fb7f54d64f2caa79de5abb00a66a0f09ce11cc99e9e2"
+    "ja_lexicon.tsv": "6feb1f803cf95171a6617970b76dc43b86399d4f43d6399cb017010e9558d738"
   }
 }

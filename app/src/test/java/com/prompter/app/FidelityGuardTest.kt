@@ -375,6 +375,25 @@ class FidelityGuardTest {
     }
 
     @Test
+    fun statedSubjectTagDroppedByAiIsRestored() {
+        val input = "画面を真ん中で縦半分にした構図。左手でトレーを持って、ジュースを乗せている"
+        val tags = listOf("2girls", "multiple_girls", "white_hair", "maid", "holding_tray")
+        val result = FidelityGuard.correctTags(
+            input = input,
+            tags = tags,
+            isKnownTag = known(tags + listOf("tray", "juice", "split_screen")),
+            statedTags = listOf(
+                "2girls", "multiple_girls", "white_hair", "maid",
+                "holding_tray", "tray", "juice", "split_screen",
+            ),
+        )
+
+        assertTrue(result.tags.contains("tray"))
+        assertTrue(result.tags.contains("juice"))
+        assertTrue(result.tags.contains("split_screen"))
+    }
+
+    @Test
     fun statedSideViewKeepsCameraTag() {
         val input = "左側から見た構図、上目遣い"
         val tags = listOf("1girl", "solo", "looking_up")
