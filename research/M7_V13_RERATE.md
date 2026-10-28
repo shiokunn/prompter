@@ -1,7 +1,8 @@
-# M7 v13 人手再採点キット（同一8ケース）
+# M7 v13 / v13.1 人手再採点キット（同一8ケース）
 
 - 日付: 2026-10-28
-- 目的: v13の忠実さ・タグ整合性の修正が、v9の人手評価（忠実さ 2.88/5）を実際に上回ったかを、**同じ8ケース**で確認する
+- 目的: v13/v13.1の忠実さ・タグ整合性の修正が、v9の人手評価（忠実さ 2.88/5）を実際に上回ったかを、**同じ8ケース**で確認する
+- 現行データ: v13.1（`0.7.5-m7`、付録A）。v13の公式結果は §9 に保存
 - 判定の主軸: 入力への忠実さ **3.5 / 5 以上**、かつ重大な矛盾ゼロ
 - このファイル1つで採点が完結する（付録Aに評価対象の全文を収録）
 
@@ -11,14 +12,15 @@
 
 | 項目 | 値 |
 |---|---|
-| APK | `0.7.4-m7`（versionCode 19、debug、arm64-v8a） |
+| APK | `0.7.5-m7`（versionCode 20、debug、arm64-v8a） |
 | モデル | Gemma 4 E2B IT（LiteRT-LM、CPU 4 threads） |
 | 生成設定 | temperature 0.3、seed 42 |
-| プロンプト | `local:gemma-4-E2B-v13`（11〜12文、210〜240語、各文18語以上） |
+| プロンプト | `local:gemma-4-E2B-v13`（11〜12文、210〜240語、各文18語以上。v13.1でも変更なし） |
+| 辞書 | 5,006タグ / 別名14,618件（v13.1で補完タグ3件と別名17件を追加） |
 | 端末 | M08 / Android 16 / 12GB RAM |
 | ケース | 20, 21, 22, 24, 25, 26, 27, 29（v9と同一） |
-| 対象テキスト | 付録A（履歴ID 123/124/125/126/127/128/129/131 の保存済み出力） |
-| 生データ | [`research/eval/m7_v13_8cases.json`](eval/m7_v13_8cases.json) |
+| 対象テキスト | 付録A（履歴ID 148/149/150/151/152/153/154/155 の保存済み出力） |
+| 生データ | [`research/eval/m7_v131_8cases.json`](eval/m7_v131_8cases.json) |
 | v9ベースライン | [`research/PIXAI_EVAL.md`](PIXAI_EVAL.md)（忠実さ 2.88、総合 3.63） |
 
 **重要**: 評価するのは付録Aの固定テキスト。アプリで再生成すると sampling により別の文になるため、
@@ -331,7 +333,7 @@
 
 ---
 
-## 9. 公式結果（2026-10-28）
+## 9. v13 公式結果（2026-10-28、修正前）
 
 ### 9.1 4軸
 
@@ -380,7 +382,7 @@
 - ID24/26 はどちらも「入力に髪の指定がないのに、肩に落ちる／スタイルされた髪として長さ・型を断定した」もの。
 - タグは ID22 `long_hair`、ID21 水色インカラー、ID27 `tray` / `juice`、ID25/29 `omurice`・3分割が落ちた。
 
-### 9.4 v14スコープ（この2点に絞る）
+### 9.4 v13.1で実施したスコープ（この2点に絞る）
 
 1. **未指定ヘアを具体化しない**
    - `FidelityGuard` に、入力に髪の言及がない場合のヘア長・型・質感表現の除去を追加。
@@ -395,28 +397,82 @@
    - 入力に構図・アングルの言及がない場合、`from_below` / `from_side` / `from_above` を除去（ID25）。
 4. 29の具体的な料理工程は今回は修正しない（忠実さ3でも平均は3.5を超えるため）。プロンプト側の改善はv15以降。
 
+> 9.1〜9.3 は **v13（0.7.4-m7）** の出力に対する結果。v13.1の修正内容と再評価用データは §10 を参照。
+
 ---
 
-## 付録A: 評価対象の全文
+## 10. v13.1（0.7.5-m7）の修正と再評価データ
+
+v13の不合格を受けて、プロンプトは変えず、決定論的なガードと辞書だけを修正した。
+
+### 10.1 修正内容
+
+| 種別 | 変更 | 対象 |
+|---|---|---|
+| ガード | 入力に髪の言及がない場合、髪の長さ・型・質感の断定を除去 | ID24・ID26 |
+| ガード | 入力に構図・アングルの言及がない場合、`from_below` / `from_side` / `from_above` を除去 | ID25 |
+| ガード | 色名がある入力で `greyscale` / `monochrome` を除去 | ID21 |
+| ガード | 入力由来の `tray` / `juice` / `omurice` / `split_screen` などをAIが落とした場合に復元 | ID25・ID27・ID29 |
+| 辞書 | `ロングヘアー` → `long_hair`（長音付きの別名漏れ） | ID22 |
+| 辞書 | `インカラー` → `colored_inner_hair` | ID21 |
+| 辞書 | `フリルつき` → `frills`、`振り向いている` → `looking_back` | ID21 |
+| 辞書 | `トレー` → `tray`、`トレーを持って` → `holding_tray`、`ジュース` → `juice` | ID27 |
+| 辞書 | `オムライス` → `omurice`、`3分割` / `縦半分` → `split_screen` | ID25・ID27・ID29 |
+| 辞書 | 補完タグ `omurice` / `juice` / `split_screen` を追加（5,003→5,006） | ID25・ID27・ID29 |
+
+- プロンプト（v13）とtemperature/seedは変更していない。AIキャッシュが効くケースは出力が同一で、ガードだけが再適用される。
+- 29の「野菜を切る」「卵を焼く」など具体的な料理工程は残した（忠実さ3でも平均3.5は超えるため）。次回プロンプト改善の候補。
+
+### 10.2 再評価データ（8ケース）
+
+| ID | 語数 | 主な差分 |
+|---|---:|---|
+| 20 | 232 | 変更なし（キャッシュ） |
+| 21 | 195 | `colored_inner_hair` / `frills` / `looking_back` を追加、`greyscale` を除去 |
+| 22 | 206 | `long_hair` を復元 |
+| 24 | 216 | 髪の長さ・型の断定を除去（「Her hair frames her face」） |
+| 25 | 214 | `from_below` / `from_side` を除去、`omurice` / `split_screen` を追加 |
+| 26 | 227 | 髪の長さ・型の断定を除去（「Her hair is depicted simply, in keeping with ...」） |
+| 27 | 230 | `tray` / `juice` / `split_screen` を追加 |
+| 29 | 235 | `omurice` / `split_screen` を追加（本文の工程追加は残る） |
+
+- 平均 **219.4語**、180〜260語 **8/8**、最小195語、最大235語。
+- 全8ケースがAIキャッシュ利用のため生成時間は約3.1〜3.2秒。初回生成時は35〜40秒。
+- 未指定ヘアの重大違反は **0件** の見込み。タグの主要欠落（`long_hair` / インカラー / `tray` / `juice` / `omurice` / `split_screen`）は解消。
+- 正式判定には、この付録Aの8ケースを §1〜§8 の同じ基準で人手再採点する。
+
+### 10.3 再採点で特に見る点
+
+1. ID24・ID26 に、髪の長さ・型・質感の断定が残っていないか（重大0の確認）。
+2. ID21 の `greyscale` が消え、水色インカラーと矛盾しないか。
+3. ID25 の `from_below` / `from_side` が消えているか。
+4. ID27 の `tray` / `juice` がタグと自然文の両方にあるか。
+5. ID25・29 の `omurice` / `split_screen` が入っているか。
+6. ID29 の具体的な料理工程は、軽微な追加として許容範囲か（忠実さ3のままでも平均は3.5を超える）。
+
+---
+
+## 付録A: 評価対象の全文（v13.1 / 0.7.5-m7）
 
 各ケースは「入力（日本語）」「タグ」「出力（英語自然文）」の順。語数は出力の単語数。
+v13（0.7.4-m7、履歴ID 123〜131）の結果は §9 に、v13.1 の変更点は §10 に記載する。
 
 ### A.0 一覧
 
 | ID | 履歴ID | 入力の要点 | 語数 |
-|---|---|---|---:|
-| 20 | 123 | 長い黒髪、青いドレス、椅子に座る | 232 |
-| 21 | 124 | 黒髪ボブ、水色インカラー、黒フリル+白レース、上半身、黒目、左から、上目遣い | 227 |
-| 22 | 125 | 明るい黄色の髪、紫の目、ロングヘア | 203 |
-| 24 | 126 | 二人の少女、ベッド、座る、軽い微笑み | 230 |
-| 25 | 127 | 白髪赤目、ニケのシンデレラ、メイド服、オムライス、胸元を隠す、3分割、ロング | 233 |
-| 26 | 128 | 白いドレス、野原、立つ、こちらを見る | 236 |
-| 27 | 129 | 縦半分、壁、右=学生服/白ボブ、左=メイド/トレー/ジュース | 251 |
-| 29 | 131 | 白髪赤目、ニケのシンデレラ、メイド服、オムライス、3分割、料理工程 | 231 |
+|---|---|---|---|
+| 20 | 148 | 長い黒髪、青いドレス、椅子に座る | 232 |
+| 21 | 149 | 黒髪ボブ、水色インカラー、黒フリル+白レース、上半身、黒目、左から、上目遣い | 195 |
+| 22 | 150 | 明るい黄色の髪、紫の目、ロングヘア | 206 |
+| 24 | 151 | 二人の少女、ベッド、座る、軽い微笑み | 216 |
+| 25 | 152 | 白髪赤目、ニケのシンデレラ、メイド服、オムライス、胸元を隠す、3分割、ロング | 214 |
+| 26 | 153 | 白いドレス、野原、立つ、こちらを見る | 227 |
+| 27 | 154 | 縦半分、壁、右=学生服/白ボブ、左=メイド/トレー/ジュース | 230 |
+| 29 | 155 | 白髪赤目、ニケのシンデレラ、メイド服、オムライス、3分割、料理工程 | 235 |
 
 ---
 
-### A-20 ケース20（履歴ID 123、232語）
+### A-20 ケース20（履歴ID 148、232語）
 
 **入力**
 
@@ -436,7 +492,7 @@
 A solitary young girl with long black hair is elegantly seated upon a simple chair in a quiet, dimly lit interior setting. Her long black hair cascades down her shoulders, exhibiting a smooth texture that catches the ambient light subtly around her face. She is wearing a flowing blue dress that drapes softly around her body, emphasizing the gentle folds of the fabric as she remains still in her posture. Her expression is serene and contemplative, conveying a sense of quiet solitude within the dimly perceived atmosphere. Her eyes gaze softly toward some unseen point in the distance, reflecting the subdued lighting of the room around her. The fabric of her dress shows subtle variations in tone where the light catches the material, highlighting the texture of the material itself. Her posture is relaxed yet poised, with her hands resting gently in her lap, demonstrating a calm and introspective demeanor. The background consists of a plain, indistinct setting, offering no distracting elements that draw attention away from the central figure. Soft, diffused light streams in from an unseen source, casting gentle shadows that define the contours of her silhouette. The camera adopts a medium shot, framing the girl from the waist up to capture the details of her attire and expression effectively. The overall art style is a detailed anime rendering, emphasizing the delicate lines and the rich shading of the scene.
 ```
 
-### A-21 ケース21（履歴ID 124、227語）
+### A-21 ケース21（履歴ID 149、195語）
 
 **入力**
 
@@ -447,16 +503,16 @@ A solitary young girl with long black hair is elegantly seated upon a simple cha
 **タグ**
 
 ```text
-black_hair, bob_cut, 1girl, upper_body, smile, black_eyes, looking_up, from_side, lace, solo
+black_hair, bob_cut, colored_inner_hair, 1girl, upper_body, smile, black_eyes, looking_back, looking_up, from_side, frills, lace, solo
 ```
 
 **出力（自然文）**
 
 ```text
-A single girl with black bob-cut hair featuring striking light blue inner-color highlights is captured in a close-up portrait, displaying a faint smile. Her eyes are deep black, and her overall demeanor conveys a subtle, pleasant warmth while maintaining a composed and ordinary facial expression. She is adorned in an intricate outfit consisting of black frills and lace layered over a white lace overlay, meticulously detailed across her upper body. The composition is framed from a left side perspective, allowing a slight turn of her head to be visible as she looks upwards toward the viewer. Her posture involves a slight turn of the body, with her gaze directed upward, emphasizing a delicate, innocent expression. The texture of the black hair shows subtle variations in sheen where the light catches the individual strands, while the delicate fabric folds of the black lace create rich, complex shadows across her shoulders. Soft, diffused lighting illuminates her features, casting gentle highlights on the white lace and emphasizing the intricate layering of the garments. The background remains softly indistinct, ensuring that the focus remains entirely on the detailed textures of her attire and her expressive face. This artistic rendering utilizes a high-quality anime style, emphasizing smooth shading and fine line work throughout the entire scene. The overall atmosphere is serene and subtly romantic, perfectly capturing the delicate beauty of the subject.
+A single girl with black bob-cut hair featuring striking light blue inner-color highlights is captured in a close-up shot focusing on her upper body. Her face displays a faint smile, conveying a subtle and engaging demeanor to the viewer. She possesses deep black eyes that reflect a soft, contemplative mood within the composition. Her attire consists of a black outfit adorned with intricate frills and lace, layered with an additional white lace overlay that adds textural contrast. The composition is framed from a side view, positioning her slightly turned to look back towards the viewer with an upward gaze. Her hands are positioned subtly, contributing to the overall delicate and composed presentation of the scene. The background remains indistinct, allowing the focus to remain entirely on the detailed textures of her clothing and facial expression. Soft, diffused lighting illuminates her features, casting gentle shadows that enhance the depth of her expression and the intricate details of her layered garments. The overall atmosphere is one of quiet elegance and gentle introspection, perfectly suited for this intimate portrait. The rendering style should emulate a high-quality anime aesthetic, emphasizing smooth shading and detailed fabric textures throughout the image.
 ```
 
-### A-22 ケース22（履歴ID 125、203語）
+### A-22 ケース22（履歴ID 150、206語）
 
 **入力**
 
@@ -467,16 +523,16 @@ A single girl with black bob-cut hair featuring striking light blue inner-color 
 **タグ**
 
 ```text
-blonde_hair, purple_eyes, 1girl, solo
+blonde_hair, purple_eyes, long_hair, 1girl, solo
 ```
 
 **出力（自然文）**
 
 ```text
-A single girl with bright blonde hair and striking purple eyes is depicted in a captivating portrait, showcasing her long, flowing locks cascading down her shoulders in a voluminous manner. Her expression is serene yet intensely focused, conveying a deep, thoughtful introspection about the surrounding environment. She possesses hair that appears incredibly lustrous, catching the light with every subtle movement, emphasizing the sheer length of her flowing strands. Her eyes are a vivid shade of purple, holding a mysterious and deep gaze that draws the viewer into her inner world. Her posture suggests a relaxed yet poised stance, with her body language radiating a quiet confidence and an undeniable allure. The setting is a softly lit, ambiguous space, where the background elements are intentionally kept simple to enhance the prominence of the subject. Gentle, diffused light illuminates her features, casting subtle, soft shadows that add depth and dimension to her overall appearance. The camera angle is a medium close-up shot, framing her from the waist up to emphasize the intricate details of her hair and facial features. The overall art style employs a highly detailed anime rendering technique, meticulously capturing the texture of her hair and the subtle nuances of her skin tone.
+A single girl with bright blonde hair and striking purple eyes is captured in a serene portrait, showcasing her long hair cascading down her shoulders in a smooth, flowing manner. Her long hair possesses a luminous quality, catching the light with subtle highlights that emphasize its length and texture against the background. The girl possesses deep purple eyes that hold a mysterious and captivating gaze, reflecting a quiet introspection within her expression. Her posture is relaxed yet elegant, with her body language suggesting a gentle confidence and an air of quiet solitude. The setting is softly illuminated, creating a gentle ambiance that enhances the overall ethereal quality of the scene. Soft, diffused light gently washes over her form, casting subtle, soft shadows that add depth to the composition without harshness. The camera angle is a medium close-up, framing her face and the expanse of her long hair beautifully within the frame. The art style employs a detailed anime rendering technique, emphasizing the fine strands of her blonde hair and the delicate structure of her features. This rendering style ensures a high level of visual fidelity, making every element of her appearance stand out vividly. The overall atmosphere is one of tranquil beauty and quiet, mesmerizing allure.
 ```
 
-### A-24 ケース24（履歴ID 126、230語）
+### A-24 ケース24（履歴ID 151、216語）
 
 **入力**
 
@@ -493,10 +549,10 @@ A single girl with bright blonde hair and striking purple eyes is depicted in a 
 **出力（自然文）**
 
 ```text
-Two girls are seated comfortably on a large bed, sharing a moment of quiet contentment with a gentle, light smile on their faces. Their features are rendered with delicate anime detail, showcasing soft contours and subtly shaded skin tones that catch the ambient illumination of the room. Her hair is styled in a manner that frames her face naturally, with strands gently falling around her shoulders, and her eyes convey a warm, subtle expression of happiness. The other girl mirrors this feeling, her expression a light smile that suggests deep, shared affection between the two figures in the scene. Both girls are positioned sitting upright on the surface of the bed, their postures relaxed yet engaged in the shared quietude of the moment. Her hands rest lightly upon the bed surface, conveying a sense of peaceful repose and gentle connection with her companion. The setting is a spacious bedroom, with the bed dominating the foreground, suggesting a cozy and intimate atmosphere for this shared experience. Warm, diffused lighting streams into the room, casting soft shadows that enhance the gentle contours of their forms. The camera angle is a medium shot, capturing both girls symmetrically within the frame to emphasize their close proximity and shared mood. The overall art style utilizes a detailed anime rendering technique, ensuring every line and shadow contributes to the tranquil and affectionate mood of the scene.
+Two girls are seated comfortably on a large bed, sharing a moment of quiet contentment with a gentle, light smile on their faces. Their features are rendered with delicate anime detail, showcasing soft contours and subtly shaded skin tones that catch the ambient illumination of the room. Her hair frames her face, and her eyes convey a warm, subtle expression of happiness. The other girl mirrors this feeling, her expression a light smile that suggests deep, shared affection between the two figures in the scene. Both girls are positioned sitting upright on the surface of the bed, their postures relaxed yet engaged in the shared quietude of the moment. Her hands rest lightly upon the bed surface, conveying a sense of peaceful repose and gentle connection with her companion. The setting is a spacious bedroom, with the bed dominating the foreground, suggesting a cozy and intimate atmosphere for this shared experience. Warm, diffused lighting streams into the room, casting soft shadows that enhance the gentle contours of their forms. The camera angle is a medium shot, capturing both girls symmetrically within the frame to emphasize their close proximity and shared mood. The overall art style utilizes a detailed anime rendering technique, ensuring every line and shadow contributes to the tranquil and affectionate mood of the scene.
 ```
 
-### A-25 ケース25（履歴ID 127、233語）
+### A-25 ケース25（履歴ID 152、214語）
 
 **入力**
 
@@ -509,16 +565,16 @@ Two girls are seated comfortably on a large bed, sharing a moment of quiet conte
 **タグ**
 
 ```text
-1girl, solo, white_hair, red_eyes, full_body, maid, covering_breasts, from_below, food, smile, long_hair, from_side
+split, white_hair, 1girl, solo, red_eyes, full_body, maid, omurice, covering_breasts, split_screen, food, smile, long_hair
 ```
 
 **出力（自然文）**
 
 ```text
-A beautiful goddess figure, resembling Cinderella with white hair and striking red eyes, is diligently preparing an omurice while wearing a complete maid outfit. Her white hair cascades down her back in soft, flowing strands, contrasting beautifully with the crisp fabric of her maid uniform. Her expression is one of genuine happiness, featuring a bright smile directed towards the viewer as she presents the finished omurice in the center of the frame. The maid outfit is meticulously detailed, ensuring that the neckline is modest and completely covers her chest area with appropriate fabric folds. Her posture is engaged and focused, as her hands skillfully manipulate various ingredients during different stages of the omurice preparation process. The background is dramatically divided into three distinct sections, with lines extending from the bottom left and top center to the central axis, creating a dynamic visual structure. In each segment of this composition, the goddess is shown actively engaged in a different culinary step, showcasing the detailed process of making the dish. Soft, warm lighting illuminates the scene, casting gentle shadows that emphasize the texture of the food and the intricate details of her attire. The camera angle is positioned centrally, framing the entire scene to highlight the central omurice she is offering with an inviting gesture. The overall art style should be high-quality anime rendering, emphasizing smooth lines and rich color saturation throughout the entire composition.
+A beautiful goddess figure, resembling Cinderella with striking red eyes and long white hair, is diligently preparing an omurice while wearing a complete maid outfit. Her long white hair cascades down her back, catching the light as she focuses intently on the culinary task before her. She is dressed in a detailed maid uniform, ensuring that the neckline is modestly covered to conceal her chest area completely. The composition is a dynamic split screen, dividing the scene into three distinct sections centered around the middle area. In each segment, the goddess is shown engaged in a different stage of the omurice preparation process, showcasing various cooking steps sequentially. Across the center of the main frame, she presents the finished omurice directly to the viewer with a warm and inviting smile. The lighting is bright and focused, casting soft shadows that emphasize the texture of the food and the details of her attire. The camera angle is a medium shot, framing the entire split composition to clearly illustrate the different cooking phases occurring simultaneously. The art style should feature a high-quality anime rendering with meticulous attention to fabric folds and the sheen on the cooked rice. The atmosphere is one of focused effort mixed with cheerful hospitality as she offers the meal to the audience.
 ```
 
-### A-26 ケース26（履歴ID 128、236語）
+### A-26 ケース26（履歴ID 153、227語）
 
 **入力**
 
@@ -535,10 +591,10 @@ white_dress, solo, 1girl, field, standing, looking_at_viewer, dress
 **出力（自然文）**
 
 ```text
-A solitary young girl stands gracefully in an open field, directly gazing intently toward the viewer with a serene and captivating expression. She is clad in a flowing white dress that appears ethereal against the expansive, open landscape surrounding her. Her hair is depicted simply, falling naturally around her shoulders in a soft, unstyled manner that complements the delicate nature of her attire. Her eyes are wide and fixed upon the observer, conveying a deep sense of quiet contemplation and gentle curiosity about the presence before her. The fabric of her white dress exhibits subtle, soft folds where it gathers around her form, suggesting a light, airy texture that catches the ambient light beautifully. Her posture is upright and composed, with her hands resting gently at her sides, maintaining a poised and expectant stillness in the vastness of the field. The setting is a wide, open field stretching out endlessly under a soft, diffused sky, providing a simple and uncluttered backdrop for the central figure. Warm, gentle sunlight illuminates the scene from the side, casting soft, subtle shadows that enhance the three-dimensional form of the girl and the texture of her dress. The camera angle is a medium shot, framing her from the waist up to emphasize her direct gaze and the surrounding open space. The overall art style should be a high-detail anime rendering, emphasizing smooth shading and delicate line work throughout the entire composition.
+A solitary young girl stands gracefully in an open field, directly gazing intently toward the viewer with a serene and captivating expression. She is clad in a flowing white dress that appears ethereal against the expansive, open landscape surrounding her. Her hair is depicted simply, in keeping with the delicate nature of her attire. Her eyes are wide and fixed upon the observer, conveying a deep sense of quiet contemplation and gentle curiosity about the presence before her. The fabric of her white dress exhibits subtle, soft folds where it gathers around her form, suggesting a light, airy texture that catches the ambient light beautifully. Her posture is upright and composed, with her hands resting gently at her sides, maintaining a poised and expectant stillness in the vastness of the field. The setting is a wide, open field stretching out endlessly under a soft, diffused sky, providing a simple and uncluttered backdrop for the central figure. Warm, gentle sunlight illuminates the scene from the side, casting soft, subtle shadows that enhance the three-dimensional form of the girl and the texture of her dress. The camera angle is a medium shot, framing her from the waist up to emphasize her direct gaze and the surrounding open space. The overall art style should be a high-detail anime rendering, emphasizing smooth shading and delicate line work throughout the entire composition.
 ```
 
-### A-27 ケース27（履歴ID 129、251語）
+### A-27 ケース27（履歴ID 154、230語）
 
 **入力**
 
@@ -549,16 +605,16 @@ A solitary young girl stands gracefully in an open field, directly gazing intent
 **タグ**
 
 ```text
-2girls, multiple_girls, school_uniform, white_hair, maid, bob_cut, holding, carrying
+split_screen, 2girls, multiple_girls, school_uniform, white_hair, maid, holding_tray, juice, holding, bob_cut, tray
 ```
 
 **出力（自然文）**
 
 ```text
-Two girls are depicted in a striking composition where the frame is vertically divided precisely in the center, with the dividing line itself rendered as a solid wall structure. The girl on the right side is positioned leaning against this wall in a relaxed posture, wearing a school uniform and sporting a neat white bob cut hairstyle. Her expression conveys a calm and slightly contemplative mood as she rests her body against the textured surface of the wall. Conversely, the girl on the left side is dressed in a detailed maid outfit, holding a tray with her left hand while carefully balancing a glass of juice upon it. Her white bob cut hair frames her face perfectly, and her gaze is directed towards the viewer with a gentle, inviting look. The lighting illuminates the scene with a soft, diffused glow, casting gentle shadows that emphasize the distinct separation between the two halves of the composition. A detailed rendering style captures the texture of the fabric on both the school uniform and the maid outfit with remarkable precision and fine detail. The composition utilizes a strong vertical split, creating a dynamic visual tension between the two contrasting figures and their respective poses. The overall atmosphere is one of quiet, contrasting domesticity juxtaposed against a structured architectural element. This artistic representation showcases the distinct styling and roles of the two characters within the defined space. The rendering quality emphasizes the sharp lines of the division and the soft contours of the characters' forms.
+A striking split-screen composition divides the frame vertically down the center, where the dividing line itself is rendered as a solid wall structure. On the right side, a girl with white bob-cut hair leans casually against this wall in a relaxed and contemplative posture, wearing a school uniform. Her white bob-cut hair frames a face with a neutral expression, and the fabric of her school uniform shows subtle folds where it meets the wall surface. Conversely, the left half features a second girl, dressed in a maid outfit, who is actively holding a tray with her left hand while simultaneously balancing a glass of juice upon it. This girl also possesses white bob-cut hair, and her posture suggests a gentle, attentive demeanor as she presents the beverage. The lighting casts distinct shadows across the dividing line, emphasizing the separation between the two distinct scenes. The atmosphere is bright yet balanced, highlighting the contrast between the casual lean and the service-oriented action on the opposite side. The camera angle is a direct, centered view, ensuring both figures are clearly visible within the defined composition space. The art style should emulate detailed anime rendering, showcasing fine textures in the fabric of the uniform and the sheen on the glass of juice. This detailed rendering captures the specific details of the white hair strands and the texture of the maid outfit fabric meticulously.
 ```
 
-### A-29 ケース29（履歴ID 131、231語）
+### A-29 ケース29（履歴ID 155、235語）
 
 **入力**
 
@@ -570,13 +626,13 @@ Two girls are depicted in a striking composition where the frame is vertically d
 **タグ**
 
 ```text
-white_hair, 1girl, solo, red_eyes, maid, food, cooking
+cooking, white_hair, 1girl, solo, red_eyes, maid, omurice, split_screen, food
 ```
 
 **出力（自然文）**
 
 ```text
-A beautiful Nikke Cinderella with pure white hair and striking red eyes is diligently preparing an omurice while wearing a detailed maid outfit. Her expression is one of intense concentration as she meticulously handles the ingredients for the meal preparation process. The scene is dramatically divided into three distinct sections centered in the middle, showcasing different stages of the omurice creation in each panel. In the first segment, the girl is shown carefully slicing vegetables for the omelet, demonstrating focused effort in the cooking process. Subsequently, the composition shifts to illustrate the precise technique of frying the egg mixture, emphasizing the careful handling of the ingredients with her hands. The third section captures the final assembly stage, where she is skillfully arranging the components of the omurice with delicate movements. Her posture throughout the entire sequence conveys a strong sense of dedication and earnest commitment to the culinary task before her. Soft, warm lighting illuminates the kitchen setting, casting gentle shadows that highlight the textures of the food and her focused features. The camera angle is a medium shot, framing the girl centrally within each of the three distinct cooking scenes to emphasize the detailed actions. The overall art style should feature a highly detailed anime rendering with rich shading and vibrant food textures. The atmosphere is one of industrious focus and sweet anticipation for the delicious meal she is creating.
+A beautiful Nikke Cinderella with pure white hair and striking red eyes is diligently preparing an omurice while wearing a detailed maid outfit. Her expression is one of intense concentration as she focuses on the intricate steps of the cooking process. The scene is dramatically divided into three distinct panels, each showcasing a different stage of the omurice preparation in a unique culinary sequence. The composition is a split-screen arrangement centered around the middle section, allowing the viewer to observe the entire process unfold sequentially. In one panel, she is meticulously preparing the rice base, demonstrating focused effort in the kitchen environment. Another segment captures her carefully assembling the omelet, showing precise movements as she handles the ingredients with care. The third visual section illustrates the final plating of the omurice, highlighting the finished dish with careful attention to presentation. Her posture throughout the entire sequence conveys a strong sense of dedication and earnest commitment to her culinary task. Soft, warm lighting illuminates the kitchen area, casting gentle shadows that emphasize the textures of the food and her focused demeanor. The overall atmosphere is one of focused, industrious activity, creating a warm and inviting domestic scene. The camera angle is set to a medium shot, framing the central figure effectively within the tripartite division of the background. The art style should feature rich, detailed anime rendering with meticulous attention to fabric folds and food textures.
 ```
 
 ---
@@ -637,4 +693,4 @@ A beautiful Nikke Cinderella with pure white hair and striking red eyes is dilig
 - タグ整合性平均: **3.875**（31/40）
 - 重大違反: **2件**（ID24・ID26 の未指定ヘア）
 - 判定: **不合格**
-- 次アクション: v14で「未指定ヘアの断定」と「入力明示要素のタグ落ち」を修正する（§9）
+- 次アクション: v13.1（0.7.5-m7）の8ケースを同じ基準で再採点する（§10・付録A）

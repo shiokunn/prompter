@@ -84,20 +84,27 @@
   拒否0/8、日本語混入0/8、平均38.8秒**。27は `2girls, multiple_girls,
   white_hair, bob_cut`、25は `cleavage` なし、29は `multiple_girls` なし。
   詳細は [`research/M7_LOCAL_V13_EVAL.md`](research/M7_LOCAL_V13_EVAL.md)。
-- APK: `/storage/emulated/0/Download/Prompter/Prompter-0.7.4-m7-debug.apk`
-  （SHA-256 `ff2f0afbda2cb48f5122bc35ff75faa1b2471a21abbf3ef44a8e4a1febe949b9`、
-  約76MB、versionCode 19）。
-- 次の作業: v13の8ケースを人手で再採点し、忠実さ3.5以上を確認する。
-  採点基準と評価用プロンプトは [`research/M7_V13_RERATE.md`](research/M7_V13_RERATE.md)。
-  残課題は25の未指定カメラタグ、29の具体的な料理工程、24の単数代名詞、
-  27の長文化（251語）。機内モードはユーザー指定により実施しない。
-  クラウドは代替なので低優先。その後M6.1のGPU/E4B検討へ。
+- 2026-10-28: **v13の人手再採点**。総合 **4.125/5**、意図4.75、自然さ4.25、構造5.00、
+  **忠実さ3.625（v9の2.88から+0.745）**、タグ3.875。ただし未指定ヘアの重大2件
+  （ID24・ID26）とタグ平均3.875で、正式基準は **不合格**。
+- 2026-10-28: **v13.1（0.7.5-m7）**。未指定ヘアの除去、未指定カメラタグの除去、
+  `long_hair` / インカラー / `tray` / `juice` / `omurice` / `split_screen` のタグ補完。
+  8ケースは **平均219.4語、180〜260語 8/8**、未指定ヘアの重大0件の見込み。
+- APK: `/storage/emulated/0/Download/Prompter/Prompter-0.7.5-m7-debug.apk`
+  （SHA-256 `e1ba871511b8ac6f4363b3cdbd3d73a8f10361e36ab0190c22dd9332fd20d0fd`、
+  約75MB、versionCode 20）。
+- 次の作業: v13.1の8ケースを人手で再採点し、重大0件・タグ4.0以上を確認する。
+  採点基準・評価用プロンプト・最新の8ケース全文は
+  [`research/M7_V13_RERATE.md`](research/M7_V13_RERATE.md)。
+  残課題は29の具体的な料理工程、25の `split` 重複、24の単数代名詞。
+  機内モードはユーザー指定により実施しない。クラウドは代替なので低優先。
+  その後M6.1のGPU/E4B検討へ。
 
 ## 要約
 
 - 主対象は **PixAI DiT（Tsubaki.3 / Tsubaki.2）**。DiT はタグ列より **英語の自然文** が向く。
 - 既定出力は `Subject + Action + Scene + Mood + Style` の英文。タグモードも併設。
-- M1 のオフライン辞書は上位5,000タグ + 別名14,596件（SQLite 2.29MB）。
+- M1 のオフライン辞書は上位5,000タグ + 補完3タグ（5,006タグ）+ 別名14,618件（SQLite 2.29MB）。
   将来は14万タグ規模へ拡張し、ML Kit 翻訳と組み合わせる。
 - M2 で **Compose UI + Kotlin トライ + オフライン自然文合成** を実装済み。
   日本語入力から PixAI 向け英文（オフライン80〜150語、クラウドは語数上限なし、ローカルLLM180〜260語）とタグ列を同時に生成できる。
@@ -168,7 +175,7 @@ adb install -r app-debug.apk
 
 ブラウザからダウンロードした場合は ZIP を展開してからインストールする。
 
-現在の APK は `0.7.4-m7`（versionCode 19、debug 署名、arm64-v8a）。M1 の辞書、M2 のオフライン変換、
+現在の APK は `0.7.5-m7`（versionCode 20、debug 署名、arm64-v8a）。M1 の辞書、M2 のオフライン変換、
 M3 のタグ編集・履歴、M4 のAI補完、M5 のML Kit翻訳フォールバック、M6 のローカルLLM、
 M7 のUI刷新・ローカルv13・忠実さ/タグ整合性補正・クラウド語数上限なしを含む。
 
