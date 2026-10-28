@@ -13,6 +13,9 @@ data class HistoryItem(
     val unmatched: String,
     val createdAt: Long,
     val isFavorite: Boolean,
+    val characterName: String = "",
+    val characterSeries: String = "",
+    val characterEnglish: String = "",
 )
 
 /**
@@ -35,7 +38,10 @@ class HistoryStore(context: Context) : SQLiteOpenHelper(
                 tag_text TEXT NOT NULL,
                 unmatched TEXT NOT NULL,
                 created_at INTEGER NOT NULL,
-                is_favorite INTEGER NOT NULL DEFAULT 0
+                is_favorite INTEGER NOT NULL DEFAULT 0,
+                character_name TEXT NOT NULL DEFAULT '',
+                character_series TEXT NOT NULL DEFAULT '',
+                character_english TEXT NOT NULL DEFAULT ''
             )
             """.trimIndent(),
         )
@@ -43,8 +49,11 @@ class HistoryStore(context: Context) : SQLiteOpenHelper(
     }
 
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
-        db.execSQL("DROP TABLE IF EXISTS $TABLE")
-        onCreate(db)
+        if (oldVersion < 2) {
+            db.execSQL("ALTER TABLE $TABLE ADD COLUMN character_name TEXT NOT NULL DEFAULT ''")
+            db.execSQL("ALTER TABLE $TABLE ADD COLUMN character_series TEXT NOT NULL DEFAULT ''")
+            db.execSQL("ALTER TABLE $TABLE ADD COLUMN character_english TEXT NOT NULL DEFAULT ''")
+        }
     }
 
     fun add(
@@ -52,12 +61,18 @@ class HistoryStore(context: Context) : SQLiteOpenHelper(
         pixaiPrompt: String,
         tagText: String,
         unmatched: String,
+        characterName: String = "",
+        characterSeries: String = "",
+        characterEnglish: String = "",
     ): Long {
         val values = ContentValues().apply {
             put("input", input)
             put("pixai_prompt", pixaiPrompt)
             put("tag_text", tagText)
             put("unmatched", unmatched)
+            put("character_name", characterName)
+            put("character_series", characterSeries)
+            put("character_english", characterEnglish)
             put("created_at", System.currentTimeMillis())
             put("is_favorite", 0)
         }
@@ -106,6 +121,9 @@ class HistoryStore(context: Context) : SQLiteOpenHelper(
                         unmatched = cursor.getString(unmatchedIndex),
                         createdAt = cursor.getLong(createdIndex),
                         isFavorite = cursor.getInt(favoriteIndex) != 0,
+                        characterName = cursor.getString(cursor.getColumnIndexOrThrow("character_name")),
+                        characterSeries = cursor.getString(cursor.getColumnIndexOrThrow("character_series")),
+                        characterEnglish = cursor.getString(cursor.getColumnIndexOrThrow("character_english")),
                     ),
                 )
             }
@@ -130,7 +148,7 @@ class HistoryStore(context: Context) : SQLiteOpenHelper(
 
     companion object {
         private const val DB_NAME = "prompter_history.db"
-        private const val DB_VERSION = 1
+        private const val DB_VERSION = 2
         private const val TABLE = "history"
     }
 }

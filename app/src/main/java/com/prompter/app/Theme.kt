@@ -45,14 +45,14 @@ import androidx.compose.ui.unit.sp
 // A warm paper palette with a single terracotta accent. The UI is intentionally
 // light-only: the brief calls for a calm, editorial surface rather than a
 // system-following dark mode.
-val Paper = Color(0xFFF4F0E8)
-val PaperDeep = Color(0xFFEAE3D7)
-val CardCream = Color(0xFFFFFDF9)
-val Ink = Color(0xFF1F1D19)
-val MutedInk = Color(0xFF756D60)
-val Hairline = Color(0xFFDED5C6)
-val Terracotta = Color(0xFFA64B35)
-val TerracottaSoft = Color(0xFFF2E3DC)
+val Paper = Color(0xFFF0F4F8)
+val PaperDeep = Color(0xFFE1EAF2)
+val CardCream = Color(0xFFFFFFFF)
+val Ink = Color(0xFF182D41)
+val MutedInk = Color(0xFF4C6171)
+val Hairline = Color(0xFFCAD8E3)
+val Terracotta = Color(0xFF176C72)
+val TerracottaSoft = Color(0xFFD9EFEC)
 val SuccessGreen = Color(0xFF3F6B52)
 val ErrorRed = Color(0xFF9B2F2F)
 
@@ -81,26 +81,26 @@ private val PrompterColors = lightColorScheme(
 
 private val PrompterTypography = Typography(
     displaySmall = TextStyle(
-        fontFamily = FontFamily.Serif,
-        fontWeight = FontWeight.Normal,
-        fontSize = 34.sp,
-        lineHeight = 42.sp,
+        fontFamily = FontFamily.SansSerif,
+        fontWeight = FontWeight.Bold,
+        fontSize = 30.sp,
+        lineHeight = 39.sp,
         letterSpacing = (-0.4).sp,
     ),
     headlineSmall = TextStyle(
-        fontFamily = FontFamily.Serif,
-        fontWeight = FontWeight.Normal,
+        fontFamily = FontFamily.SansSerif,
+        fontWeight = FontWeight.SemiBold,
         fontSize = 24.sp,
         lineHeight = 32.sp,
     ),
     titleLarge = TextStyle(
-        fontFamily = FontFamily.Serif,
-        fontWeight = FontWeight.Normal,
+        fontFamily = FontFamily.SansSerif,
+        fontWeight = FontWeight.SemiBold,
         fontSize = 20.sp,
         lineHeight = 28.sp,
     ),
     titleMedium = TextStyle(
-        fontFamily = FontFamily.Serif,
+        fontFamily = FontFamily.SansSerif,
         fontWeight = FontWeight.Medium,
         fontSize = 17.sp,
         lineHeight = 24.sp,

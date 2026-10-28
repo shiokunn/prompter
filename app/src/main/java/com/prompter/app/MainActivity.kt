@@ -3,6 +3,8 @@ package com.prompter.app
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -39,6 +41,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -57,6 +60,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -87,6 +91,13 @@ private fun PrompterApp() {
     val scope = rememberCoroutineScope()
 
     var input by rememberSaveable { mutableStateOf("") }
+    var characterMode by rememberSaveable { mutableStateOf(false) }
+    var characterName by rememberSaveable { mutableStateOf("") }
+    var characterSeries by rememberSaveable { mutableStateOf("") }
+    var characterEnglish by rememberSaveable { mutableStateOf("") }
+    var characterResults by remember { mutableStateOf<List<CharacterSearchResult>>(emptyList()) }
+    var characterSearching by remember { mutableStateOf(false) }
+    var characterSearchError by remember { mutableStateOf<String?>(null) }
     var modeName by rememberSaveable { mutableStateOf(OutputMode.BOTH.name) }
     val mode = OutputMode.valueOf(modeName)
     var result by remember { mutableStateOf<ConversionResult?>(null) }
@@ -282,6 +293,13 @@ private fun PrompterApp() {
     fun convert() {
         val current = engine ?: return
         if (input.isBlank()) return
+        if (characterMode && characterEnglish.isBlank()) {
+            error = "キャラクターの英語名を確認して入力してください。"
+            return
+        }
+        val confirmedName = if (characterMode) characterEnglish.trim() else ""
+        val savedCharacterName = if (characterMode) characterName else ""
+        val savedCharacterSeries = if (characterMode) characterSeries else ""
         scope.launch {
             loading = true
             error = null
@@ -316,7 +334,10 @@ private fun PrompterApp() {
                         translationNotice = "ML Kit翻訳に失敗しました: ${t.message ?: "不明なエラー"}"
                     }
                 }
-                naturalPromptOverride = null
+                if (confirmedName.isNotBlank()) {
+                    converted = converted.copy(pixaiPrompt = CharacterIdentity.prefix(converted.pixaiPrompt, confirmedName))
+                }
+                naturalPromptOverride = if (confirmedName.isNotBlank()) converted.pixaiPrompt else null
                 result = converted
                 editableTags = converted.tags.map { EditableTag(it) }
                 currentHistoryId = null
@@ -328,6 +349,9 @@ private fun PrompterApp() {
                             pixaiPrompt = converted.pixaiPrompt,
                             tagText = converted.tagText,
                             unmatched = converted.unmatched,
+                            characterName = savedCharacterName,
+                            characterSeries = savedCharacterSeries,
+                            characterEnglish = confirmedName,
                         )
                     }
                 }
@@ -342,6 +366,11 @@ private fun PrompterApp() {
     fun loadHistory(item: HistoryItem) {
         val tags = parseTagText(item.tagText)
         input = item.input
+        characterName = item.characterName
+        characterSeries = item.characterSeries
+        characterEnglish = item.characterEnglish
+        characterMode = item.characterEnglish.isNotBlank()
+        characterResults = emptyList()
         result = ConversionResult(
             pixaiPrompt = item.pixaiPrompt,
             tagText = item.tagText,
@@ -537,6 +566,13 @@ private fun PrompterApp() {
         }
 
         val sourceInput = input
+        val confirmedName = if (characterMode) characterEnglish.trim() else ""
+        if (characterMode && confirmedName.isEmpty()) {
+            aiError = "キャラクターの英語名を確認して入力してください。"
+            return
+        }
+        val generationInput = if (confirmedName.isEmpty()) sourceInput else
+            "$sourceInput\nCharacter identity: $confirmedName. Use this exact name; do not say resembling or like."
         val offlineTags = editableTags.map { it.tag }
         val historyId = currentHistoryId
         scope.launch {
@@ -565,7 +601,7 @@ private fun PrompterApp() {
                 val cacheKey = cache?.key(
                     baseUrl = cacheBase,
                     model = cacheModel,
-                    input = sourceInput,
+                    input = generationInput,
                     offlineTags = offlineTags,
                     unmatched = current.unmatched,
                 )
@@ -579,7 +615,7 @@ private fun PrompterApp() {
                 var generateMillis = 0L
                 val aiResult = cached ?: if (backend == AiBackend.LOCAL) {
                     val generation = withContext(Dispatchers.IO) {
-                        localLlm.generate(sourceInput, offlineTags, current.unmatched)
+                        localLlm.generate(generationInput, offlineTags, current.unmatched)
                     }
                     localEngineLoaded = localLlm.isLoaded
                     loadMillis = generation.loadMillis
@@ -597,7 +633,7 @@ private fun PrompterApp() {
                         OpenRouterClient(cloudSettings.third).refine(
                             apiKey = apiKey,
                             model = cloudSettings.second,
-                            input = sourceInput,
+                            input = generationInput,
                             offlineTags = offlineTags,
                             unmatched = current.unmatched,
                         )
@@ -631,7 +667,7 @@ private fun PrompterApp() {
                 )
                 val validation = AiPromptValidator.validate(
                     result = aiResult.copy(
-                        pixaiPrompt = guardedPrompt,
+                        pixaiPrompt = CharacterIdentity.prefix(guardedPrompt, confirmedName),
                         tags = guardedTags,
                     ),
                     minWords = minWords,
@@ -710,6 +746,9 @@ private fun PrompterApp() {
                                 pixaiPrompt = validation.prompt,
                                 tagText = tagText,
                                 unmatched = current.unmatched,
+                                characterName = if (confirmedName.isNotEmpty()) characterName else "",
+                                characterSeries = if (confirmedName.isNotEmpty()) characterSeries else "",
+                                characterEnglish = confirmedName,
                             )
                         }
                     }
@@ -816,8 +855,75 @@ private fun PrompterApp() {
         ) {
             item {
                 Column {
-                    Text("情景を、", style = MaterialTheme.typography.displaySmall)
-                    Text("ことばに。", style = MaterialTheme.typography.displaySmall)
+                    Text("イメージを、", style = MaterialTheme.typography.displaySmall)
+                    Text("プロンプトに。", style = MaterialTheme.typography.displaySmall)
+                    Spacer(Modifier.height(6.dp))
+                    Text("描きたい場面を入力して、自然文とタグを作成します。", style = MaterialTheme.typography.bodyMedium, color = MutedInk)
+                }
+            }
+
+            item {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    EditorialLabel("キャラクター")
+                    SegmentedControl(
+                        options = listOf(false, true), selected = characterMode,
+                        onSelect = { characterMode = it },
+                        label = { if (it) "版権キャラクター" else "指定なし" },
+                    )
+                    if (characterMode) {
+                        OutlinedTextField(
+                            value = characterName,
+                            onValueChange = { characterName = it; characterResults = emptyList(); characterSearchError = null },
+                            label = { Text("キャラクター名") },
+                            singleLine = true, modifier = Modifier.fillMaxWidth(),
+                        )
+                        OutlinedTextField(
+                            value = characterSeries,
+                            onValueChange = { characterSeries = it; characterResults = emptyList(); characterSearchError = null },
+                            label = { Text("作品名（任意）") },
+                            singleLine = true, modifier = Modifier.fillMaxWidth(),
+                        )
+                        Text("検索すると名前と作品名をDuckDuckGoに送信します。結果は正式名称を保証しません。", style = MaterialTheme.typography.bodySmall, color = MutedInk)
+                        OutlinedButton(
+                            enabled = characterName.isNotBlank() && !characterSearching,
+                            onClick = {
+                                val name = characterName
+                                val series = characterSeries
+                                characterSearching = true
+                                characterSearchError = null
+                                characterResults = emptyList()
+                                scope.launch {
+                                    try {
+                                        val found = withContext(Dispatchers.IO) { CharacterSearch.search(name, series) }
+                                        if (name == characterName && series == characterSeries) characterResults = found
+                                    } catch (cancelled: CancellationException) {
+                                        throw cancelled
+                                    } catch (failure: Exception) {
+                                        if (name == characterName && series == characterSeries) {
+                                            characterSearchError = failure.message ?: "検索できませんでした。"
+                                        }
+                                    } finally {
+                                        characterSearching = false
+                                    }
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) { Text(if (characterSearching) "検索中…" else "DuckDuckGoで調べる") }
+                        characterSearchError?.let { Text(it, color = ErrorRed, style = MaterialTheme.typography.bodySmall) }
+                        characterResults.forEach { found ->
+                            TextButton(onClick = {
+                                runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(found.url))) }
+                                    .onFailure { characterSearchError = "リンクを開けませんでした。" }
+                            }) { Text(found.title, maxLines = 2, overflow = TextOverflow.Ellipsis) }
+                        }
+                        OutlinedTextField(
+                            value = characterEnglish,
+                            onValueChange = { characterEnglish = it },
+                            label = { Text("確認した英語名") },
+                            supportingText = { Text("検索結果を確認し、名前だけを入力してください。") },
+                            singleLine = true, modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
                 }
             }
 

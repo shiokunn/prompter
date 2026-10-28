@@ -12,6 +12,23 @@ import org.robolectric.annotation.Config
 @Config(sdk = [35])
 class HistoryStoreTest {
     @Test
+    fun characterFieldsAreSavedAndRestored() {
+        val store = HistoryStore(RuntimeEnvironment.getApplication())
+        try {
+            store.clear()
+            store.add("情景", "The character is Cinderella.", "1girl", "",
+                "シンデレラ", "ニケ", "Cinderella")
+            val item = store.recent().single()
+            assertEquals("シンデレラ", item.characterName)
+            assertEquals("ニケ", item.characterSeries)
+            assertEquals("Cinderella", item.characterEnglish)
+            store.clear()
+        } finally {
+            store.close()
+        }
+    }
+
+    @Test
     fun storesFavoritesUpdatesAndDeletes() {
         val store = HistoryStore(RuntimeEnvironment.getApplication())
         try {
