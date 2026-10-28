@@ -113,6 +113,15 @@ object FidelityGuard {
         // 半分 alone (縦半分, 半分閉じた目) must not become half_updo.
         if (!HALF_UPDO_CUE.containsMatchIn(text)) remove("half_updo")
 
+        // 水色のインカラー / 赤い目 and similar color cues rule out a
+        // greyscale image. The model sometimes adds greyscale for black+white
+        // outfits, which contradicts the stated colors.
+        if (NON_GREY_COLOR_CUE.containsMatchIn(text)) {
+            remove("greyscale")
+            remove("monochrome")
+            remove("black_and_white")
+        }
+
         // A camera angle that the input never mentions is an invention. Keep
         // the angles that the input actually states (左側から, 上から, ...).
         if (!CAMERA_CUE.containsMatchIn(text)) {
@@ -524,6 +533,10 @@ object FidelityGuard {
             "ローアングル|ハイアングル|正面|後ろ姿|背面|斜めから|アングル|ふかん|みおろ",
     )
     private val CAMERA_TAGS = setOf("from_above", "from_below", "from_side", "from_behind", "from_front")
+    private val NON_GREY_COLOR_CUE = Regex(
+        "水色|青|あお|赤|あか|金|きん|紫|むらさき|ピンク|ぴんく|桃色|緑|みどり|" +
+            "黄色|きいろ|オレンジ|おれんじ|茶色|ちゃいろ|銀|ぎん",
+    )
     private val HAIR_CUE = Regex(
         "髪|ヘア|へあ|ぼぶ|ボブ|ロングヘア|ショートヘア|セミロング|ポニーテール|" +
             "ツインテール|おかっぱ|ハーフアップ|三つ編み|インカラー|前髪|後ろ髪|" +

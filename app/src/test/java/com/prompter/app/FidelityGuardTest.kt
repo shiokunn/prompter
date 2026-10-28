@@ -357,6 +357,19 @@ class FidelityGuardTest {
     }
 
     @Test
+    fun greyscaleIsRemovedWhenTheInputNamesAColor() {
+        val input = "黒い髪でボブカットで水色のインカラー"
+        val tags = listOf("1girl", "solo", "black_hair", "bob_cut", "greyscale")
+        val result = FidelityGuard.correctTags(
+            input = input,
+            tags = tags,
+            isKnownTag = known(tags),
+        )
+
+        assertFalse(result.tags.contains("greyscale"))
+    }
+
+    @Test
     fun unstatedCameraTagsAreRemoved() {
         val input = "白い髪で赤い目をしたメイドがオムライスを作っている"
         val tags = listOf(
