@@ -113,6 +113,12 @@ object FidelityGuard {
         // 半分 alone (縦半分, 半分閉じた目) must not become half_updo.
         if (!HALF_UPDO_CUE.containsMatchIn(text)) remove("half_updo")
 
+        // A camera angle that the input never mentions is an invention. Keep
+        // the angles that the input actually states (左側から, 上から, ...).
+        if (!CAMERA_CUE.containsMatchIn(text)) {
+            for (tag in CAMERA_TAGS) remove(tag)
+        }
+
         // 左側から見た / 横から is a side view, not a high-angle view.
         if (SIDE_CUE.containsMatchIn(text) && !ABOVE_CUE.containsMatchIn(text)) {
             remove("from_above")
@@ -177,7 +183,7 @@ object FidelityGuard {
         out = normalizeEyePhrases(text, out, offlineTags)
         val people = peopleCount(text, offlineTags.toSet())
         if (people.single) out = singularizePrompt(out)
-        return out
+        out = out
             .replace(
                 Regex(
                     "(?i)\\b(?:her|his)\\s+hair\\s+is\\s+not\\s+specified,\\s+so\\s+" +
@@ -202,6 +208,8 @@ object FidelityGuard {
             )
             .replace(Regex("(?i)\\bwith hair and eyes\\b"), "with delicate features")
             .replace(Regex("(?i)\\bher hair and eyes\\b"), "her features")
+        out = stripUnstatedHair(text, out)
+        return out
             .replace(Regex("\\s+"), " ")
             .replace(Regex("\\s+([,.;:])"), "$1")
             .replace(Regex("(?i)\\ba\\s+(apron|orange|aqua|outfit)\\b"), "an $1")
@@ -246,6 +254,51 @@ object FidelityGuard {
             }
             if (kept.isEmpty()) "hair" else kept.joinToString(" ") + " hair"
         }
+    }
+
+    /**
+     * The model sometimes invents a hair length or style when the input says
+     * nothing about hair at all ("strands falling around her shoulders").
+     * v13 still did this on ID24 and ID26, so remove those claims
+     * deterministically. Hair phrases that the input supports are untouched.
+     */
+    private fun stripUnstatedHair(text: String, prompt: String): String {
+        if (HAIR_CUE.containsMatchIn(text)) return prompt
+        return prompt
+            .replace(
+                Regex(
+                    "(?i)\\b(hair)\\s+is\\s+(?:styled|arranged|worn)\\s+in\\s+a\\s+" +
+                        "manner\\s+that\\s+frames\\s+(her|his)\\s+face\\s+naturally\\b",
+                ),
+                "$1 frames $2 face",
+            )
+            .replace(
+                Regex(
+                    "(?i),?\\s*with\\s+(?:her\\s+|his\\s+)?(?:strands|locks)\\s+" +
+                        "(?:gently\\s+|softly\\s+)?falling\\s+" +
+                        "(?:around|past|down|over|to)\\s+(?:her|his)\\s+shoulders\\b",
+                ),
+                "",
+            )
+            .replace(
+                Regex(
+                    "(?i),?\\s*falling\\s+(?:naturally\\s+|softly\\s+|gently\\s+)?" +
+                        "(?:around|past|down|over|to)\\s+(?:her|his)\\s+shoulders" +
+                        "(?:\\s+in\\s+a\\s+[^.]*?\\s+manner)?" +
+                        "(?:\\s+that\\s+complements\\s+([^.,;]+))?",
+                ),
+            ) { match ->
+                val complements = match.groupValues[1].trim()
+                if (complements.isEmpty()) "" else ", in keeping with $complements"
+            }
+            .replace(
+                Regex(
+                    "(?i)\\bhair\\s+falls\\s+(?:naturally\\s+|softly\\s+|gently\\s+)?" +
+                        "(?:around|past|down|over|to)\\s+(her|his)\\s+shoulders" +
+                        "(?:\\s+in\\s+a\\s+[^.]*?\\s+manner)?",
+                ),
+                "hair frames $1 face",
+            )
     }
 
     private fun normalizeEyePhrases(
@@ -464,6 +517,17 @@ object FidelityGuard {
         "はーふあっぷ|half[- ]?updo|半分まとめ|半分にまとめ|半分だけまとめ|半分アップ",
     )
     private val SIDE_CUE = Regex("左側から|右側から|左から|右から|横から|側面|横顔|よこから")
+    private val CAMERA_CUE = Regex(
+        "左側から|右側から|左から|右から|横から|側面|横顔|よこから|" +
+            "上から見|上から撮|上から描|下から見|下から撮|俯瞰|見下ろ|煽り|あおり|" +
+            "ローアングル|ハイアングル|正面|後ろ姿|背面|斜めから|アングル|ふかん|みおろ",
+    )
+    private val CAMERA_TAGS = setOf("from_above", "from_below", "from_side", "from_behind", "from_front")
+    private val HAIR_CUE = Regex(
+        "髪|ヘア|へあ|ぼぶ|ボブ|ロングヘア|ショートヘア|セミロング|ポニーテール|" +
+            "ツインテール|おかっぱ|ハーフアップ|三つ編み|インカラー|前髪|後ろ髪|" +
+            "巻き髪|ストレート|ウェーブ|カーリー",
+    )
     private val BOB_CUE = Regex("ぼぶ|ボブ|bob")
     private val ABOVE_CUE = Regex("上から見|上から撮|上から描|俯瞰|見下ろ|高い位置|ふかん|みおろ")
 

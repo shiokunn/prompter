@@ -828,3 +828,20 @@ V字の腕のポーズ	v_arms	curated	1.0
 ゾンビ	zombie	curated	1.0
 骸骨	skeleton	curated	1.0
 
+
+# M7 v13 human re-rating: stated elements that were dropped from the tag line.
+# ロングヘアー (with the trailing long-vowel mark) missed the existing ロングヘア alias.
+ロングヘアー	long_hair	curated	1.0
+ショートヘアー	short_hair	curated	1.0
+インカラー	colored_inner_hair	curated	1.0
+水色のインカラー	colored_inner_hair	curated	1.0
+トレー	tray	curated	1.0
+トレーを持って	holding_tray	curated	1.0
+ジュース	juice	curated	1.0
+オムライス	omurice	curated	1.0
+3分割	split_screen	curated	1.0
+３分割	split_screen	curated	1.0
+三分割	split_screen	curated	1.0
+縦半分	split_screen	curated	0.9
+分割構図	split_screen	curated	0.9
+画面を真ん中で縦半分	split_screen	curated	1.0

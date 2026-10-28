@@ -260,7 +260,8 @@ class FidelityGuardTest {
         )
 
         assertFalse(result.contains("not specified"))
-        assertTrue(result.contains("Her hair falls naturally"))
+        assertTrue(result.contains("Her hair frames her face"))
+        assertFalse(result.contains("shoulders"))
         assertTrue(result.contains("Her gaze is directed"))
         assertTrue(result.contains("Her hands hang naturally"))
     }
@@ -304,5 +305,85 @@ class FidelityGuardTest {
         )
 
         assertEquals(tags, result.tags)
+    }
+
+    @Test
+    fun unstatedHairLengthIsRemovedFromTwoGirlPrompt() {
+        val input = "二人の少女がベッドに座って、軽く微笑んでいる"
+        val prompt = "Two girls are seated on a large bed. Her hair is styled in a " +
+            "manner that frames her face naturally, with strands gently falling " +
+            "around her shoulders, and her eyes convey a warm expression."
+        val result = FidelityGuard.sanitizePrompt(
+            input = input,
+            prompt = prompt,
+            offlineTags = listOf("2girls", "multiple_girls", "bed", "sitting", "light_smile"),
+        )
+
+        assertFalse(result.contains("shoulders"))
+        assertFalse(result.contains("styled"))
+        assertTrue(result.contains("Her hair frames her face"))
+        assertTrue(result.contains("her eyes convey a warm expression"))
+    }
+
+    @Test
+    fun unstatedHairStyleIsRemovedFromFieldPrompt() {
+        val input = "白いドレスを着た少女が野原に立って、こちらを見ている"
+        val prompt = "Her hair is depicted simply, falling naturally around her " +
+            "shoulders in a soft, unstyled manner that complements the delicate " +
+            "nature of her attire. Her eyes are fixed on the viewer."
+        val result = FidelityGuard.sanitizePrompt(
+            input = input,
+            prompt = prompt,
+            offlineTags = listOf("1girl", "white_dress", "field", "standing"),
+        )
+
+        assertFalse(result.contains("shoulders"))
+        assertFalse(result.contains("unstyled"))
+        assertTrue(result.contains("in keeping with the delicate nature of her attire"))
+        assertTrue(result.contains("Her eyes are fixed on the viewer"))
+    }
+
+    @Test
+    fun statedHairPhraseIsKept() {
+        val input = "長い黒髪の少女が青いドレスを着ている"
+        val prompt = "Her long black hair falls naturally around her shoulders."
+        val result = FidelityGuard.sanitizePrompt(
+            input = input,
+            prompt = prompt,
+            offlineTags = listOf("1girl", "long_hair", "black_hair", "blue_dress"),
+        )
+
+        assertEquals(prompt, result)
+    }
+
+    @Test
+    fun unstatedCameraTagsAreRemoved() {
+        val input = "白い髪で赤い目をしたメイドがオムライスを作っている"
+        val tags = listOf(
+            "1girl", "solo", "white_hair", "red_eyes", "maid",
+            "from_below", "from_side", "food",
+        )
+        val result = FidelityGuard.correctTags(
+            input = input,
+            tags = tags,
+            isKnownTag = known(tags),
+        )
+
+        assertFalse(result.tags.contains("from_below"))
+        assertFalse(result.tags.contains("from_side"))
+        assertTrue(result.tags.contains("maid"))
+    }
+
+    @Test
+    fun statedSideViewKeepsCameraTag() {
+        val input = "左側から見た構図、上目遣い"
+        val tags = listOf("1girl", "solo", "looking_up")
+        val result = FidelityGuard.correctTags(
+            input = input,
+            tags = tags,
+            isKnownTag = known(tags + listOf("from_side")),
+        )
+
+        assertTrue(result.tags.contains("from_side"))
     }
 }

@@ -602,6 +602,7 @@ class M1Matcher private constructor(
             "seiza" to listOf("sitting"),
             "kneeling" to listOf("sitting"),
             "light_smile" to listOf("smile"),
+            "holding_tray" to listOf("tray"),
             "laughing" to listOf("smile"),
             "crying" to listOf("tears"),
             "2girls" to listOf("multiple_girls"),

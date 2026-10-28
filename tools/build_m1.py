@@ -45,7 +45,16 @@ from m1_common import (
 
 # A few scene tags sit just outside the top 5,000 but are common in prompts.
 # Keep the core at 5,000 and add these explicitly.
-SUPPLEMENT_TAGS = {"park", "morning", "spring_(season)"}
+SUPPLEMENT_TAGS = {
+    "park",
+    "morning",
+    "spring_(season)",
+    # Common prompt subjects just below the top-5,000 cut. The v13 human
+    # evaluation counted them as missing tags on ID25/27/29.
+    "omurice",
+    "juice",
+    "split_screen",
+}
 
 # Generic setting/object tags are frequent false positives when they occur
 # inside character names (ペンドラゴン -> dragon, 水銀燈 -> water). Explicit
