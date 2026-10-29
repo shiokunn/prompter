@@ -2,7 +2,6 @@ package com.prompter.app
 
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
-import java.io.File
 import java.security.MessageDigest
 import java.text.Normalizer
 import java.util.Locale

@@ -11,10 +11,13 @@ Updated: 2026-10-28
   - Status: in progress
   - Implementation: initial Ed25519 signature and payload validation added in `DictionaryUpdateVerifier.kt`, using the user's public key; private key not read. This is not connected to the UI, GitHub, Room, or matcher. Existing `PromptDb` is a read-only SQLite asset; user history must remain separate.
   - Verification: tests added but not run; genuine signed payload, Android API compatibility, rollback and transaction tests still needed. Do not publish as a functioning updater.
-- [ ] Curate character entries for the requested ten works with source and coverage checks.
-  - Status: in progress
-  - Implementation: `character.md` tracks entries for all ten requested works; Genshin NPCs are excluded per user. Updated policy explicitly keeps alternate forms, costumes, personas and units as separate records. Added later Nikke.gg roster forms/collaborations and official 2026 Nikke forms, separated Honkai Star Rail forms and proxy identities, and checked current official-reference rosters for Gakumas/Muv-Luv plus a 61-entry Wuthering.gg roster.
-  - Verification: still partial, not a complete roster. Nikke.gg English variant labels need verified Japanese localization; Wuthering.gg displays 61 entries while the current table needs a row-by-row reconciliation (including repeated Rover elemental listings). All sources need date/coverage audits, and full roster scope (except excluded Genshin NPCs), alias lookup and DB generation remain open.
+- [x] Curate character entries for the requested ten works with source and coverage checks.
+  - Status: complete for the recorded scope
+  - Implementation: `character.md` is the reviewable source of truth. It contains 621 records across the ten works, with per-work source and coverage rows plus an explicit completion-criteria section. Alternate forms, costumes, personas and units are separate records (`category=variant`); Genshin NPCs are excluded per user instruction. `tools/build_character_db.py` generates `app/src/main/assets/characterdb.sqlite` (series / characters / aliases / meta, 1,550 alias rows) from that file.
+  - Verification: Wuthering.gg's full 61-entry display was reconciled with no missing rows. NIKKE combines the JP name list, Nikke.gg playable roster and 2026 official announcements; Aigis was the only visible Nikke.gg entry missing. `CharacterDb` lookups (Japanese name, English name, nickname, reading, width/case normalization, variant separation) pass Robolectric tests in GitHub Actions run `40857989940`, which also built the APK. English official-localization status, unverified NIKKE Japanese names and public-redistribution terms remain documented as open items, not silently assumed.
+- [x] Add bundled character database with alias search to the character UI.
+  - Implementation: `CharacterDb.search` matches canonical names, short names, readings and same-form aliases, returning series + category + source note. MainActivity shows "登録済みの候補" while typing; choosing one still requires the explicit "この英語名を確認して使う" action.
+  - Verification: covered by `CharacterDbTest` in the CI run above. On-device behavior has not yet been observed.
 - [ ] M8: Add character identification mode before GPU support
   - Status: in progress
   - Implementation: mode and name/series/confirmed English fields are integrated into `MainActivity.kt`; explicit English name is prefixed to offline and AI prose. Existing history migrates to v2 and saves character fields. No canonical character tag resolution or full Japanese catalog integration yet.

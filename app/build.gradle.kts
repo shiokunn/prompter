@@ -64,6 +64,7 @@ dependencies {
     implementation("com.google.mlkit:translate:17.0.3")
     implementation("com.google.ai.edge.litertlm:litertlm-android:0.18.1")
     implementation("org.jsoup:jsoup:1.20.1")
+    implementation("org.bouncycastle:bcprov-jdk18on:1.80")
     debugImplementation("androidx.compose.ui:ui-tooling")
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.robolectric:robolectric:4.17")
