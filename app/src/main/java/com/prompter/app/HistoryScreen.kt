@@ -65,7 +65,7 @@ fun HistoryScreen(
                             { if (it) "お気に入り" else "すべて" })
                         OutlinedTextField(
                             value = query, onValueChange = { query = it },
-                            label = { Text("履歴を検索") }, singleLine = true,
+                            label = { Text("表示中の履歴を検索") }, singleLine = true,
                             trailingIcon = {
                                 if (query.isNotEmpty()) TextButton(onClick = { query = "" }) { Text("クリア") }
                             },

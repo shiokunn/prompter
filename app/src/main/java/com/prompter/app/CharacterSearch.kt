@@ -4,7 +4,6 @@ import org.jsoup.Jsoup
 import java.io.ByteArrayOutputStream
 import java.net.HttpURLConnection
 import java.net.URI
-import java.net.URL
 import java.net.URLDecoder
 import java.net.URLEncoder
 
@@ -21,7 +20,7 @@ object CharacterSearch {
 
     fun search(name: String, series: String): List<CharacterSearchResult> {
         require(name.isNotBlank()) { "キャラクター名を入力してください。" }
-        val url = URL(searchUrl(name, series, ENDPOINT))
+        val url = URI(searchUrl(name, series, ENDPOINT)).toURL()
         val connection = url.openConnection() as HttpURLConnection
         try {
             connection.connectTimeout = 15_000
@@ -67,25 +66,30 @@ object CharacterSearch {
         val results = parseResults(html)
         if (results.isNotEmpty()) return results
         if (doc.select(".no-results, .no-results__message").isNotEmpty() ||
-            doc.text().contains("No results found", ignoreCase = true)) {
+            Regex("No (?:more )?results (?:were )?found", RegexOption.IGNORE_CASE).containsMatchIn(doc.text())) {
             throw CharacterSearchException(SearchFailure.NO_RESULTS, "関連資料が見つかりませんでした。名前や作品名を変えてください。")
         }
         throw CharacterSearchException(SearchFailure.MARKUP, "検索ページを読み取れませんでした。ブラウザで開いてください。")
     }
 
     internal fun parseResults(html: String): List<CharacterSearchResult> =
-        Jsoup.parse(html, ENDPOINT).select("a.result__a, a.result-link").take(2).mapNotNull { element ->
+        Jsoup.parse(html, ENDPOINT).select("a.result__a, a.result-link")
+            .filterNot { element ->
+                element.closest(".result--ad, .result-sponsored") != null ||
+                    element.attr("rel").split(' ').contains("sponsored") ||
+                    element.attr("href").contains("/y.js?")
+            }.take(2).mapNotNull { element ->
             val title = element.text().trim()
             val raw = element.absUrl("href")
             val uri = runCatching { URI(raw) }.getOrNull() ?: return@mapNotNull null
             val target = if (uri.host in setOf("duckduckgo.com", "www.duckduckgo.com", "lite.duckduckgo.com", "html.duckduckgo.com") && uri.path == "/l/") {
                 uri.rawQuery.orEmpty().split('&').firstOrNull { it.startsWith("uddg=") }
-                    ?.substringAfter('=')?.let { URLDecoder.decode(it, "UTF-8") }.orEmpty()
+                    ?.substringAfter('=')?.let { runCatching { URLDecoder.decode(it, "UTF-8") }.getOrNull() }.orEmpty()
             } else {
                 raw
             }
             val parsed = runCatching { URI(target) }.getOrNull() ?: return@mapNotNull null
-            if (title.isEmpty() || parsed.scheme !in setOf("http", "https") || parsed.host.isNullOrBlank()) {
+            if (title.isEmpty() || parsed.scheme !in setOf("http", "https") || parsed.host.isNullOrBlank() || parsed.userInfo != null) {
                 null
             } else {
                 CharacterSearchResult(title, target)

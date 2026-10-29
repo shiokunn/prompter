@@ -325,7 +325,7 @@ fun <T> SegmentedControl(
                     text = label(option),
                     style = MaterialTheme.typography.labelLarge,
                     color = if (active) Ink else MutedInk,
-                    maxLines = 1,
+                    maxLines = 2,
                 )
             }
         }

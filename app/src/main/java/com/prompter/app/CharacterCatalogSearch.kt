@@ -117,7 +117,7 @@ object CharacterCatalogSearch {
                 else -> 3
             }
         }
-        return items.filter { CharacterNames.workMatches(series, it.workTitles.ifEmpty { listOf(it.series) }) }
+        return items.filter { score(it) < 3 && CharacterNames.workMatches(series, it.workTitles.ifEmpty { listOf(it.series) }) }
             .distinctBy { it.url }
             .sortedWith(compareBy<CharacterCandidate> { score(it) }.thenBy { it.name })
             .take(10)

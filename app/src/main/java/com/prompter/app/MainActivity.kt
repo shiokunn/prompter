@@ -995,7 +995,9 @@ private fun PrompterApp() {
                     onSelectWeb = { found ->
                         invalidateCharacterLookup()
                         characterName = found.nativeName.ifBlank { found.name }
-                        if (found.workTitles.isNotEmpty()) characterSeries = found.workTitles.first()
+                        val requestedWork = characterSeries
+                        found.workTitles.firstOrNull { CharacterNames.workMatches(requestedWork, listOf(it)) }
+                            ?.let { characterSeries = it }
                         characterEnglish = found.name
                         characterVariant = false
                         characterSearchError = null

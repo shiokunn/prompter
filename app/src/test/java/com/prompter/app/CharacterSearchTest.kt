@@ -32,7 +32,8 @@ class CharacterSearchTest {
 
     @Test
     fun parsesLiteMarkupAndIgnoresAds() {
-        val html = """<a class="result-sponsored" href="https://ad.example">Ad</a>
+        val html = """<div class="result--ad"><a class="result-link" href="https://ad.example">Ad</a></div>
+            <a class="result-link" href="https://duckduckgo.com/y.js?ad_provider=example">Another ad</a>
             <a class="result-link" href="//duckduckgo.com/l/?uddg=https%3A%2F%2Fexample.org%2Fone">One</a>
             <a class="result-link" href="https://example.org/two">Two</a>"""
         assertEquals(listOf(CharacterSearchResult("One", "https://example.org/one"),

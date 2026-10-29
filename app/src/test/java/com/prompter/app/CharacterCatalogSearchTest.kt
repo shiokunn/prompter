@@ -19,6 +19,7 @@ class CharacterCatalogSearchTest {
         )
         assertEquals(listOf("1"), CharacterCatalogSearch.rank(items, "シンデレラ", "ニケ").map { it.url })
         assertEquals("3", CharacterCatalogSearch.rank(items, "UMR", "").first().url)
+        assertTrue(CharacterCatalogSearch.rank(items, "Unrelated", "").isEmpty())
     }
 
     @Test
