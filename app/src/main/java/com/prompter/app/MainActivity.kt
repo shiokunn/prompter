@@ -900,8 +900,9 @@ private fun PrompterApp() {
                                 Text("${entry.nameJa} / ${entry.nameEn}", style = MaterialTheme.typography.bodyMedium)
                                 Text("${entry.series}$label · 出典: ${entry.note.ifBlank { "character.md" }}", style = MaterialTheme.typography.bodySmall, color = MutedInk)
                                 OutlinedButton(onClick = {
+                                    characterName = entry.nameJa
+                                    characterSeries = entry.series
                                     characterEnglish = entry.nameEn
-                                    if (characterSeries.isBlank()) characterSeries = entry.series
                                 }) { Text("この英語名を確認して使う") }
                             }
                         }
