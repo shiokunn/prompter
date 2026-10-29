@@ -45,15 +45,15 @@ class DictionaryUpdateVerifierTest {
     @Test
     fun acceptsGenuinelySignedPayload() {
         val keys = keys()
-        val payload = """{"format":1,"version":3,"aliases":[{"surface":"立ち絵","tag":"standing"}]}"""
+        val payload = """{"format":1,"version":3,"aliases":[{"surface":"水彩","tag":"watercolor_(medium)"}]}"""
         val result = DictionaryUpdateVerifier.verifyWithKey(
             sign(payload, keys.privateKey).toByteArray(),
             currentVersion = 2,
             publicKeyBase64 = keys.publicKeyBase64,
         )
         assertEquals(3L, result.version)
-        assertEquals("立ち絵", result.aliases.single().surface)
-        assertEquals("standing", result.aliases.single().tag)
+        assertEquals("水彩", result.aliases.single().surface)
+        assertEquals("watercolor_(medium)", result.aliases.single().tag)
     }
 
     @Test

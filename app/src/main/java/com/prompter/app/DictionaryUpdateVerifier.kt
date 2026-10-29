@@ -52,7 +52,12 @@ object DictionaryUpdateVerifier {
             val surface = entry.getString("surface")
             val tag = entry.getString("tag")
             val norm = M1Matcher.normalize(surface)
-            require(surface.isNotBlank() && surface.length <= 128 && norm.isNotEmpty() && tag.matches(Regex("[a-z0-9_]{1,100}"))) {
+            require(
+                surface.isNotBlank() && surface.length <= 128 && norm.isNotEmpty() &&
+                    tag.length in 1..100 && tag.all {
+                        it in 'a'..'z' || it in '0'..'9' || it in "_!()+:./|\\-"
+                    },
+            ) {
                 "辞書の項目が不正です。"
             }
             require(seen.add(norm)) { "同じ読みの項目が重複しています。" }
