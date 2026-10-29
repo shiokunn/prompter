@@ -283,7 +283,7 @@ class M1Matcher private constructor(
     companion object {
         private const val TERM = '\u0000'
 
-        fun load(db: SQLiteDatabase): M1Matcher {
+        fun load(db: SQLiteDatabase, updates: List<UpdateAlias> = emptyList()): M1Matcher {
             val tags = mutableSetOf<String>()
             val counts = HashMap<String, Long>()
             db.rawQuery("SELECT name, post_count FROM tags", null).use { c ->
@@ -325,6 +325,30 @@ class M1Matcher private constructor(
                     )
                     aliasCount += 1
                 }
+            }
+
+            // Signed updates load last and carry a far higher priority, so an
+            // updated reading wins over the bundled alias at the same node.
+            for (update in updates) {
+                if (update.norm.isEmpty()) continue
+                tags.add(update.tag)
+                if (update.tag !in counts) counts[update.tag] = 0L
+                var node = root
+                for (ch in update.norm) {
+                    node = node.children.getOrPut(ch) { Node() }
+                }
+                val list = node.entries ?: mutableListOf<AliasEntry>().also { node.entries = it }
+                list.add(
+                    AliasEntry(
+                        tag = update.tag,
+                        surface = update.surface,
+                        source = update.source,
+                        confidence = update.confidence,
+                        priority = update.priority,
+                        postCount = 0L,
+                    ),
+                )
+                aliasCount += 1
             }
 
             val sizeRules = SIZE_RULES.map { (pattern, tag) ->

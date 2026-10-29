@@ -38,6 +38,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -61,6 +62,9 @@ fun SettingsScreen(
     translationError: String?,
     localModelStatus: LocalModelStatus,
     localEngineLoaded: Boolean,
+    initialDictionaryVersion: Long,
+    initialDictionaryAliasCount: Int,
+    onCheckDictionary: suspend () -> DictionaryUpdateOutcome,
     onBack: () -> Unit,
     onSave: (apiKey: String, model: String, baseUrl: String, backend: AiBackend) -> Unit,
     onDeleteKey: () -> Unit,
@@ -87,6 +91,32 @@ fun SettingsScreen(
     var testOk by remember { mutableStateOf<Boolean?>(null) }
     var confirmDelete by remember { mutableStateOf(false) }
     var confirmDeleteModel by remember { mutableStateOf(false) }
+    var dictionaryVersion by remember { mutableStateOf(initialDictionaryVersion) }
+    var dictionaryAliasCount by remember { mutableStateOf(initialDictionaryAliasCount) }
+    var dictionaryUpdating by remember { mutableStateOf(false) }
+    var dictionaryMessage by remember { mutableStateOf<String?>(null) }
+    var dictionaryOk by remember { mutableStateOf<Boolean?>(null) }
+
+    fun checkDictionary() {
+        if (dictionaryUpdating) return
+        dictionaryUpdating = true
+        dictionaryMessage = null
+        dictionaryOk = null
+        scope.launch {
+            try {
+                val outcome = onCheckDictionary()
+                dictionaryVersion = outcome.version
+                dictionaryAliasCount = outcome.aliasCount
+                dictionaryOk = outcome.ok
+                dictionaryMessage = outcome.message
+            } catch (failure: Throwable) {
+                dictionaryOk = false
+                dictionaryMessage = failure.message ?: "更新できませんでした。"
+            } finally {
+                dictionaryUpdating = false
+            }
+        }
+    }
 
     fun clearTest() {
         testMessage = null
@@ -521,6 +551,64 @@ fun SettingsScreen(
                             style = MaterialTheme.typography.bodySmall,
                             color = ErrorRed,
                         )
+                    }
+                }
+            }
+
+            item {
+                Column {
+                    EditorialLabel("辞書")
+                    Spacer(Modifier.height(10.dp))
+                    PaperCard {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = if (dictionaryVersion > 0) {
+                                        "署名辞書 v$dictionaryVersion"
+                                    } else {
+                                        "同梱辞書"
+                                    },
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = Ink,
+                                )
+                                if (dictionaryVersion > 0) {
+                                    Text(
+                                        text = "別名 $dictionaryAliasCount 件",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MutedInk,
+                                    )
+                                }
+                            }
+                            Spacer(Modifier.width(12.dp))
+                            OutlinedButton(
+                                onClick = ::checkDictionary,
+                                enabled = !dictionaryUpdating,
+                                shape = RoundedCornerShape(10.dp),
+                                border = BorderStroke(1.dp, Ink),
+                                colors = ButtonDefaults.outlinedButtonColors(contentColor = Ink),
+                                contentPadding = PaddingValues(horizontal = 14.dp),
+                            ) {
+                                if (dictionaryUpdating) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(14.dp),
+                                        strokeWidth = 2.dp,
+                                        color = Ink,
+                                    )
+                                    Spacer(Modifier.width(8.dp))
+                                    Text("確認中", style = MaterialTheme.typography.labelLarge)
+                                } else {
+                                    Text("更新を確認", style = MaterialTheme.typography.labelLarge)
+                                }
+                            }
+                        }
+                        dictionaryMessage?.let { message ->
+                            Spacer(Modifier.height(8.dp))
+                            Text(
+                                text = message,
+                                color = if (dictionaryOk == true) SuccessGreen else ErrorRed,
+                                style = MaterialTheme.typography.bodySmall,
+                            )
+                        }
                     }
                 }
             }

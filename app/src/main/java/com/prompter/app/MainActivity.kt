@@ -97,8 +97,12 @@ private fun PrompterApp() {
     var characterEnglish by rememberSaveable { mutableStateOf("") }
     var characterResults by remember { mutableStateOf<List<CharacterCandidate>>(emptyList()) }
     var characterDbResults by remember { mutableStateOf<List<CharacterEntry>>(emptyList()) }
+    var characterVariant by remember { mutableStateOf(false) }
+    var characterSourceUrl by remember { mutableStateOf<String?>(null) }
     var characterSearching by remember { mutableStateOf(false) }
     var characterSearchError by remember { mutableStateOf<String?>(null) }
+    var dictionaryVersion by remember { mutableStateOf(0L) }
+    var dictionaryAliasCount by remember { mutableStateOf(0) }
     var modeName by rememberSaveable { mutableStateOf(OutputMode.BOTH.name) }
     val mode = OutputMode.valueOf(modeName)
     var result by remember { mutableStateOf<ConversionResult?>(null) }
@@ -141,6 +145,9 @@ private fun PrompterApp() {
         loading = true
         try {
             engine = withContext(Dispatchers.IO) { PromptEngine(context) }
+            val dictionary = withContext(Dispatchers.IO) { DictionaryUpdates.snapshot(context) }
+            dictionaryVersion = dictionary.version
+            dictionaryAliasCount = dictionary.aliasCount
             historyStore = withContext(Dispatchers.IO) { HistoryStore(context) }
             val loadedAiSettings = withContext(Dispatchers.IO) { AiSettings(context) }
             aiSettings = loadedAiSettings
@@ -373,6 +380,8 @@ private fun PrompterApp() {
         characterMode = item.characterEnglish.isNotBlank()
         characterResults = emptyList()
         characterDbResults = emptyList()
+        characterVariant = false
+        characterSourceUrl = null
         result = ConversionResult(
             pixaiPrompt = item.pixaiPrompt,
             tagText = item.tagText,
@@ -816,6 +825,48 @@ private fun PrompterApp() {
             translationError = translationError,
             localModelStatus = localModelStatus,
             localEngineLoaded = localEngineLoaded,
+            initialDictionaryVersion = dictionaryVersion,
+            initialDictionaryAliasCount = dictionaryAliasCount,
+            onCheckDictionary = {
+                val outcome = withContext(Dispatchers.IO) {
+                    try {
+                        val current = DictionaryUpdates.snapshot(context)
+                        val release = DictionaryUpdateClient.latestRelease()
+                        if (release.version <= current.version) {
+                            DictionaryUpdateOutcome(
+                                ok = true,
+                                message = "最新です（v${current.version}）",
+                                version = current.version,
+                                aliasCount = current.aliasCount,
+                            )
+                        } else {
+                            val bytes = DictionaryUpdateClient.download(release)
+                            val verified = DictionaryUpdateVerifier.verify(bytes, current.version)
+                            val installed = DictionaryUpdates.install(context, verified, release.tag)
+                            DictionaryUpdateOutcome(
+                                ok = true,
+                                message = "v${installed.version} に更新しました",
+                                version = installed.version,
+                                aliasCount = installed.aliasCount,
+                            )
+                        }
+                    } catch (cancelled: CancellationException) {
+                        throw cancelled
+                    } catch (failure: Exception) {
+                        DictionaryUpdateOutcome(
+                            ok = false,
+                            message = failure.message ?: "更新できませんでした。",
+                        )
+                    }
+                }
+                if (outcome.ok && outcome.version > dictionaryVersion) {
+                    withContext(Dispatchers.IO) { engine?.close() }
+                    engine = withContext(Dispatchers.IO) { PromptEngine(context) }
+                    dictionaryVersion = outcome.version
+                    dictionaryAliasCount = outcome.aliasCount
+                }
+                outcome
+            },
             onBack = { showSettings = false },
             onSave = ::saveAiSettings,
             onDeleteKey = ::deleteAiKey,
@@ -859,100 +910,103 @@ private fun PrompterApp() {
                 Column {
                     Text("イメージを、", style = MaterialTheme.typography.displaySmall)
                     Text("プロンプトに。", style = MaterialTheme.typography.displaySmall)
-                    Spacer(Modifier.height(6.dp))
-                    Text("描きたい場面を入力して、自然文とタグを作成します。", style = MaterialTheme.typography.bodyMedium, color = MutedInk)
                 }
             }
 
             item {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    EditorialLabel("キャラクター")
-                    SegmentedControl(
-                        options = listOf(false, true), selected = characterMode,
-                        onSelect = { characterMode = it },
-                        label = { if (it) "版権キャラクター" else "指定なし" },
-                    )
-                    if (characterMode) {
-                        OutlinedTextField(
-                            value = characterName,
-                            onValueChange = {
-                                characterName = it
-                                characterEnglish = ""
-                                characterResults = emptyList()
-                                characterSearchError = null
-                                characterDbResults = CharacterDb.search(context, it)
-                            },
-                            label = { Text("キャラクター名") },
-                            singleLine = true, modifier = Modifier.fillMaxWidth(),
-                        )
-                        OutlinedTextField(
-                            value = characterSeries,
-                            onValueChange = { characterSeries = it; characterEnglish = ""; characterResults = emptyList(); characterSearchError = null },
-                            label = { Text("作品名（任意）") },
-                            singleLine = true, modifier = Modifier.fillMaxWidth(),
-                        )
-                        Text("検索するとキャラクター名をAniListに送信し、見つからない場合はWikidataに送信します。候補は正式名称を保証しません。", style = MaterialTheme.typography.bodySmall, color = MutedInk)
-                        if (characterDbResults.isNotEmpty()) {
-                            EditorialLabel("登録済みの候補")
-                            Text("別名でも一致します。別形態・別衣装は独立した候補です。", style = MaterialTheme.typography.bodySmall, color = MutedInk)
-                            characterDbResults.forEach { entry ->
-                                val label = if (entry.category == "variant") " · 別形態" else ""
-                                Text("${entry.nameJa} / ${entry.nameEn}", style = MaterialTheme.typography.bodyMedium)
-                                Text("${entry.series}$label · 出典: ${entry.note.ifBlank { "character.md" }}", style = MaterialTheme.typography.bodySmall, color = MutedInk)
-                                OutlinedButton(onClick = {
-                                    characterName = entry.nameJa
-                                    characterSeries = entry.series
-                                    characterEnglish = entry.nameEn
-                                }) { Text("この英語名を確認して使う") }
+                CharacterPanel(
+                    active = characterMode,
+                    onActiveChange = { enabled ->
+                        characterMode = enabled
+                        if (!enabled) {
+                            characterName = ""
+                            characterSeries = ""
+                            characterEnglish = ""
+                            characterVariant = false
+                            characterResults = emptyList()
+                            characterDbResults = emptyList()
+                            characterSearchError = null
+                            characterSourceUrl = null
+                        }
+                    },
+                    name = characterName,
+                    series = characterSeries,
+                    english = characterEnglish,
+                    variant = characterVariant,
+                    dbResults = characterDbResults,
+                    webResults = characterResults,
+                    searching = characterSearching,
+                    error = characterSearchError,
+                    onNameChange = {
+                        characterName = it
+                        characterEnglish = ""
+                        characterVariant = false
+                        characterResults = emptyList()
+                        characterSearchError = null
+                        characterSourceUrl = null
+                        characterDbResults = CharacterDb.search(context, it)
+                    },
+                    onSeriesChange = {
+                        characterSeries = it
+                        characterEnglish = ""
+                        characterVariant = false
+                        characterResults = emptyList()
+                        characterSearchError = null
+                    },
+                    onSelect = { entry ->
+                        characterName = entry.nameJa
+                        characterSeries = entry.series
+                        characterEnglish = entry.nameEn
+                        characterVariant = entry.category == "variant"
+                        characterResults = emptyList()
+                        characterSearchError = null
+                        characterSourceUrl = null
+                    },
+                    onSelectWeb = { found ->
+                        if (characterName.isBlank()) characterName = found.name
+                        characterEnglish = found.name
+                        characterVariant = false
+                        characterSearchError = null
+                        characterSourceUrl = found.url
+                    },
+                    onSearchWeb = {
+                        val name = characterName
+                        val series = characterSeries
+                        characterSearching = true
+                        characterSearchError = null
+                        characterResults = emptyList()
+                        scope.launch {
+                            try {
+                                val found = withContext(Dispatchers.IO) { CharacterCatalogSearch.search(name) }
+                                if (name == characterName && series == characterSeries) {
+                                    characterResults = found
+                                    if (found.isEmpty()) characterSearchError = "候補が見つかりませんでした。"
+                                }
+                            } catch (cancelled: CancellationException) {
+                                throw cancelled
+                            } catch (failure: Exception) {
+                                if (name == characterName && series == characterSeries) {
+                                    characterSearchError = failure.message ?: "検索できませんでした。"
+                                }
+                            } finally {
+                                characterSearching = false
                             }
                         }
-                        OutlinedButton(
-                            enabled = characterName.isNotBlank() && !characterSearching,
-                            onClick = {
-                                val name = characterName
-                                val series = characterSeries
-                                characterSearching = true
-                                characterSearchError = null
-                                characterResults = emptyList()
-                                scope.launch {
-                                    try {
-                                        val found = withContext(Dispatchers.IO) { CharacterCatalogSearch.search(name) }
-                                        if (name == characterName && series == characterSeries) {
-                                            characterResults = found
-                                            if (found.isEmpty()) characterSearchError = "候補が見つかりませんでした。"
-                                        }
-                                    } catch (cancelled: CancellationException) {
-                                        throw cancelled
-                                    } catch (failure: Exception) {
-                                        if (name == characterName && series == characterSeries) {
-                                            characterSearchError = failure.message ?: "検索できませんでした。"
-                                        }
-                                    } finally {
-                                        characterSearching = false
-                                    }
-                                }
-                            },
-                            modifier = Modifier.fillMaxWidth(),
-                        ) { Text(if (characterSearching) "検索中…" else "キャラクター候補を探す") }
-                        characterSearchError?.let { Text(it, color = ErrorRed, style = MaterialTheme.typography.bodySmall) }
-                        characterResults.forEach { found ->
-                            Text("${found.name} ${found.nativeName} · ${found.source}", style = MaterialTheme.typography.bodyMedium)
-                            Text(if (found.series.isBlank()) "作品情報なし" else "作品・説明: ${found.series}", style = MaterialTheme.typography.bodySmall)
-                            TextButton(onClick = {
-                                runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(found.url))) }
-                                    .onFailure { characterSearchError = "リンクを開けませんでした。" }
-                            }) { Text("出典を開く") }
-                            OutlinedButton(onClick = { characterEnglish = found.name }) { Text("この名前を確認して使う") }
-                        }
-                        OutlinedTextField(
-                            value = characterEnglish,
-                            onValueChange = { characterEnglish = it },
-                            label = { Text("確認した英語名") },
-                            supportingText = { Text("検索結果を確認し、名前だけを入力してください。") },
-                            singleLine = true, modifier = Modifier.fillMaxWidth(),
-                        )
-                    }
-                }
+                    },
+                    onClearSelection = {
+                        characterEnglish = ""
+                        characterVariant = false
+                    },
+                    onEnglishChange = {
+                        characterEnglish = it
+                        if (it.isBlank()) characterVariant = false
+                    },
+                    sourceUrl = characterSourceUrl,
+                    onOpenSource = { url ->
+                        runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
+                            .onFailure { characterSearchError = "リンクを開けませんでした。" }
+                    },
+                )
             }
 
             item {
@@ -1150,12 +1204,6 @@ private fun ExampleRow(onPick: (String) -> Unit) {
 private fun EmptyResult(unmatched: String) {
     PaperCard {
         Text("辞書に一致しませんでした", style = MaterialTheme.typography.titleMedium)
-        Spacer(Modifier.height(6.dp))
-        Text(
-            "髪色・服装・ポーズ・場所を、もう少し具体的に。",
-            style = MaterialTheme.typography.bodySmall,
-            color = MutedInk,
-        )
         if (unmatched.isNotBlank()) {
             Spacer(Modifier.height(8.dp))
             Text(

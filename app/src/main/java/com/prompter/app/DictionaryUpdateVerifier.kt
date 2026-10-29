@@ -16,14 +16,22 @@ object DictionaryUpdateVerifier {
     private const val PUBLIC_KEY = "MCowBQYDK2VwAyEAkkEShoQv2KoK+xXF54ppoWPc1I8MVDWqhJgFGBuT5m4="
     private val spkiPrefix = byteArrayOf(0x30, 0x2a, 0x30, 0x05, 0x06, 0x03, 0x2b, 0x65, 0x70, 0x03, 0x21, 0x00)
 
-    fun verify(envelopeBytes: ByteArray, currentVersion: Long): VerifiedDictionaryUpdate {
+    fun verify(envelopeBytes: ByteArray, currentVersion: Long): VerifiedDictionaryUpdate =
+        verifyWithKey(envelopeBytes, currentVersion, PUBLIC_KEY)
+
+    /** Same checks as [verify], with the key supplied so tests can sign a payload. */
+    internal fun verifyWithKey(
+        envelopeBytes: ByteArray,
+        currentVersion: Long,
+        publicKeyBase64: String,
+    ): VerifiedDictionaryUpdate {
         require(envelopeBytes.isNotEmpty() && envelopeBytes.size <= MAX_ENVELOPE_BYTES) { "辞書ファイルのサイズが不正です。" }
         val envelope = JSONObject(envelopeBytes.toString(Charsets.UTF_8))
         require(envelope.optString("algorithm") == "Ed25519") { "署名方式が不正です。" }
         val payload = Base64.decode(envelope.getString("payload"), Base64.DEFAULT)
         val signature = Base64.decode(envelope.getString("signature"), Base64.DEFAULT)
         require(signature.size == 64) { "署名の形式が不正です。" }
-        val key = Base64.decode(PUBLIC_KEY, Base64.DEFAULT)
+        val key = Base64.decode(publicKeyBase64, Base64.DEFAULT)
         require(key.size == spkiPrefix.size + 32 && key.copyOfRange(0, spkiPrefix.size).contentEquals(spkiPrefix))
         val verifier = Ed25519Signer()
         verifier.init(false, Ed25519PublicKeyParameters(key, spkiPrefix.size))

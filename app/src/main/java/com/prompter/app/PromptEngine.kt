@@ -11,11 +11,15 @@ data class ConversionResult(
 
 class PromptEngine(context: Context) {
     private val db = PromptDb.open(context)
-    private val matcher = M1Matcher.load(db)
+    private val updates = DictionaryUpdates.snapshot(context)
+    private val matcher = M1Matcher.load(db, updates.aliases)
     private val englishNormalizer = EnglishTagNormalizer.load(db, matcher.allTagNames)
 
     val tagCount: Int = matcher.tagCount
     val aliasCount: Int = matcher.aliasCount
+    val dictionaryVersion: Long = updates.version
+    val dictionaryAliasCount: Int = updates.aliasCount
+    val dictionarySource: String = updates.sourceTag
 
     fun isKnownTag(tag: String): Boolean = matcher.isKnownTag(tag)
 
