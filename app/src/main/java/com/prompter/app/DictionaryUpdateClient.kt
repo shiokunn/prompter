@@ -62,6 +62,16 @@ object DictionaryUpdateClient {
             }
             if (chosen != null) break
         }
+        if (chosen == null) {
+            for (index in 0 until assets.length()) {
+                val asset = assets.getJSONObject(index)
+                val name = asset.optString("name")
+                if (name.startsWith("dictionary-envelope-") && name.endsWith(".json")) {
+                    chosen = asset
+                    break
+                }
+            }
+        }
         val asset = chosen ?: throw IllegalArgumentException("辞書ファイルがリリースに含まれていません。")
         return Release(
             tag = tag,
