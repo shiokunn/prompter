@@ -95,7 +95,7 @@ private fun PrompterApp() {
     var characterName by rememberSaveable { mutableStateOf("") }
     var characterSeries by rememberSaveable { mutableStateOf("") }
     var characterEnglish by rememberSaveable { mutableStateOf("") }
-    var characterResults by remember { mutableStateOf<List<CharacterSearchResult>>(emptyList()) }
+    var characterResults by remember { mutableStateOf<List<CharacterCandidate>>(emptyList()) }
     var characterSearching by remember { mutableStateOf(false) }
     var characterSearchError by remember { mutableStateOf<String?>(null) }
     var modeName by rememberSaveable { mutableStateOf(OutputMode.BOTH.name) }
@@ -873,17 +873,17 @@ private fun PrompterApp() {
                     if (characterMode) {
                         OutlinedTextField(
                             value = characterName,
-                            onValueChange = { characterName = it; characterResults = emptyList(); characterSearchError = null },
+                            onValueChange = { characterName = it; characterEnglish = ""; characterResults = emptyList(); characterSearchError = null },
                             label = { Text("キャラクター名") },
                             singleLine = true, modifier = Modifier.fillMaxWidth(),
                         )
                         OutlinedTextField(
                             value = characterSeries,
-                            onValueChange = { characterSeries = it; characterResults = emptyList(); characterSearchError = null },
+                            onValueChange = { characterSeries = it; characterEnglish = ""; characterResults = emptyList(); characterSearchError = null },
                             label = { Text("作品名（任意）") },
                             singleLine = true, modifier = Modifier.fillMaxWidth(),
                         )
-                        Text("検索すると名前と作品名をDuckDuckGoに送信します。結果は正式名称を保証しません。", style = MaterialTheme.typography.bodySmall, color = MutedInk)
+                        Text("検索するとキャラクター名をAniListに送信し、見つからない場合はWikidataに送信します。候補は正式名称を保証しません。", style = MaterialTheme.typography.bodySmall, color = MutedInk)
                         OutlinedButton(
                             enabled = characterName.isNotBlank() && !characterSearching,
                             onClick = {
@@ -894,8 +894,11 @@ private fun PrompterApp() {
                                 characterResults = emptyList()
                                 scope.launch {
                                     try {
-                                        val found = withContext(Dispatchers.IO) { CharacterSearch.search(name, series) }
-                                        if (name == characterName && series == characterSeries) characterResults = found
+                                        val found = withContext(Dispatchers.IO) { CharacterCatalogSearch.search(name) }
+                                        if (name == characterName && series == characterSeries) {
+                                            characterResults = found
+                                            if (found.isEmpty()) characterSearchError = "候補が見つかりませんでした。"
+                                        }
                                     } catch (cancelled: CancellationException) {
                                         throw cancelled
                                     } catch (failure: Exception) {
@@ -908,13 +911,16 @@ private fun PrompterApp() {
                                 }
                             },
                             modifier = Modifier.fillMaxWidth(),
-                        ) { Text(if (characterSearching) "検索中…" else "DuckDuckGoで調べる") }
+                        ) { Text(if (characterSearching) "検索中…" else "キャラクター候補を探す") }
                         characterSearchError?.let { Text(it, color = ErrorRed, style = MaterialTheme.typography.bodySmall) }
                         characterResults.forEach { found ->
+                            Text("${found.name} ${found.nativeName} · ${found.source}", style = MaterialTheme.typography.bodyMedium)
+                            Text(if (found.series.isBlank()) "作品情報なし" else "作品・説明: ${found.series}", style = MaterialTheme.typography.bodySmall)
                             TextButton(onClick = {
                                 runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(found.url))) }
                                     .onFailure { characterSearchError = "リンクを開けませんでした。" }
-                            }) { Text(found.title, maxLines = 2, overflow = TextOverflow.Ellipsis) }
+                            }) { Text("出典を開く") }
+                            OutlinedButton(onClick = { characterEnglish = found.name }) { Text("この名前を確認して使う") }
                         }
                         OutlinedTextField(
                             value = characterEnglish,
