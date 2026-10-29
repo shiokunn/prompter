@@ -96,6 +96,7 @@ private fun PrompterApp() {
     var characterSeries by rememberSaveable { mutableStateOf("") }
     var characterEnglish by rememberSaveable { mutableStateOf("") }
     var characterResults by remember { mutableStateOf<List<CharacterCandidate>>(emptyList()) }
+    var characterDbResults by remember { mutableStateOf<List<CharacterEntry>>(emptyList()) }
     var characterSearching by remember { mutableStateOf(false) }
     var characterSearchError by remember { mutableStateOf<String?>(null) }
     var modeName by rememberSaveable { mutableStateOf(OutputMode.BOTH.name) }
@@ -371,6 +372,7 @@ private fun PrompterApp() {
         characterEnglish = item.characterEnglish
         characterMode = item.characterEnglish.isNotBlank()
         characterResults = emptyList()
+        characterDbResults = emptyList()
         result = ConversionResult(
             pixaiPrompt = item.pixaiPrompt,
             tagText = item.tagText,
@@ -873,7 +875,13 @@ private fun PrompterApp() {
                     if (characterMode) {
                         OutlinedTextField(
                             value = characterName,
-                            onValueChange = { characterName = it; characterEnglish = ""; characterResults = emptyList(); characterSearchError = null },
+                            onValueChange = {
+                                characterName = it
+                                characterEnglish = ""
+                                characterResults = emptyList()
+                                characterSearchError = null
+                                characterDbResults = CharacterDb.search(context, it)
+                            },
                             label = { Text("キャラクター名") },
                             singleLine = true, modifier = Modifier.fillMaxWidth(),
                         )
@@ -884,6 +892,19 @@ private fun PrompterApp() {
                             singleLine = true, modifier = Modifier.fillMaxWidth(),
                         )
                         Text("検索するとキャラクター名をAniListに送信し、見つからない場合はWikidataに送信します。候補は正式名称を保証しません。", style = MaterialTheme.typography.bodySmall, color = MutedInk)
+                        if (characterDbResults.isNotEmpty()) {
+                            EditorialLabel("登録済みの候補")
+                            Text("別名でも一致します。別形態・別衣装は独立した候補です。", style = MaterialTheme.typography.bodySmall, color = MutedInk)
+                            characterDbResults.forEach { entry ->
+                                val label = if (entry.category == "variant") " · 別形態" else ""
+                                Text("${entry.nameJa} / ${entry.nameEn}", style = MaterialTheme.typography.bodyMedium)
+                                Text("${entry.series}$label · 出典: ${entry.note.ifBlank { "character.md" }}", style = MaterialTheme.typography.bodySmall, color = MutedInk)
+                                OutlinedButton(onClick = {
+                                    characterEnglish = entry.nameEn
+                                    if (characterSeries.isBlank()) characterSeries = entry.series
+                                }) { Text("この英語名を確認して使う") }
+                            }
+                        }
                         OutlinedButton(
                             enabled = characterName.isNotBlank() && !characterSearching,
                             onClick = {
