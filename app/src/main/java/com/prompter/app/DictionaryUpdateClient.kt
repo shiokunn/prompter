@@ -16,7 +16,7 @@ import java.net.URL
  */
 object DictionaryUpdateClient {
     private const val RELEASES_URL =
-        "https://api.github.com/repos/shiokunn/prompter/releases?per_page=20"
+        "https://api.github.com/repos/shiokunn/prompter-dictionary/releases?per_page=20"
     private const val MAX_BYTES = 8 * 1024 * 1024
 
     // Preference order when a release publishes more than one candidate asset.
