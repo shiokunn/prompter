@@ -13,7 +13,7 @@ import org.robolectric.annotation.Config
 class M1MatcherTest {
     private fun engine(): PromptEngine {
         val context = RuntimeEnvironment.getApplication() as Context
-        return PromptEngine(context)
+        return onBackgroundThread { PromptEngine(context) }
     }
 
     @Test

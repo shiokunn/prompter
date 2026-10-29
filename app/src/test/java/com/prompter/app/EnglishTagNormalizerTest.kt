@@ -14,7 +14,7 @@ import org.robolectric.annotation.Config
 class EnglishTagNormalizerTest {
     private fun engine(): PromptEngine {
         val context = RuntimeEnvironment.getApplication() as Context
-        return PromptEngine(context)
+        return onBackgroundThread { PromptEngine(context) }
     }
 
     @Test

@@ -14,7 +14,7 @@ class DictionaryUpdatesTest {
     private val context get() = RuntimeEnvironment.getApplication()
 
     @Test
-    fun installReplacesTheWholeSetAndKeepsOneVersion() {
+    fun installReplacesTheWholeSetAndKeepsOneVersion() = onBackgroundThread {
         DictionaryUpdates.clear(context)
         DictionaryUpdates.install(
             context,
@@ -54,7 +54,7 @@ class DictionaryUpdatesTest {
     }
 
     @Test
-    fun signedUpdateWinsOverBundledAliasAndCanIntroduceTags() {
+    fun signedUpdateWinsOverBundledAliasAndCanIntroduceTags() = onBackgroundThread {
         val db = PromptDb.open(context)
         val updates = listOf(
             UpdateAlias(
