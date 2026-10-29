@@ -14,6 +14,8 @@ import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -36,6 +38,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -165,20 +168,12 @@ fun ScreenHeader(
         modifier = modifier
             .fillMaxWidth()
             .statusBarsPadding()
-            .height(64.dp)
+            .heightIn(min = 64.dp)
             .padding(horizontal = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (onBack != null) {
-            Box(
-                modifier = Modifier
-                    .size(44.dp)
-                    .clip(CircleShape)
-                    .clickable(onClick = onBack),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text("←", style = MaterialTheme.typography.titleLarge, color = Ink)
-            }
+            TextButton(onClick = onBack, modifier = Modifier.heightIn(min = 48.dp)) { Text("戻る") }
             Spacer(Modifier.width(4.dp))
         } else {
             Spacer(Modifier.width(8.dp))
@@ -247,7 +242,7 @@ fun PrimaryAction(
         enabled = enabled && !loading,
         modifier = modifier
             .fillMaxWidth()
-            .height(52.dp),
+            .heightIn(min = 52.dp),
         shape = RoundedCornerShape(12.dp),
         colors = ButtonDefaults.buttonColors(
             containerColor = Ink,
@@ -321,7 +316,8 @@ fun <T> SegmentedControl(
                             Modifier
                         },
                     )
-                    .clickable { onSelect(option) }
+                    .selectable(selected = active, role = Role.Tab, onClick = { onSelect(option) })
+                    .heightIn(min = 48.dp)
                     .padding(vertical = 9.dp),
                 contentAlignment = Alignment.Center,
             ) {

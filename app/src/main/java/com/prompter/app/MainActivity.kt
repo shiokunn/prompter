@@ -60,6 +60,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -101,6 +102,12 @@ private fun PrompterApp() {
     var characterSourceUrl by remember { mutableStateOf<String?>(null) }
     var characterSearching by remember { mutableStateOf(false) }
     var characterSearchError by remember { mutableStateOf<String?>(null) }
+    var characterEvidence by remember { mutableStateOf<List<CharacterSearchResult>>(emptyList()) }
+    var characterEvidenceError by remember { mutableStateOf<String?>(null) }
+    var characterEvidenceSearching by remember { mutableStateOf(false) }
+    var lookupGeneration by remember { mutableStateOf(0L) }
+    var catalogJob by remember { mutableStateOf<Job?>(null) }
+    var evidenceJob by remember { mutableStateOf<Job?>(null) }
     var dictionaryVersion by remember { mutableStateOf(0L) }
     var dictionaryAliasCount by remember { mutableStateOf(0) }
     var modeName by rememberSaveable { mutableStateOf(OutputMode.BOTH.name) }
@@ -140,6 +147,25 @@ private fun PrompterApp() {
     var translationNotice by remember { mutableStateOf<String?>(null) }
     var tagMeanings by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
     var mlTagMeanings by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
+
+    fun invalidateCharacterLookup() {
+        lookupGeneration++
+        catalogJob?.cancel(); evidenceJob?.cancel()
+        characterResults = emptyList(); characterDbResults = emptyList()
+        characterEvidence = emptyList()
+        characterSearchError = null; characterEvidenceError = null
+        characterSearching = false; characterEvidenceSearching = false
+    }
+
+    LaunchedEffect(characterMode, characterName, characterSeries, characterEnglish) {
+        characterDbResults = emptyList()
+        if (characterMode && characterName.isNotBlank() && characterEnglish.isBlank()) {
+            delay(120)
+            characterDbResults = withContext(Dispatchers.IO) {
+                CharacterDb.search(context, characterName, series = characterSeries)
+            }
+        }
+    }
 
     LaunchedEffect(Unit) {
         loading = true
@@ -372,6 +398,7 @@ private fun PrompterApp() {
     }
 
     fun loadHistory(item: HistoryItem) {
+        invalidateCharacterLookup()
         val tags = parseTagText(item.tagText)
         input = item.input
         characterName = item.characterName
@@ -917,6 +944,7 @@ private fun PrompterApp() {
                 CharacterPanel(
                     active = characterMode,
                     onActiveChange = { enabled ->
+                        invalidateCharacterLookup()
                         characterMode = enabled
                         if (!enabled) {
                             characterName = ""
@@ -938,15 +966,16 @@ private fun PrompterApp() {
                     searching = characterSearching,
                     error = characterSearchError,
                     onNameChange = {
+                        invalidateCharacterLookup()
                         characterName = it
                         characterEnglish = ""
                         characterVariant = false
                         characterResults = emptyList()
                         characterSearchError = null
                         characterSourceUrl = null
-                        characterDbResults = CharacterDb.search(context, it)
                     },
                     onSeriesChange = {
+                        invalidateCharacterLookup()
                         characterSeries = it
                         characterEnglish = ""
                         characterVariant = false
@@ -954,6 +983,7 @@ private fun PrompterApp() {
                         characterSearchError = null
                     },
                     onSelect = { entry ->
+                        invalidateCharacterLookup()
                         characterName = entry.nameJa
                         characterSeries = entry.series
                         characterEnglish = entry.nameEn
@@ -963,7 +993,9 @@ private fun PrompterApp() {
                         characterSourceUrl = null
                     },
                     onSelectWeb = { found ->
-                        if (characterName.isBlank()) characterName = found.name
+                        invalidateCharacterLookup()
+                        characterName = found.nativeName.ifBlank { found.name }
+                        if (found.workTitles.isNotEmpty()) characterSeries = found.workTitles.first()
                         characterEnglish = found.name
                         characterVariant = false
                         characterSearchError = null
@@ -972,32 +1004,35 @@ private fun PrompterApp() {
                     onSearchWeb = {
                         val name = characterName
                         val series = characterSeries
+                        val generation = lookupGeneration
                         characterSearching = true
                         characterSearchError = null
                         characterResults = emptyList()
-                        scope.launch {
+                        catalogJob = scope.launch {
                             try {
-                                val found = withContext(Dispatchers.IO) { CharacterCatalogSearch.search(name) }
-                                if (name == characterName && series == characterSeries) {
+                                val found = withContext(Dispatchers.IO) { CharacterCatalogSearch.search(name, series) }
+                                if (generation == lookupGeneration && characterMode && characterEnglish.isBlank()) {
                                     characterResults = found
                                     if (found.isEmpty()) characterSearchError = "候補が見つかりませんでした。"
                                 }
                             } catch (cancelled: CancellationException) {
                                 throw cancelled
                             } catch (failure: Exception) {
-                                if (name == characterName && series == characterSeries) {
+                                if (generation == lookupGeneration) {
                                     characterSearchError = failure.message ?: "検索できませんでした。"
                                 }
                             } finally {
-                                characterSearching = false
+                                if (generation == lookupGeneration) characterSearching = false
                             }
                         }
                     },
                     onClearSelection = {
+                        invalidateCharacterLookup()
                         characterEnglish = ""
                         characterVariant = false
                     },
                     onEnglishChange = {
+                        invalidateCharacterLookup()
                         characterEnglish = it
                         if (it.isBlank()) characterVariant = false
                     },
@@ -1005,6 +1040,35 @@ private fun PrompterApp() {
                     onOpenSource = { url ->
                         runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
                             .onFailure { characterSearchError = "リンクを開けませんでした。" }
+                    },
+                    evidence = characterEvidence,
+                    evidenceSearching = characterEvidenceSearching,
+                    evidenceError = characterEvidenceError,
+                    onSearchEvidence = {
+                        val name = characterName
+                        val series = characterSeries
+                        val generation = lookupGeneration
+                        characterEvidenceSearching = true
+                        characterEvidenceError = null
+                        characterEvidence = emptyList()
+                        evidenceJob = scope.launch {
+                            try {
+                                val found = withContext(Dispatchers.IO) { CharacterSearch.search(name, series) }
+                                if (generation == lookupGeneration) characterEvidence = found
+                            } catch (cancelled: CancellationException) { throw cancelled
+                            } catch (failure: Exception) {
+                                if (generation == lookupGeneration) characterEvidenceError =
+                                    failure.message ?: "資料を取得できませんでした。ブラウザで開いてください。"
+                            } finally {
+                                if (generation == lookupGeneration) characterEvidenceSearching = false
+                            }
+                        }
+                    },
+                    onBrowserSearch = {
+                        runCatching {
+                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(
+                                CharacterSearch.searchUrl(characterName, characterSeries))))
+                        }.onFailure { characterEvidenceError = "ブラウザを開けませんでした。" }
                     },
                 )
             }

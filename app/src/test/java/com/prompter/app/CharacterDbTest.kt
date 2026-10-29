@@ -34,6 +34,16 @@ class CharacterDbTest {
     }
 
     @Test
+    fun kanaVariantsWorkAliasesAndLiteralWildcards() {
+        assertTrue(CharacterDb.search(context, "しんでれら", series = "ニケ").any { it.nameEn == "Cinderella" })
+        assertTrue(CharacterDb.search(context, "ｼﾝﾃﾞﾚﾗ", series = "NIKKE").any { it.nameEn == "Cinderella" })
+        assertTrue(CharacterDb.search(context, "Cinderella", series = "原神").isEmpty())
+        assertTrue(CharacterDb.search(context, "%").isEmpty())
+        assertEquals("神里綾華", CharacterDb.search(context, "綾華", series = "Genshin Impact").first().nameJa)
+        assertEquals("Cinderella", CharacterDb.search(context, "Cinderella").first().nameEn)
+    }
+
+    @Test
     fun keepsAlternateFormsSeparateFromBaseCharacter() {
         val results = CharacterDb.search(context, "シンデレラ")
         val base = results.filter { it.category == "base" }

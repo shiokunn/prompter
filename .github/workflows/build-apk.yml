@@ -60,6 +60,15 @@ jobs:
           chmod +x gradlew
           ./gradlew assembleDebug --stacktrace
 
+      - name: Upload unit test results
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: unit-test-results
+          path: app/build/test-results/testDebugUnitTest/*.xml
+          if-no-files-found: ignore
+          retention-days: 7
+
       - name: Upload debug APK
         uses: actions/upload-artifact@v6
         with:

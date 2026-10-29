@@ -1,8 +1,12 @@
 # Development Progress
 
-Updated: 2026-10-28
+Updated: 2026-10-29
 
 ## Todo
+- [ ] Diagnose DuckDuckGo transport/markup, improve work-aware character lookup, and finish history/settings.
+  - Status: in progress
+  - Evidence: HTML endpoint returned HTTP 202 with `challenge-form`/`anomaly.js`; Lite endpoint returned HTTP 200 with ten `result-link` entries for the same public query. Current lookup ignores series and aborts fallback on AniList errors. Preserve explicit confirmation and independent forms.
+  - Verification: implementation and regression tests pending; keep existing user history intact.
 - [ ] Replace character search with AniList first, Wikidata fallback; keep explicit user confirmation.
   - Status: in progress
   - Implementation: `CharacterCatalogSearch.kt` queries AniList first and Wikidata on empty results; UI presents candidates and confirmation, clearing the chosen name if the input changes. Manual English entry remains available.

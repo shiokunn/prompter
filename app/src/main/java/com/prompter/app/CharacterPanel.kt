@@ -8,11 +8,13 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -20,7 +22,11 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
@@ -52,6 +58,11 @@ fun CharacterPanel(
     onEnglishChange: (String) -> Unit,
     sourceUrl: String?,
     onOpenSource: (String) -> Unit,
+    evidence: List<CharacterSearchResult> = emptyList(),
+    evidenceSearching: Boolean = false,
+    evidenceError: String? = null,
+    onSearchEvidence: () -> Unit = {},
+    onBrowserSearch: () -> Unit = {},
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         EditorialLabel(
@@ -60,7 +71,8 @@ fun CharacterPanel(
                 Switch(
                     checked = active,
                     onCheckedChange = onActiveChange,
-                    modifier = Modifier.height(30.dp),
+                    modifier = Modifier.heightIn(min = 48.dp)
+                        .semantics { contentDescription = "版権キャラクターモード" },
                 )
             },
         )
@@ -92,6 +104,12 @@ fun CharacterPanel(
                     onSelectWeb = onSelectWeb,
                     onSearchWeb = onSearchWeb,
                     onEnglishChange = onEnglishChange,
+                    evidence = evidence,
+                    evidenceSearching = evidenceSearching,
+                    evidenceError = evidenceError,
+                    onSearchEvidence = onSearchEvidence,
+                    onBrowserSearch = onBrowserSearch,
+                    onOpenSource = onOpenSource,
                 )
             }
         }
@@ -113,7 +131,15 @@ private fun CharacterSearch(
     onSelectWeb: (CharacterCandidate) -> Unit,
     onSearchWeb: () -> Unit,
     onEnglishChange: (String) -> Unit,
+    evidence: List<CharacterSearchResult>,
+    evidenceSearching: Boolean,
+    evidenceError: String?,
+    onSearchEvidence: () -> Unit,
+    onBrowserSearch: () -> Unit,
+    onOpenSource: (String) -> Unit,
 ) {
+    var manualEnglish by rememberSaveable(name, series) { mutableStateOf("") }
+    var externalConfirmation by remember { mutableStateOf<String?>(null) }
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         OutlinedTextField(
             value = name,
@@ -136,7 +162,7 @@ private fun CharacterSearch(
         Row(verticalAlignment = Alignment.CenterVertically) {
             Spacer(Modifier.weight(1f))
             TextButton(
-                onClick = onSearchWeb,
+                onClick = { externalConfirmation = "catalog" },
                 enabled = name.isNotBlank() && !searching,
             ) {
                 if (searching) {
@@ -148,21 +174,25 @@ private fun CharacterSearch(
                     Spacer(Modifier.width(8.dp))
                     Text("検索中")
                 } else {
-                    Text("Webで探す")
+                    Text("外部候補")
                 }
+            }
+            TextButton(onClick = { externalConfirmation = "evidence" },
+                enabled = name.isNotBlank() && !evidenceSearching) {
+                Text(if (evidenceSearching) "資料を検索中…" else "関連資料")
             }
         }
 
         if (dbResults.isNotEmpty()) {
             CandidateCard {
-                dbResults.take(6).forEachIndexed { index, entry ->
+                dbResults.forEachIndexed { index, entry ->
                     CandidateRow(
                         title = entry.nameJa,
                         detail = "${entry.series} · ${entry.nameEn}",
                         badge = if (entry.category == "variant") "別形態" else null,
                         onClick = { onSelect(entry) },
                     )
-                    if (index < dbResults.take(6).lastIndex) {
+                    if (index < dbResults.lastIndex) {
                         HorizontalDivider(thickness = 1.dp, color = Hairline)
                     }
                 }
@@ -171,17 +201,18 @@ private fun CharacterSearch(
 
         if (webResults.isNotEmpty()) {
             CandidateCard {
-                webResults.take(4).forEachIndexed { index, found ->
+                webResults.forEachIndexed { index, found ->
                     CandidateRow(
                         title = found.name,
                         detail = buildString {
                             if (found.nativeName.isNotBlank()) append(found.nativeName).append(" · ")
+                            if (found.series.isNotBlank()) append(found.series).append(" · ")
                             append(found.source)
                         },
                         badge = null,
                         onClick = { onSelectWeb(found) },
                     )
-                    if (index < webResults.take(4).lastIndex) {
+                    if (index < webResults.lastIndex) {
                         HorizontalDivider(thickness = 1.dp, color = Hairline)
                     }
                 }
@@ -189,17 +220,41 @@ private fun CharacterSearch(
         }
 
         error?.let { Text(it, color = ErrorRed, style = MaterialTheme.typography.bodySmall) }
+        evidenceError?.let { Text(it, color = ErrorRed, style = MaterialTheme.typography.bodyMedium) }
+        evidence.forEach { result ->
+            TextButton(onClick = { onOpenSource(result.url) }) {
+                Text(result.title, maxLines = 3, overflow = TextOverflow.Ellipsis)
+            }
+        }
+        if (evidenceError != null || evidence.isNotEmpty()) {
+            TextButton(onClick = onBrowserSearch) { Text("DuckDuckGoをブラウザで開く") }
+        }
 
         if (name.isNotBlank() || series.isNotBlank()) {
             OutlinedTextField(
-                value = english,
-                onValueChange = onEnglishChange,
+                value = manualEnglish,
+                onValueChange = { manualEnglish = it },
                 label = { Text("英語名") },
                 singleLine = true,
                 shape = RoundedCornerShape(12.dp),
                 modifier = Modifier.fillMaxWidth(),
             )
+            TextButton(onClick = { onEnglishChange(manualEnglish.trim()) }, enabled = manualEnglish.isNotBlank()) {
+                Text("この英語名を使う")
+            }
         }
+    }
+    externalConfirmation?.let { target ->
+        AlertDialog(onDismissRequest = { externalConfirmation = null },
+            title = { Text(if (target == "catalog") "外部候補を検索" else "関連資料を検索") },
+            text = { Text(if (target == "catalog") "名前をAniList・Wikidataへ送信します。作品名で候補を絞り込みます。候補は正式表記を保証しません。"
+                else "名前と作品名をDuckDuckGoへ送信します。検索結果のページ名をキャラクター名として自動採用しません。") },
+            confirmButton = { TextButton(onClick = {
+                externalConfirmation = null
+                if (target == "catalog") onSearchWeb() else onSearchEvidence()
+            }) { Text("検索") } },
+            dismissButton = { TextButton(onClick = { externalConfirmation = null }) { Text("キャンセル") } },
+        )
     }
 }
 
@@ -222,7 +277,7 @@ private fun SelectedCharacter(
                         text = name,
                         style = MaterialTheme.typography.titleMedium,
                         color = Ink,
-                        maxLines = 1,
+                        maxLines = 3,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f, fill = false),
                     )
@@ -296,7 +351,8 @@ private fun CandidateRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
+            .clickable(role = Role.Button, onClick = onClick)
+            .heightIn(min = 64.dp)
             .padding(vertical = 11.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -306,7 +362,7 @@ private fun CandidateRow(
                     text = title,
                     style = MaterialTheme.typography.titleSmall,
                     color = Ink,
-                    maxLines = 1,
+                    maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f, fill = false),
                 )
@@ -319,7 +375,7 @@ private fun CandidateRow(
                 text = detail,
                 style = MaterialTheme.typography.bodySmall,
                 color = MutedInk,
-                maxLines = 1,
+                maxLines = 3,
                 overflow = TextOverflow.Ellipsis,
             )
         }

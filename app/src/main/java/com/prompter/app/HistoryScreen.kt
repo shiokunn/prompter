@@ -1,40 +1,32 @@
 package com.prompter.app
 
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+internal fun filterHistory(items: List<HistoryItem>, query: String): List<HistoryItem> {
+    val q = query.trim()
+    if (q.isEmpty()) return items
+    return items.filter { item ->
+        listOf(item.input, item.pixaiPrompt, item.tagText, item.characterName,
+            item.characterEnglish, item.characterSeries).any { it.contains(q, ignoreCase = true) }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun HistoryScreen(
     items: List<HistoryItem>,
@@ -47,159 +39,110 @@ fun HistoryScreen(
     onClear: () -> Unit,
 ) {
     var confirmClear by remember { mutableStateOf(false) }
+    var deleteTarget by remember { mutableStateOf<HistoryItem?>(null) }
+    var query by rememberSaveable { mutableStateOf("") }
+    val visible = remember(items, query) { filterHistory(items, query) }
+    BackHandler(onBack = onBack)
 
     Scaffold(
         containerColor = Paper,
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
-            ScreenHeader(
-                title = "履歴",
-                onBack = onBack,
-                actions = {
-                    if (items.isNotEmpty()) {
-                        QuietAction("全削除", onClick = { confirmClear = true })
-                    }
-                },
-            )
+            ScreenHeader(title = "履歴", onBack = onBack, actions = {
+                if (items.isNotEmpty()) QuietAction("全削除", { confirmClear = true })
+            })
         },
     ) { padding ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .navigationBarsPadding()
-                .padding(padding),
-            contentPadding = PaddingValues(
-                start = 20.dp,
-                end = 20.dp,
-                top = 8.dp,
-                bottom = 40.dp,
-            ),
-        ) {
-            item {
-                Column {
-                    SegmentedControl(
-                        options = listOf(false, true),
-                        selected = onlyFavorites,
-                        onSelect = onFilter,
-                        label = { if (it) "お気に入り" else "すべて" },
-                    )
-                    Spacer(Modifier.height(18.dp))
-                }
-            }
-
-            if (items.isEmpty()) {
+        Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.TopCenter) {
+            LazyColumn(
+                modifier = Modifier.widthIn(max = 720.dp).fillMaxSize().imePadding(),
+                contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 32.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
                 item {
-                    Column(modifier = Modifier.padding(top = 40.dp)) {
-                        Text(
-                            text = if (onlyFavorites) {
-                                "お気に入りはまだありません"
-                            } else {
-                                "履歴はまだありません"
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        SegmentedControl(listOf(false, true), onlyFavorites, onFilter,
+                            { if (it) "お気に入り" else "すべて" })
+                        OutlinedTextField(
+                            value = query, onValueChange = { query = it },
+                            label = { Text("履歴を検索") }, singleLine = true,
+                            trailingIcon = {
+                                if (query.isNotEmpty()) TextButton(onClick = { query = "" }) { Text("クリア") }
                             },
-                            style = MaterialTheme.typography.titleMedium,
-                            color = Ink,
-                        )
-                        Spacer(Modifier.height(6.dp))
-                        Text(
-                            text = "変換した内容がここに残ります。",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MutedInk,
+                            modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp),
                         )
                     }
                 }
-            }
-
-            items(items, key = { it.id }) { item ->
-                HistoryRow(
-                    item = item,
-                    onLoad = { onLoad(item) },
-                    onToggleFavorite = { onToggleFavorite(item) },
-                    onDelete = { onDelete(item) },
-                )
-                HorizontalDivider(thickness = 1.dp, color = Hairline)
+                if (visible.isEmpty()) {
+                    item {
+                        Column(Modifier.fillMaxWidth().padding(vertical = 40.dp),
+                            verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                            Text(when {
+                                query.isNotBlank() -> "一致する履歴がありません"
+                                onlyFavorites -> "お気に入りはまだありません"
+                                else -> "履歴はまだありません"
+                            }, style = MaterialTheme.typography.titleMedium, color = Ink)
+                            OutlinedButton(onClick = when {
+                                query.isNotBlank() -> { { query = "" } }
+                                onlyFavorites -> { { onFilter(false) } }
+                                else -> onBack
+                            }) { Text(when {
+                                query.isNotBlank() -> "検索をクリア"
+                                onlyFavorites -> "すべての履歴へ"
+                                else -> "プロンプトを作る"
+                            }) }
+                        }
+                    }
+                }
+                items(visible, key = { it.id }) { item ->
+                    Surface(shape = RoundedCornerShape(16.dp), color = CardCream,
+                        border = BorderStroke(1.dp, Hairline)) {
+                        Column(Modifier.fillMaxWidth().padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Text(SimpleDateFormat("yyyy/MM/dd HH:mm", Locale.JAPAN).format(Date(item.createdAt)),
+                                style = MaterialTheme.typography.labelMedium, color = MutedInk)
+                            if (item.characterEnglish.isNotBlank()) {
+                                Text(listOf(item.characterName.ifBlank { item.characterEnglish }, item.characterSeries)
+                                    .filter(String::isNotBlank).joinToString(" · "),
+                                    style = MaterialTheme.typography.titleSmall, color = Terracotta)
+                            }
+                            Text(item.input, style = MaterialTheme.typography.bodyLarge, color = Ink,
+                                maxLines = 3, overflow = TextOverflow.Ellipsis)
+                            val preview = item.pixaiPrompt.ifBlank { item.tagText }
+                            if (preview.isNotBlank()) Text(preview,
+                                style = MaterialTheme.typography.bodyMedium, color = MutedInk,
+                                maxLines = 2, overflow = TextOverflow.Ellipsis)
+                            HorizontalDivider(color = Hairline)
+                            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Button(onClick = { onLoad(item) }) { Text("再利用") }
+                                FilterChip(
+                                    selected = item.isFavorite, onClick = { onToggleFavorite(item) },
+                                    label = { Text(if (item.isFavorite) "お気に入り済み" else "お気に入り") },
+                                    modifier = Modifier.heightIn(min = 48.dp),
+                                )
+                                TextButton(onClick = { deleteTarget = item }) { Text("削除", color = ErrorRed) }
+                            }
+                        }
+                    }
+                }
             }
         }
     }
-
-    if (confirmClear) {
+    if (confirmClear || deleteTarget != null) {
         AlertDialog(
-            onDismissRequest = { confirmClear = false },
-            title = { Text("履歴を全削除") },
-            text = { Text("保存されている変換履歴をすべて削除します。") },
+            onDismissRequest = { confirmClear = false; deleteTarget = null },
+            title = { Text(if (confirmClear) "履歴をすべて削除しますか？" else "この履歴を削除しますか？") },
+            text = { Text(if (confirmClear) "お気に入りを含むすべての履歴が削除されます。元に戻せません。"
+                else deleteTarget?.input.orEmpty(), maxLines = 4, overflow = TextOverflow.Ellipsis) },
             confirmButton = {
-                TextButton(
-                    onClick = {
-                        confirmClear = false
-                        onClear()
-                    },
-                ) {
-                    Text("削除")
-                }
+                TextButton(onClick = {
+                    if (confirmClear) onClear() else deleteTarget?.let(onDelete)
+                    confirmClear = false; deleteTarget = null
+                }) { Text("削除", color = ErrorRed) }
             },
             dismissButton = {
-                TextButton(onClick = { confirmClear = false }) {
-                    Text("キャンセル")
-                }
+                TextButton(onClick = { confirmClear = false; deleteTarget = null }) { Text("キャンセル") }
             },
         )
     }
 }
-
-@Composable
-private fun HistoryRow(
-    item: HistoryItem,
-    onLoad: () -> Unit,
-    onToggleFavorite: () -> Unit,
-    onDelete: () -> Unit,
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onLoad)
-            .padding(vertical = 14.dp),
-        verticalAlignment = Alignment.Top,
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = formatHistoryDate(item.createdAt),
-                style = MaterialTheme.typography.labelSmall,
-                color = MutedInk,
-            )
-            Spacer(Modifier.height(4.dp))
-            Text(
-                text = item.input,
-                style = MaterialTheme.typography.bodyMedium,
-                color = Ink,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Spacer(Modifier.height(4.dp))
-            Text(
-                text = item.tagText,
-                style = MaterialTheme.typography.labelMedium.copy(
-                    fontFamily = FontFamily.Monospace,
-                ),
-                color = MutedInk,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Spacer(Modifier.height(4.dp))
-            Text(
-                text = "${parseTagText(item.tagText).size} tags",
-                style = MaterialTheme.typography.labelSmall,
-                color = MutedInk,
-            )
-        }
-        Spacer(Modifier.width(8.dp))
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            MiniAction(
-                label = if (item.isFavorite) "★" else "☆",
-                onClick = onToggleFavorite,
-            )
-            MiniAction(label = "×", onClick = onDelete)
-        }
-    }
-}
-
-private fun formatHistoryDate(timestamp: Long): String =
-    SimpleDateFormat("yyyy/MM/dd HH:mm", Locale.JAPAN).format(Date(timestamp))

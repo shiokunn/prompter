@@ -52,7 +52,8 @@ PARENT = re.compile(r"^(.{1,30}?)(?:とは|と)(?:別形態|別ユニット|別�
 
 def normalize(text: str) -> str:
     text = unicodedata.normalize("NFKC", text).lower()
-    return re.sub(r"[\s・·'’\-]", "", text)
+    text = "".join(chr(ord(c) - 0x60) if "ァ" <= c <= "ヶ" else c for c in text)
+    return re.sub(r"[\s・·'’\-!:：]", "", text)
 
 
 def parse(md: str):

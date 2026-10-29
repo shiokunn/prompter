@@ -3,8 +3,6 @@ package com.prompter.app
 import android.content.Context
 import android.database.sqlite.SQLiteDatabase
 import java.security.MessageDigest
-import java.text.Normalizer
-import java.util.Locale
 
 /**
  * One row of the bundled character database. Alternate forms, costumes and
@@ -32,12 +30,10 @@ object CharacterDb {
     private const val PREFS_NAME = "characterdb"
     private const val KEY_HASH = "asset_sha256"
 
-    private val ignored = Regex("[\\s・·'’\\-]")
-
     @Volatile
     private var cached: SQLiteDatabase? = null
 
-    fun search(context: Context, query: String, limit: Int = 8): List<CharacterEntry> {
+    fun search(context: Context, query: String, limit: Int = 20, series: String = ""): List<CharacterEntry> {
         val normalized = normalize(query)
         if (normalized.isEmpty()) return emptyList()
         val db = try {
@@ -46,20 +42,22 @@ object CharacterDb {
             return emptyList()
         }
         val sql = """
-            SELECT DISTINCT c.id, c.name_ja, c.name_en, s.name_ja, c.category, c.note
+            SELECT c.id, c.name_ja, c.name_en, s.name_ja, c.category, c.note,
+                MIN(CASE WHEN a.text_norm = ? THEN 0
+                         WHEN instr(a.text_norm, ?) = 1 THEN 1 ELSE 2 END) AS rank
             FROM aliases a
             JOIN characters c ON c.id = a.character_id
             JOIN series s ON s.id = c.series_id
-            WHERE a.text_norm LIKE ?
-            ORDER BY
-                CASE WHEN a.text_norm = ? THEN 0 WHEN a.text_norm LIKE ? THEN 1 ELSE 2 END,
-                c.id
-            LIMIT ?
+            WHERE instr(a.text_norm, ?) > 0
+            GROUP BY c.id
+            ORDER BY rank, c.id
         """.trimIndent()
         return try {
-            db.rawQuery(sql, arrayOf("%$normalized%", normalized, "$normalized%", limit.toString())).use { cursor ->
+            db.rawQuery(sql, arrayOf(normalized, normalized, normalized)).use { cursor ->
                 buildList {
                     while (cursor.moveToNext()) {
+                        if (!CharacterNames.workMatches(series, listOf(cursor.getString(3)))) continue
+                        if (size >= limit.coerceIn(1, 100)) break
                         add(
                             CharacterEntry(
                                 id = cursor.getLong(0),
@@ -78,10 +76,7 @@ object CharacterDb {
         }
     }
 
-    internal fun normalize(text: String): String =
-        Normalizer.normalize(text.trim(), Normalizer.Form.NFKC)
-            .lowercase(Locale.ROOT)
-            .replace(ignored, "")
+    internal fun normalize(text: String): String = CharacterNames.normalize(text)
 
     @Synchronized
     private fun open(context: Context): SQLiteDatabase {

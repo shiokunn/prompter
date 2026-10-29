@@ -1,54 +1,21 @@
 package com.prompter.app
 
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
-import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Modifier
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalUriHandler
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 import java.util.Locale
-
-private const val OPENROUTER_KEYS_URL = "https://openrouter.ai/keys"
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -78,625 +45,267 @@ fun SettingsScreen(
 ) {
     val scope = rememberCoroutineScope()
     val uriHandler = LocalUriHandler.current
-
+    // Secrets are intentionally not saved into Activity saved state.
     var apiKey by remember { mutableStateOf("") }
-    var model by remember { mutableStateOf(initialModel) }
-    var baseUrl by remember { mutableStateOf(initialBaseUrl) }
-    var backend by remember { mutableStateOf(initialBackend) }
+    var model by rememberSaveable { mutableStateOf(initialModel) }
+    var baseUrl by rememberSaveable { mutableStateOf(initialBaseUrl) }
+    var backendName by rememberSaveable { mutableStateOf(initialBackend.name) }
+    val backend = AiBackend.valueOf(backendName)
     var showKey by remember { mutableStateOf(false) }
-    var showAdvanced by remember { mutableStateOf(false) }
+    var showAdvanced by rememberSaveable { mutableStateOf(false) }
     var localError by remember { mutableStateOf<String?>(null) }
     var testing by remember { mutableStateOf(false) }
     var testMessage by remember { mutableStateOf<String?>(null) }
-    var testOk by remember { mutableStateOf<Boolean?>(null) }
-    var confirmDelete by remember { mutableStateOf(false) }
+    var testOk by remember { mutableStateOf(false) }
+    var confirmDeleteKey by remember { mutableStateOf(false) }
     var confirmDeleteModel by remember { mutableStateOf(false) }
+    var confirmDiscard by remember { mutableStateOf(false) }
     var dictionaryVersion by remember { mutableStateOf(initialDictionaryVersion) }
     var dictionaryAliasCount by remember { mutableStateOf(initialDictionaryAliasCount) }
     var dictionaryUpdating by remember { mutableStateOf(false) }
     var dictionaryMessage by remember { mutableStateOf<String?>(null) }
-    var dictionaryOk by remember { mutableStateOf<Boolean?>(null) }
+    var dictionaryOk by remember { mutableStateOf(false) }
+    val dirty = apiKey.isNotEmpty() || model != initialModel || baseUrl != initialBaseUrl || backend != initialBackend
+    fun leave() { if (dirty) confirmDiscard = true else onBack() }
+    BackHandler { leave() }
 
+    fun clearTest() { testMessage = null; localError = null }
+    fun save() {
+        val url = AiDefaults.normalizeBaseUrl(baseUrl)
+        localError = when {
+            backend == AiBackend.CLOUD && !AiDefaults.isValidBaseUrl(url) -> "Base URLは https:// で始まるURLを入力してください。"
+            backend == AiBackend.CLOUD && model.isBlank() -> "モデルIDを入力してください。"
+            backend == AiBackend.CLOUD && !hasApiKey && apiKey.isBlank() -> "OpenRouterのAPIキーを入力してください。"
+            else -> null
+        }
+        if (localError == null) onSave(apiKey.trim(), model.trim(), url, backend)
+    }
+    fun testConnection() {
+        val url = AiDefaults.normalizeBaseUrl(baseUrl)
+        if (!AiDefaults.isValidBaseUrl(url) || (!hasApiKey && apiKey.isBlank())) {
+            localError = "APIキーと https:// から始まるBase URLを確認してください。"
+            return
+        }
+        clearTest(); testing = true
+        scope.launch {
+            try {
+                testMessage = onTestConnection(apiKey.trim(), url); testOk = true
+            } catch (cancelled: CancellationException) { throw cancelled
+            } catch (failure: Exception) {
+                testMessage = failure.message ?: "接続できませんでした。"; testOk = false
+            } finally { testing = false }
+        }
+    }
     fun checkDictionary() {
         if (dictionaryUpdating) return
-        dictionaryUpdating = true
-        dictionaryMessage = null
-        dictionaryOk = null
+        dictionaryUpdating = true; dictionaryMessage = null
         scope.launch {
             try {
                 val outcome = onCheckDictionary()
-                dictionaryVersion = outcome.version
-                dictionaryAliasCount = outcome.aliasCount
-                dictionaryOk = outcome.ok
-                dictionaryMessage = outcome.message
-            } catch (failure: Throwable) {
-                dictionaryOk = false
-                dictionaryMessage = failure.message ?: "更新できませんでした。"
-            } finally {
-                dictionaryUpdating = false
-            }
-        }
-    }
-
-    fun clearTest() {
-        testMessage = null
-        testOk = null
-    }
-
-    fun save() {
-        val normalizedBaseUrl = AiDefaults.normalizeBaseUrl(baseUrl)
-        val trimmedModel = model.trim()
-        when {
-            backend == AiBackend.CLOUD && !AiDefaults.isValidBaseUrl(normalizedBaseUrl) -> {
-                localError = "Base URLは https:// で始まるURLを入力してください。"
-            }
-            backend == AiBackend.CLOUD && trimmedModel.isEmpty() -> {
-                localError = "モデルIDを入力してください。"
-            }
-            backend == AiBackend.CLOUD && !hasApiKey && apiKey.isBlank() -> {
-                localError = "OpenRouterのAPIキーを入力してください。"
-            }
-            else -> {
-                localError = null
-                onSave(apiKey.trim(), trimmedModel, normalizedBaseUrl, backend)
-            }
-        }
-    }
-
-    fun testConnection() {
-        val normalizedBaseUrl = AiDefaults.normalizeBaseUrl(baseUrl)
-        if (!AiDefaults.isValidBaseUrl(normalizedBaseUrl)) {
-            localError = "Base URLは https:// で始まるURLを入力してください。"
-            return
-        }
-        if (!hasApiKey && apiKey.isBlank()) {
-            localError = "先にAPIキーを入力してください。"
-            return
-        }
-        localError = null
-        clearTest()
-        testing = true
-        scope.launch {
-            try {
-                testMessage = onTestConnection(apiKey.trim(), normalizedBaseUrl)
-                testOk = true
-            } catch (t: Throwable) {
-                testMessage = t.message ?: "接続に失敗しました。"
-                testOk = false
-            } finally {
-                testing = false
-            }
+                // A network error must not make an installed version appear to disappear.
+                if (outcome.ok) {
+                    dictionaryVersion = outcome.version
+                    dictionaryAliasCount = outcome.aliasCount
+                }
+                dictionaryMessage = outcome.message; dictionaryOk = outcome.ok
+            } catch (cancelled: CancellationException) { throw cancelled
+            } catch (failure: Exception) {
+                dictionaryMessage = failure.message ?: "更新できませんでした。"; dictionaryOk = false
+            } finally { dictionaryUpdating = false }
         }
     }
 
     Scaffold(
         containerColor = Paper,
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
-        topBar = {
-            ScreenHeader(title = "設定", onBack = onBack)
+        topBar = { ScreenHeader(title = "設定", onBack = ::leave) },
+        bottomBar = {
+            Surface(color = Paper) {
+                Box(Modifier.fillMaxWidth().navigationBarsPadding().imePadding(), contentAlignment = Alignment.Center) {
+                    Column(Modifier.widthIn(max = 720.dp).fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp)) {
+                        localError?.let { Text(it, color = ErrorRed, style = MaterialTheme.typography.bodyMedium) }
+                        PrimaryAction("AI設定を保存", ::save, enabled = !testing && !dictionaryUpdating)
+                    }
+                }
+            }
         },
     ) { padding ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .navigationBarsPadding()
-                .padding(padding),
-            contentPadding = PaddingValues(
-                start = 20.dp,
-                end = 20.dp,
-                top = 8.dp,
-                bottom = 40.dp,
-            ),
-            verticalArrangement = Arrangement.spacedBy(24.dp),
-        ) {
-            item {
-                Column {
-                    EditorialLabel("AI")
-                    Spacer(Modifier.height(10.dp))
-                    SegmentedControl(
-                        options = AiBackend.entries,
-                        selected = backend,
-                        onSelect = {
-                            backend = it
-                            localError = null
-                        },
-                        label = { if (it == AiBackend.CLOUD) "クラウド" else "ローカル" },
-                    )
-                }
-            }
-
-            if (backend == AiBackend.CLOUD) {
+        Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.TopCenter) {
+            LazyColumn(
+                modifier = Modifier.widthIn(max = 720.dp).fillMaxSize(),
+                contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 24.dp),
+                verticalArrangement = Arrangement.spacedBy(24.dp),
+            ) {
                 item {
-                    Column {
-                        EditorialLabel("APIキー")
-                        Spacer(Modifier.height(10.dp))
-                        OutlinedTextField(
-                            value = apiKey,
-                            onValueChange = {
-                                apiKey = it
-                                localError = null
-                                clearTest()
-                            },
-                            modifier = Modifier.fillMaxWidth(),
-                            placeholder = {
-                                Text(
-                                    if (hasApiKey) {
-                                        "設定済み（変更する場合のみ入力）"
-                                    } else {
-                                        "sk-or-v1-..."
-                                    },
-                                )
-                            },
-                            singleLine = true,
-                            visualTransformation = if (showKey) {
-                                VisualTransformation.None
-                            } else {
-                                PasswordVisualTransformation()
-                            },
-                            trailingIcon = {
-                                TextButton(onClick = { showKey = !showKey }) {
-                                    Text(
-                                        text = if (showKey) "隠す" else "表示",
-                                        style = MaterialTheme.typography.labelMedium,
-                                    )
-                                }
-                            },
-                            shape = RoundedCornerShape(12.dp),
-                            colors = fieldColors(),
-                        )
-                        Spacer(Modifier.height(10.dp))
-                        Row {
-                            OutlinedButton(
-                                onClick = ::testConnection,
-                                enabled = !testing,
-                                shape = RoundedCornerShape(10.dp),
-                                border = BorderStroke(1.dp, Ink),
-                                colors = ButtonDefaults.outlinedButtonColors(contentColor = Ink),
-                                contentPadding = PaddingValues(horizontal = 14.dp),
-                            ) {
-                                if (testing) {
-                                    CircularProgressIndicator(
-                                        modifier = Modifier.size(14.dp),
-                                        strokeWidth = 2.dp,
-                                        color = Ink,
-                                    )
-                                    Spacer(Modifier.width(8.dp))
-                                    Text("テスト中", style = MaterialTheme.typography.labelLarge)
-                                } else {
-                                    Text("接続テスト", style = MaterialTheme.typography.labelLarge)
-                                }
-                            }
-                            Spacer(Modifier.width(8.dp))
-                            QuietAction(
-                                text = "キーを再発行",
-                                onClick = {
-                                    runCatching { uriHandler.openUri(OPENROUTER_KEYS_URL) }
-                                },
-                            )
-                        }
-                        testMessage?.let { message ->
-                            Spacer(Modifier.height(8.dp))
-                            Text(
-                                text = message,
-                                color = if (testOk == true) SuccessGreen else ErrorRed,
-                                style = MaterialTheme.typography.bodySmall,
-                            )
-                        }
-                        if (hasApiKey) {
-                            Spacer(Modifier.height(4.dp))
-                            QuietAction("APIキーを削除", onClick = { confirmDelete = true })
-                        }
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Text("生成方法", style = MaterialTheme.typography.titleLarge, color = Ink)
+                        SegmentedControl(AiBackend.entries, backend,
+                            { backendName = it.name; clearTest() },
+                            { if (it == AiBackend.LOCAL) "端末内" else "クラウド" })
                     }
                 }
-
-                item {
-                    Column {
-                        EditorialLabel("モデル")
-                        Spacer(Modifier.height(10.dp))
-                        FlowRow(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
-                            AiDefaults.PRESETS.forEach { preset ->
-                                FilterChip(
-                                    selected = model == preset.model,
-                                    onClick = {
-                                        model = preset.model
-                                        localError = null
-                                    },
-                                    label = {
-                                        Text(
-                                            preset.label,
-                                            style = MaterialTheme.typography.labelMedium,
-                                        )
-                                    },
-                                    shape = RoundedCornerShape(8.dp),
-                                    colors = FilterChipDefaults.filterChipColors(
-                                        containerColor = CardCream,
-                                        labelColor = MutedInk,
-                                        selectedContainerColor = Ink,
-                                        selectedLabelColor = CardCream,
-                                    ),
-                                )
-                            }
-                        }
-                        Spacer(Modifier.height(8.dp))
-                        Text(
-                            text = model,
-                            style = MaterialTheme.typography.labelSmall.copy(
-                                fontFamily = FontFamily.Monospace,
-                            ),
-                            color = MutedInk,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                        Spacer(Modifier.height(4.dp))
-                        QuietAction(
-                            text = if (showAdvanced) "詳細を閉じる" else "モデルID・Base URL",
-                            onClick = { showAdvanced = !showAdvanced },
-                        )
-                        if (showAdvanced) {
-                            Spacer(Modifier.height(8.dp))
+                if (backend == AiBackend.CLOUD) {
+                    item {
+                        SettingsGroup("OpenRouter") {
                             OutlinedTextField(
-                                value = model,
-                                onValueChange = {
-                                    model = it
-                                    localError = null
-                                },
-                                modifier = Modifier.fillMaxWidth(),
-                                label = { Text("モデルID") },
-                                singleLine = true,
+                                value = apiKey, onValueChange = { apiKey = it; clearTest() },
+                                label = { Text(if (hasApiKey) "APIキー（設定済み）" else "APIキー") },
+                                singleLine = true, modifier = Modifier.fillMaxWidth(),
+                                visualTransformation = if (showKey) VisualTransformation.None else PasswordVisualTransformation(),
+                                trailingIcon = { TextButton(onClick = { showKey = !showKey }) { Text(if (showKey) "隠す" else "表示") } },
                                 shape = RoundedCornerShape(12.dp),
-                                colors = fieldColors(),
                             )
-                            Spacer(Modifier.height(10.dp))
-                            OutlinedTextField(
-                                value = baseUrl,
-                                onValueChange = {
-                                    baseUrl = it
-                                    localError = null
-                                },
-                                modifier = Modifier.fillMaxWidth(),
-                                label = { Text("Base URL") },
-                                placeholder = { Text(AiDefaults.BASE_URL) },
-                                singleLine = true,
-                                shape = RoundedCornerShape(12.dp),
-                                colors = fieldColors(),
-                            )
+                            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                OutlinedButton(onClick = ::testConnection, enabled = !testing) {
+                                    Text(if (testing) "接続中…" else "接続テスト")
+                                }
+                                TextButton(onClick = {
+                                    runCatching { uriHandler.openUri("https://openrouter.ai/keys") }
+                                        .onFailure { localError = "リンクを開けませんでした。" }
+                                }) { Text("キーを取得") }
+                                if (hasApiKey) TextButton(onClick = { confirmDeleteKey = true }) { Text("キーを削除", color = ErrorRed) }
+                            }
+                            testMessage?.let { StatusMessage(it, testOk) }
+                            HorizontalDivider(color = Hairline)
+                            Text("モデル", style = MaterialTheme.typography.titleMedium)
+                            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                AiDefaults.PRESETS.forEach { preset ->
+                                    FilterChip(selected = model == preset.model,
+                                        onClick = { model = preset.model; clearTest() },
+                                        label = { Text(preset.label) }, modifier = Modifier.heightIn(min = 48.dp))
+                                }
+                            }
+                            TextButton(onClick = { showAdvanced = !showAdvanced }) {
+                                Text(if (showAdvanced) "詳細を閉じる" else "モデルID・接続先")
+                            }
+                            if (showAdvanced) {
+                                OutlinedTextField(model, { model = it; clearTest() },
+                                    label = { Text("モデルID") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+                                OutlinedTextField(baseUrl, { baseUrl = it; clearTest() },
+                                    label = { Text("Base URL") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+                            }
+                        }
+                    }
+                } else {
+                    item {
+                        SettingsGroup(LocalModelSpec.DISPLAY_NAME) {
+                            LocalModelControls(localModelStatus, localEngineLoaded,
+                                onDownloadLocalModel, onCancelLocalModelDownload, onVerifyLocalModel,
+                                { confirmDeleteModel = true }, onUnloadLocalEngine)
                         }
                     }
                 }
-            } else {
                 item {
-                    Column {
-                        EditorialLabel("ローカルLLM")
-                        Spacer(Modifier.height(10.dp))
-                        Text(
-                            text = LocalModelSpec.DISPLAY_NAME,
-                            style = MaterialTheme.typography.titleMedium,
-                            color = Ink,
-                        )
-                        Spacer(Modifier.height(2.dp))
-                        Text(
-                            text = "${formatBytes(LocalModelSpec.SIZE_BYTES)} / ${localStateLabel(localModelStatus.state)}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MutedInk,
-                        )
-
-                        when (localModelStatus.state) {
-                            LocalModelState.READY -> {
-                                Spacer(Modifier.height(12.dp))
-                                Text(
-                                    "SHA-256検証済み",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = SuccessGreen,
-                                )
-                                if (localEngineLoaded) {
-                                    Spacer(Modifier.height(2.dp))
-                                    Text(
-                                        "エンジン読み込み済み / CPU 4 threads",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MutedInk,
-                                    )
-                                }
-                                Spacer(Modifier.height(10.dp))
-                                Row {
-                                    OutlinedButton(
-                                        onClick = { confirmDeleteModel = true },
-                                        shape = RoundedCornerShape(10.dp),
-                                        border = BorderStroke(1.dp, Hairline),
-                                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Ink),
-                                    ) {
-                                        Text("モデルを削除")
-                                    }
-                                    if (localEngineLoaded) {
-                                        Spacer(Modifier.width(8.dp))
-                                        QuietAction("エンジンを解放", onUnloadLocalEngine)
-                                    }
-                                }
-                            }
-
-                            LocalModelState.DOWNLOADING -> {
-                                Spacer(Modifier.height(12.dp))
-                                val percent = (localModelStatus.progress * 100).toInt()
-                                Text(
-                                    "ダウンロード中 $percent%",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MutedInk,
-                                )
-                                Spacer(Modifier.height(8.dp))
-                                LinearProgressIndicator(
-                                    progress = { localModelStatus.progress },
-                                    modifier = Modifier.fillMaxWidth(),
-                                    color = Terracotta,
-                                    trackColor = PaperDeep,
-                                )
-                                Spacer(Modifier.height(12.dp))
-                                OutlinedButton(
-                                    onClick = onCancelLocalModelDownload,
-                                    shape = RoundedCornerShape(10.dp),
-                                    border = BorderStroke(1.dp, Ink),
-                                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Ink),
-                                ) {
-                                    Text("キャンセル")
-                                }
-                            }
-
-                            LocalModelState.NEEDS_VERIFICATION -> {
-                                Spacer(Modifier.height(12.dp))
-                                OutlinedButton(
-                                    onClick = onVerifyLocalModel,
-                                    shape = RoundedCornerShape(10.dp),
-                                    border = BorderStroke(1.dp, Ink),
-                                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Ink),
-                                ) {
-                                    Text("SHA-256を検証")
-                                }
-                            }
-
-                            LocalModelState.VERIFYING -> {
-                                Spacer(Modifier.height(12.dp))
-                                Text(
-                                    "検証中…",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MutedInk,
-                                )
-                                Spacer(Modifier.height(8.dp))
-                                LinearProgressIndicator(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    color = Terracotta,
-                                    trackColor = PaperDeep,
-                                )
-                            }
-
-                            LocalModelState.ERROR -> {
-                                localModelStatus.error?.let { message ->
-                                    Spacer(Modifier.height(8.dp))
-                                    Text(
-                                        text = message,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = ErrorRed,
-                                    )
-                                }
-                                Spacer(Modifier.height(10.dp))
-                                OutlinedButton(
-                                    onClick = onDownloadLocalModel,
-                                    shape = RoundedCornerShape(10.dp),
-                                    border = BorderStroke(1.dp, Ink),
-                                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Ink),
-                                ) {
-                                    Text("再ダウンロード")
-                                }
-                                QuietAction("再検証", onVerifyLocalModel)
-                            }
-
-                            LocalModelState.NOT_DOWNLOADED -> {
-                                Spacer(Modifier.height(12.dp))
-                                OutlinedButton(
-                                    onClick = onDownloadLocalModel,
-                                    shape = RoundedCornerShape(10.dp),
-                                    border = BorderStroke(1.dp, Ink),
-                                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Ink),
-                                ) {
-                                    Text("ダウンロード（${formatBytes(LocalModelSpec.SIZE_BYTES)}）")
-                                }
-                            }
+                    SettingsGroup("辞書") {
+                        Text(if (dictionaryVersion > 0) "署名辞書 v$dictionaryVersion · 別名 $dictionaryAliasCount 件" else "同梱辞書を使用中",
+                            style = MaterialTheme.typography.bodyLarge, color = Ink)
+                        OutlinedButton(onClick = ::checkDictionary, enabled = !dictionaryUpdating) {
+                            Text(if (dictionaryUpdating) "更新を確認中…" else "更新を確認")
                         }
-
-                        Spacer(Modifier.height(10.dp))
-                        Text(
-                            "Wi-Fiのみ / 8GB RAM / 約3.6GB空き",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MutedInk,
-                        )
+                        if (dictionaryUpdating) LinearProgressIndicator(Modifier.fillMaxWidth())
+                        dictionaryMessage?.let { StatusMessage(it, dictionaryOk) }
                     }
                 }
-            }
-
-            item {
-                Column {
-                    EditorialLabel("翻訳")
-                    Spacer(Modifier.height(10.dp))
-                    Text(
-                        text = if (translationReady) {
-                            "ML Kit / 準備完了"
-                        } else {
-                            "ML Kit / 未ダウンロード"
-                        },
-                        style = MaterialTheme.typography.bodySmall,
-                        color = if (translationReady) SuccessGreen else MutedInk,
-                    )
-                    if (!translationReady) {
-                        Spacer(Modifier.height(10.dp))
-                        OutlinedButton(
-                            onClick = onDownloadTranslation,
-                            enabled = !translationDownloading,
-                            shape = RoundedCornerShape(10.dp),
-                            border = BorderStroke(1.dp, Ink),
-                            colors = ButtonDefaults.outlinedButtonColors(contentColor = Ink),
-                        ) {
-                            Text(
-                                if (translationDownloading) {
-                                    "ダウンロード中…"
-                                } else {
-                                    "翻訳モデル（約60MB）"
-                                },
-                            )
-                        }
-                    }
-                    translationError?.let { message ->
-                        Spacer(Modifier.height(8.dp))
-                        Text(
-                            text = message,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = ErrorRed,
-                        )
-                    }
-                }
-            }
-
-            item {
-                Column {
-                    EditorialLabel("辞書")
-                    Spacer(Modifier.height(10.dp))
-                    PaperCard {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = if (dictionaryVersion > 0) {
-                                        "署名辞書 v$dictionaryVersion"
-                                    } else {
-                                        "同梱辞書"
-                                    },
-                                    style = MaterialTheme.typography.titleMedium,
-                                    color = Ink,
-                                )
-                                if (dictionaryVersion > 0) {
-                                    Text(
-                                        text = "別名 $dictionaryAliasCount 件",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MutedInk,
-                                    )
-                                }
-                            }
-                            Spacer(Modifier.width(12.dp))
-                            OutlinedButton(
-                                onClick = ::checkDictionary,
-                                enabled = !dictionaryUpdating,
-                                shape = RoundedCornerShape(10.dp),
-                                border = BorderStroke(1.dp, Ink),
-                                colors = ButtonDefaults.outlinedButtonColors(contentColor = Ink),
-                                contentPadding = PaddingValues(horizontal = 14.dp),
-                            ) {
-                                if (dictionaryUpdating) {
-                                    CircularProgressIndicator(
-                                        modifier = Modifier.size(14.dp),
-                                        strokeWidth = 2.dp,
-                                        color = Ink,
-                                    )
-                                    Spacer(Modifier.width(8.dp))
-                                    Text("確認中", style = MaterialTheme.typography.labelLarge)
-                                } else {
-                                    Text("更新を確認", style = MaterialTheme.typography.labelLarge)
-                                }
-                            }
-                        }
-                        dictionaryMessage?.let { message ->
-                            Spacer(Modifier.height(8.dp))
-                            Text(
-                                text = message,
-                                color = if (dictionaryOk == true) SuccessGreen else ErrorRed,
-                                style = MaterialTheme.typography.bodySmall,
-                            )
-                        }
-                    }
-                }
-            }
-
-            localError?.let { message ->
                 item {
-                    Text(
-                        text = message,
-                        color = ErrorRed,
-                        style = MaterialTheme.typography.bodySmall,
-                    )
-                }
-            }
-
-            item {
-                Column {
-                    PrimaryAction("保存", ::save)
-                    Spacer(Modifier.height(8.dp))
-                    Text(
-                        "APIキーはAndroid Keystoreで暗号化して保存します。",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MutedInk,
-                    )
+                    SettingsGroup("日本語・英語の翻訳") {
+                        Text(if (translationReady) "翻訳モデル準備完了" else "翻訳モデル未準備",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = if (translationReady) SuccessGreen else Ink)
+                        if (!translationReady) {
+                            OutlinedButton(onClick = onDownloadTranslation, enabled = !translationDownloading) {
+                                Text(if (translationDownloading) "ダウンロード中…" else "ダウンロード（約60MB）")
+                            }
+                            if (translationDownloading) LinearProgressIndicator(Modifier.fillMaxWidth())
+                        }
+                        translationError?.let { StatusMessage(it, false) }
+                    }
                 }
             }
         }
     }
-
-    if (confirmDelete) {
+    if (confirmDeleteKey || confirmDeleteModel || confirmDiscard) {
         AlertDialog(
-            onDismissRequest = { confirmDelete = false },
-            title = { Text("APIキーを削除") },
-            text = { Text("保存されているOpenRouter APIキーを削除します。") },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        confirmDelete = false
-                        onDeleteKey()
-                    },
-                ) {
-                    Text("削除")
+            onDismissRequest = { confirmDeleteKey = false; confirmDeleteModel = false; confirmDiscard = false },
+            title = { Text(when {
+                confirmDiscard -> "変更を破棄しますか？"
+                confirmDeleteKey -> "APIキーを削除しますか？"
+                else -> "モデルを削除しますか？"
+            }) },
+            text = { Text(when {
+                confirmDiscard -> "AI設定の変更は保存されません。辞書やモデルの更新は保持されます。"
+                confirmDeleteKey -> "保存されているOpenRouterのAPIキーを削除します。"
+                else -> "約${formatBytes(LocalModelSpec.SIZE_BYTES)}のファイルを削除します。再利用にはダウンロードが必要です。"
+            }) },
+            confirmButton = { TextButton(onClick = {
+                when {
+                    confirmDiscard -> onBack()
+                    confirmDeleteKey -> { apiKey = ""; onDeleteKey() }
+                    else -> onDeleteLocalModel()
                 }
-            },
-            dismissButton = {
-                TextButton(onClick = { confirmDelete = false }) {
-                    Text("キャンセル")
-                }
-            },
-        )
-    }
-
-    if (confirmDeleteModel) {
-        AlertDialog(
-            onDismissRequest = { confirmDeleteModel = false },
-            title = { Text("ローカルLLMモデルを削除") },
-            text = {
-                Text(
-                    "モデルファイル（約${formatBytes(LocalModelSpec.SIZE_BYTES)}）を削除します。" +
-                        "次回利用時に再ダウンロードが必要です。",
-                )
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        confirmDeleteModel = false
-                        onDeleteLocalModel()
-                    },
-                ) {
-                    Text("削除")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { confirmDeleteModel = false }) {
-                    Text("キャンセル")
-                }
-            },
+                confirmDeleteKey = false; confirmDeleteModel = false; confirmDiscard = false
+            }) { Text(if (confirmDiscard) "破棄して戻る" else "削除", color = ErrorRed) } },
+            dismissButton = { TextButton(onClick = {
+                confirmDeleteKey = false; confirmDeleteModel = false; confirmDiscard = false
+            }) { Text("キャンセル") } },
         )
     }
 }
 
 @Composable
-private fun fieldColors() = OutlinedTextFieldDefaults.colors(
-    focusedBorderColor = Ink,
-    unfocusedBorderColor = Hairline,
-    focusedContainerColor = CardCream,
-    unfocusedContainerColor = CardCream,
-    cursorColor = Terracotta,
-)
+private fun SettingsGroup(title: String, content: @Composable ColumnScope.() -> Unit) {
+    PaperCard {
+        Text(title, style = MaterialTheme.typography.titleMedium, color = Ink)
+        Spacer(Modifier.height(16.dp))
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp), content = content)
+    }
+}
+
+@Composable
+private fun StatusMessage(text: String, ok: Boolean) {
+    Text(text, style = MaterialTheme.typography.bodyMedium, color = if (ok) SuccessGreen else ErrorRed)
+}
+
+/** Plain, state-driven content; no file or network operations during composition. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun LocalModelControls(
+    status: LocalModelStatus,
+    loaded: Boolean,
+    onDownload: () -> Unit,
+    onCancel: () -> Unit,
+    onVerify: () -> Unit,
+    onDelete: () -> Unit,
+    onUnload: () -> Unit,
+) {
+    Text("${formatBytes(LocalModelSpec.SIZE_BYTES)} · ${localStateLabel(status.state)}",
+        style = MaterialTheme.typography.bodyLarge, color = Ink)
+    when (status.state) {
+        LocalModelState.READY -> {
+            Text("SHA-256検証済み", color = SuccessGreen, style = MaterialTheme.typography.bodyMedium)
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (loaded) OutlinedButton(onClick = onUnload) { Text("メモリを解放") }
+                TextButton(onClick = onDelete) { Text("モデルを削除", color = ErrorRed) }
+            }
+        }
+        LocalModelState.DOWNLOADING -> {
+            Text("${(status.progress * 100).toInt()}%", style = MaterialTheme.typography.bodyMedium)
+            LinearProgressIndicator(progress = { status.progress }, modifier = Modifier.fillMaxWidth())
+            OutlinedButton(onClick = onCancel) { Text("キャンセル") }
+        }
+        LocalModelState.NEEDS_VERIFICATION -> OutlinedButton(onClick = onVerify) { Text("SHA-256を検証") }
+        LocalModelState.VERIFYING -> LinearProgressIndicator(Modifier.fillMaxWidth())
+        LocalModelState.ERROR -> {
+            status.error?.let { StatusMessage(it, false) }
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(onClick = onDownload) { Text("再ダウンロード") }
+                TextButton(onClick = onVerify) { Text("再検証") }
+            }
+        }
+        LocalModelState.NOT_DOWNLOADED -> OutlinedButton(onClick = onDownload) {
+            Text("ダウンロード（${formatBytes(LocalModelSpec.SIZE_BYTES)}）")
+        }
+    }
+}
 
 private fun localStateLabel(state: LocalModelState): String = when (state) {
     LocalModelState.NOT_DOWNLOADED -> "未ダウンロード"
@@ -710,6 +319,5 @@ private fun localStateLabel(state: LocalModelState): String = when (state) {
 private fun formatBytes(bytes: Long): String = when {
     bytes >= 1_000_000_000L -> String.format(Locale.US, "%.2f GB", bytes / 1_000_000_000.0)
     bytes >= 1_000_000L -> String.format(Locale.US, "%.0f MB", bytes / 1_000_000.0)
-    bytes >= 1_000L -> String.format(Locale.US, "%.0f KB", bytes / 1_000.0)
     else -> "$bytes B"
 }

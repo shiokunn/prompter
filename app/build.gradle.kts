@@ -12,8 +12,8 @@ android {
         applicationId = "com.prompter.app"
         minSdk = 29
         targetSdk = 36
-        versionCode = 22
-        versionName = "0.9.0-m9"
+        versionCode = 23
+        versionName = "0.9.1-m9"
 
         // arrows Alpha is arm64-v8a. ML Kit ships a large JNI library for
         // every ABI; keeping only the target ABI cuts the APK roughly in half.
@@ -73,4 +73,6 @@ dependencies {
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.robolectric:robolectric:4.17")
     testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
+    testImplementation("androidx.compose.ui:ui-test-junit4")
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
 }
