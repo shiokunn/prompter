@@ -6,8 +6,10 @@ import org.junit.Assert.assertThrows
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 
 @RunWith(RobolectricTestRunner::class)
+@Config(sdk = [35])
 class DictionaryUpdateVerifierTest {
     @Test fun rejectsUnsignedPayload() {
         val payload = """{"format":1,"version":1,"aliases":[{"surface":"黒髪","tag":"black_hair"}]}"""
