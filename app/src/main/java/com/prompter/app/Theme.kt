@@ -163,7 +163,6 @@ fun PrompterTheme(content: @Composable () -> Unit) {
 fun ScreenHeader(
     title: String,
     modifier: Modifier = Modifier,
-    onBack: (() -> Unit)? = null,
     actions: @Composable RowScope.() -> Unit = {},
 ) {
     Row(
@@ -174,12 +173,7 @@ fun ScreenHeader(
             .padding(horizontal = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        if (onBack != null) {
-            TextButton(onClick = onBack, modifier = Modifier.heightIn(min = 48.dp)) { Text("戻る") }
-            Spacer(Modifier.width(4.dp))
-        } else {
-            Spacer(Modifier.width(8.dp))
-        }
+        Spacer(Modifier.width(8.dp))
         Text(
             text = title,
             style = MaterialTheme.typography.headlineSmall,

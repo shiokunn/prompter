@@ -48,7 +48,7 @@ fun HistoryScreen(
         containerColor = Paper,
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
-            ScreenHeader(title = "履歴", onBack = onBack, actions = {
+            ScreenHeader(title = "履歴", actions = {
                 if (items.isNotEmpty()) QuietAction("全削除", { confirmClear = true })
             })
         },

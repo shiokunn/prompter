@@ -118,7 +118,7 @@ fun SettingsScreen(
     Scaffold(
         containerColor = Paper,
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
-        topBar = { ScreenHeader(title = "設定", onBack = ::leave) },
+        topBar = { ScreenHeader(title = "設定") },
         bottomBar = {
             Surface(color = Paper) {
                 Box(Modifier.fillMaxWidth().navigationBarsPadding().imePadding(), contentAlignment = Alignment.Center) {

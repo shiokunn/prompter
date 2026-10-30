@@ -84,21 +84,17 @@ class ScreenInteractionTest {
     }
 
     @Test
-    fun settingsKeepsSaveVisibleAndProtectsUnsavedEdits() {
+    fun settingsKeepsSaveVisibleWithoutHeaderBack() {
         var saved = false
-        var left = false
         compose.setContent { PrompterTheme {
             SettingsScreen(false, AiDefaults.MODEL, AiDefaults.BASE_URL, AiBackend.LOCAL,
                 true, false, null, LocalModelStatus(LocalModelState.NOT_DOWNLOADED), false, 2, 4,
-                { DictionaryUpdateOutcome(true, "最新です", 2, 4) }, { left = true },
+                { DictionaryUpdateOutcome(true, "最新です", 2, 4) }, {},
                 { _, _, _, _ -> saved = true }, {}, { _, _ -> "接続できました" }, {}, {}, {}, {}, {}, {})
         } }
         compose.onNodeWithText("AI設定を保存").assertIsDisplayed()
+        compose.onNodeWithText("戻る").assertDoesNotExist()
         compose.onNodeWithText("クラウド").performClick()
-        compose.onNodeWithText("戻る").performClick()
-        compose.onNodeWithText("変更を破棄しますか？").assertIsDisplayed()
-        assertFalse(left)
-        compose.onNodeWithText("キャンセル").performClick()
         assertFalse(saved)
     }
 }
