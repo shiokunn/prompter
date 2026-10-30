@@ -242,6 +242,7 @@
 
 ### 10.3 テスト
 
+- GitHub Actions run `41060586490`（`e26dbf7`）で M1 15件、Kotlin 123件（失敗0・エラー0・スキップ0）、debug APKビルドが成功。
 - `CharacterMentionDetectorTest`
   - 正式名の検出、一般語の非検出、1文字除外、2文字の作品文脈、複合語境界、英語単語境界、カタカナ/ひらがな境界、作品による同名絞り込み、同名複数候補、最長一致、別形態の正式名優先。
 - `ScreenInteractionTest`
