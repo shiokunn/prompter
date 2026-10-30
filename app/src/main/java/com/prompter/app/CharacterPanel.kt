@@ -102,8 +102,8 @@ private fun CharacterSearch(
         OutlinedTextField(
             value = name,
             onValueChange = onNameChange,
-            label = { Text("名前") },
-            placeholder = { Text("シンデレラ") },
+            label = { Text("キャラクター名") },
+            placeholder = { Text("初音ミク") },
             singleLine = true,
             shape = RoundedCornerShape(12.dp),
             modifier = Modifier.fillMaxWidth(),
@@ -111,7 +111,8 @@ private fun CharacterSearch(
         OutlinedTextField(
             value = series,
             onValueChange = onSeriesChange,
-            label = { Text("作品名（任意）") },
+            label = { Text("登場作品・ゲーム・サービス名（任意）") },
+            placeholder = { Text("VOCALOID") },
             singleLine = true,
             shape = RoundedCornerShape(12.dp),
             modifier = Modifier.fillMaxWidth(),

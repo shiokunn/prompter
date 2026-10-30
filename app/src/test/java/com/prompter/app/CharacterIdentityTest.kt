@@ -9,4 +9,9 @@ class CharacterIdentityTest {
             CharacterIdentity.prefix("A girl smiles.", "Cinderella"))
         assertEquals("A girl smiles.", CharacterIdentity.prefix("A girl smiles.", ""))
     }
+
+    @Test fun serviceNameQualifiesTheConfirmedCharacter() {
+        assertEquals("The character is Hatsune Miku from VOCALOID. A girl sings.",
+            CharacterIdentity.prefix("A girl sings.", "Hatsune Miku", "VOCALOID"))
+    }
 }

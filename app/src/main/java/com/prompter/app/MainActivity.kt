@@ -13,8 +13,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -53,8 +51,8 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
@@ -78,12 +76,6 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-private enum class OutputMode(val label: String) {
-    BOTH("両方"),
-    PIXAI("自然文"),
-    TAGS("タグ"),
-}
-
 @Composable
 private fun PrompterApp() {
     val context = LocalContext.current
@@ -98,8 +90,6 @@ private fun PrompterApp() {
     var characterVariant by remember { mutableStateOf(false) }
     var dictionaryVersion by remember { mutableStateOf(0L) }
     var dictionaryAliasCount by remember { mutableStateOf(0) }
-    var modeName by rememberSaveable { mutableStateOf(OutputMode.BOTH.name) }
-    val mode = OutputMode.valueOf(modeName)
     var result by remember { mutableStateOf<ConversionResult?>(null) }
     var editableTags by remember { mutableStateOf<List<EditableTag>>(emptyList()) }
     var engine by remember { mutableStateOf<PromptEngine?>(null) }
@@ -133,8 +123,6 @@ private fun PrompterApp() {
     var translationError by remember { mutableStateOf<String?>(null) }
     var translatedUnmatched by remember { mutableStateOf<String?>(null) }
     var translationNotice by remember { mutableStateOf<String?>(null) }
-    var tagMeanings by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
-    var mlTagMeanings by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
 
     LaunchedEffect(characterMode, characterName, characterSeries, characterEnglish) {
         characterDbResults = emptyList()
@@ -231,40 +219,6 @@ private fun PrompterApp() {
         }
     }
 
-    LaunchedEffect(editableTags, engine, translationReady, translator) {
-        val current = engine ?: return@LaunchedEffect
-        val tags = editableTags.map { it.tag }
-        val dictionaryMeanings: Map<String, String> = if (tags.isEmpty()) {
-            emptyMap()
-        } else {
-            withContext(Dispatchers.IO) { current.japaneseMeanings(tags) }
-        }
-        tagMeanings = dictionaryMeanings + mlTagMeanings.filterKeys { it in tags }
-
-        val currentTranslator = translator
-        if (translationReady && currentTranslator != null) {
-            val missing = tags
-                .filter { it !in dictionaryMeanings && it !in mlTagMeanings }
-                .distinct()
-            for (batch in missing.chunked(8)) {
-                val translated = withContext(Dispatchers.IO) {
-                    batch.mapNotNull { tag ->
-                        runCatching {
-                            currentTranslator.translateEnglishToJapanese(tag.replace('_', ' '))
-                        }.getOrNull()
-                            ?.trim()
-                            ?.takeIf { it.isNotBlank() }
-                            ?.let { tag to it }
-                    }.toMap()
-                }
-                if (translated.isNotEmpty()) {
-                    mlTagMeanings = mlTagMeanings + translated
-                    tagMeanings = dictionaryMeanings + mlTagMeanings.filterKeys { it in tags }
-                }
-            }
-        }
-    }
-
     LaunchedEffect(showHistory, onlyFavorites, historyStore) {
         if (showHistory) {
             val store = historyStore ?: return@LaunchedEffect
@@ -272,27 +226,27 @@ private fun PrompterApp() {
         }
     }
 
-    val editedTagText = remember(editableTags) { formatTagText(editableTags) }
     val editedPixaiPrompt = remember(editableTags, naturalPromptOverride, translatedUnmatched) {
         naturalPromptOverride ?: PromptComposer.compose(
             tags = editableTags.map { it.tag },
             extraContext = translatedUnmatched,
         )
     }
+    val savedTagText = result?.tagText.orEmpty()
 
     LaunchedEffect(
         editableTags,
         currentHistoryId,
         historyStore,
         editedPixaiPrompt,
-        editedTagText,
+        savedTagText,
     ) {
         val id = currentHistoryId ?: return@LaunchedEffect
         val store = historyStore ?: return@LaunchedEffect
         if (editableTags.isEmpty()) return@LaunchedEffect
         delay(300)
         withContext(Dispatchers.IO) {
-            store.update(id, editedPixaiPrompt, editedTagText)
+            store.update(id, editedPixaiPrompt, savedTagText)
         }
     }
 
@@ -348,7 +302,9 @@ private fun PrompterApp() {
                     }
                 }
                 if (confirmedName.isNotBlank()) {
-                    converted = converted.copy(pixaiPrompt = CharacterIdentity.prefix(converted.pixaiPrompt, confirmedName))
+                    converted = converted.copy(
+                        pixaiPrompt = CharacterIdentity.prefix(converted.pixaiPrompt, confirmedName, savedCharacterSeries),
+                    )
                 }
                 naturalPromptOverride = if (confirmedName.isNotBlank()) converted.pixaiPrompt else null
                 result = converted
@@ -581,12 +537,16 @@ private fun PrompterApp() {
 
         val sourceInput = input
         val confirmedName = if (characterMode) characterEnglish.trim() else ""
+        val confirmedSeries = if (characterMode) characterSeries.trim() else ""
         if (characterMode && confirmedName.isEmpty()) {
             aiError = "キャラクターの英語名を確認して入力してください。"
             return
         }
+        val identityDetails = listOf(confirmedName, confirmedSeries)
+            .filter(String::isNotBlank)
+            .joinToString(" from ")
         val generationInput = if (confirmedName.isEmpty()) sourceInput else
-            "$sourceInput\nCharacter identity: $confirmedName. Use this exact name; do not say resembling or like."
+            "$sourceInput\nCharacter identity: $identityDetails. Use this exact identity; do not say resembling or like."
         val offlineTags = editableTags.map { it.tag }
         val historyId = currentHistoryId
         scope.launch {
@@ -681,7 +641,7 @@ private fun PrompterApp() {
                 )
                 val validation = AiPromptValidator.validate(
                     result = aiResult.copy(
-                        pixaiPrompt = CharacterIdentity.prefix(guardedPrompt, confirmedName),
+                        pixaiPrompt = CharacterIdentity.prefix(guardedPrompt, confirmedName, confirmedSeries),
                         tags = guardedTags,
                     ),
                     minWords = minWords,
@@ -714,7 +674,7 @@ private fun PrompterApp() {
                     append(
                         when {
                             fromCache -> "キャッシュから反映"
-                            backend == AiBackend.LOCAL -> "ローカルLLMで更新"
+                            backend == AiBackend.LOCAL -> "端末内AIで更新"
                             else -> "AIで更新"
                         },
                     )
@@ -769,7 +729,7 @@ private fun PrompterApp() {
                 }
             } catch (t: Throwable) {
                 aiError = if (backend == AiBackend.LOCAL) {
-                    "ローカルLLMで失敗しました: ${t.message ?: "不明なエラー"}"
+                    "端末内AIで整えられませんでした: ${t.message ?: "不明なエラー"}"
                 } else {
                     t.message ?: "AI補完に失敗しました。"
                 }
@@ -778,29 +738,6 @@ private fun PrompterApp() {
                 aiLoading = false
             }
         }
-    }
-
-    fun cycleWeight(index: Int) {
-        if (index !in editableTags.indices) return
-        val next = editableTags.toMutableList()
-        next[index] = next[index].copy(weight = cycleTagWeight(next[index].weight))
-        editableTags = next
-    }
-
-    fun moveTag(index: Int, delta: Int) {
-        val target = index + delta
-        if (index !in editableTags.indices || target !in editableTags.indices) return
-        val next = editableTags.toMutableList()
-        val item = next.removeAt(index)
-        next.add(target, item)
-        editableTags = next
-    }
-
-    fun removeTag(index: Int) {
-        if (index !in editableTags.indices) return
-        naturalPromptOverride = null
-        aiNotice = null
-        editableTags = editableTags.filterIndexed { i, _ -> i != index }
     }
 
     if (showHistory) {
@@ -1008,23 +945,12 @@ private fun PrompterApp() {
             }
 
             item {
-                Column {
-                    EditorialLabel("形式")
-                    Spacer(Modifier.height(10.dp))
-                    SegmentedControl(
-                        options = OutputMode.entries,
-                        selected = mode,
-                        onSelect = { modeName = it.name },
-                        label = { it.label },
-                    )
-                    Spacer(Modifier.height(14.dp))
-                    PrimaryAction(
-                        text = if (loading) "変換中…" else "変換する",
-                        onClick = ::convert,
-                        enabled = input.isNotBlank() && engine != null && !aiLoading,
-                        loading = loading,
-                    )
-                }
+                PrimaryAction(
+                    text = if (loading) "作成中…" else "プロンプトを作成",
+                    onClick = ::convert,
+                    enabled = input.isNotBlank() && engine != null && !aiLoading,
+                    loading = loading,
+                )
             }
 
             error?.let { message ->
@@ -1040,60 +966,28 @@ private fun PrompterApp() {
             result?.let { res ->
                 val hasAiPrompt = !naturalPromptOverride.isNullOrBlank()
                 val hasTranslatedContext = !translatedUnmatched.isNullOrBlank()
-                val hasContent = res.tags.isNotEmpty() ||
-                    editableTags.isNotEmpty() ||
-                    hasAiPrompt ||
-                    hasTranslatedContext
+                val hasContent = editedPixaiPrompt.isNotBlank() || hasAiPrompt || hasTranslatedContext
 
                 if (!hasContent) {
                     item {
                         EmptyResult(unmatched = res.unmatched)
                     }
                 } else {
-                    if (mode != OutputMode.TAGS) {
-                        item {
-                            NaturalPromptBlock(
-                                text = editedPixaiPrompt,
-                                onCopy = { copyText(context, "自然文", editedPixaiPrompt) },
-                            )
-                        }
-                    }
-                    if (mode != OutputMode.PIXAI) {
-                        item {
-                            TagBlock(
-                                tags = editableTags,
-                                onCopy = { copyText(context, "タグ", editedTagText) },
-                            )
-                        }
-                        if (mode == OutputMode.TAGS && editableTags.isNotEmpty()) {
-                            item {
-                                Column {
-                                    EditorialLabel("タグ編集")
-                                    Spacer(Modifier.height(4.dp))
-                                    TagEditor(
-                                        tags = editableTags,
-                                        meanings = tagMeanings,
-                                        onCycleWeight = ::cycleWeight,
-                                        onMove = ::moveTag,
-                                        onRemove = ::removeTag,
-                                    )
-                                }
-                            }
-                        }
+                    item {
+                        NaturalPromptBlock(
+                            text = editedPixaiPrompt,
+                            onCopy = { copyText(context, "プロンプト", editedPixaiPrompt) },
+                        )
                     }
                 }
 
                 item {
                     AiRefineBlock(
-                        backend = aiBackend,
-                        hasApiKey = apiKeyConfigured,
-                        model = aiModel,
-                        localReady = localModelStatus.isReady,
-                        localState = localModelStatus.state,
+                        needsSetup = (aiBackend == AiBackend.CLOUD && !apiKeyConfigured) ||
+                            (aiBackend == AiBackend.LOCAL && !localModelStatus.isReady),
                         loading = aiLoading,
                         error = aiError,
                         notice = aiNotice,
-                        onOpenSettings = { showSettings = true },
                         onRefine = ::refineWithAi,
                     )
                 }
@@ -1171,7 +1065,7 @@ private fun EmptyResult(unmatched: String) {
 private fun NaturalPromptBlock(text: String, onCopy: () -> Unit) {
     Column {
         EditorialLabel(
-            text = "自然文",
+            text = "プロンプト",
             trailing = { QuietAction("コピー", onCopy) },
         )
         Spacer(Modifier.height(10.dp))
@@ -1182,159 +1076,45 @@ private fun NaturalPromptBlock(text: String, onCopy: () -> Unit) {
                 color = Ink,
             )
         }
-        Spacer(Modifier.height(6.dp))
-        Text(
-            text = "${AiPromptValidator.countWords(text)} words",
-            style = MaterialTheme.typography.labelSmall,
-            color = MutedInk,
-        )
-    }
-}
-
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-private fun TagBlock(tags: List<EditableTag>, onCopy: () -> Unit) {
-    Column {
-        EditorialLabel(
-            text = "タグ",
-            trailing = { QuietAction("コピー", onCopy) },
-        )
-        Spacer(Modifier.height(10.dp))
-        if (tags.isEmpty()) {
-            Text(
-                "有効なタグがありません",
-                style = MaterialTheme.typography.bodySmall,
-                color = MutedInk,
-            )
-        } else {
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp),
-            ) {
-                tags.forEach { tag ->
-                    TagPill(tag)
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun TagPill(tag: EditableTag) {
-    Surface(
-        shape = RoundedCornerShape(7.dp),
-        color = CardCream,
-        border = BorderStroke(1.dp, Hairline),
-    ) {
-        Text(
-            text = if (tag.weight > 1.0f) {
-                "${tag.tag} ×${String.format(Locale.US, "%.1f", tag.weight)}"
-            } else {
-                tag.tag
-            },
-            modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp),
-            style = MaterialTheme.typography.labelMedium.copy(
-                fontFamily = FontFamily.Monospace,
-            ),
-            color = Ink,
-        )
     }
 }
 
 @Composable
 private fun AiRefineBlock(
-    backend: AiBackend,
-    hasApiKey: Boolean,
-    model: String,
-    localReady: Boolean,
-    localState: LocalModelState,
+    needsSetup: Boolean,
     loading: Boolean,
     error: String?,
     notice: String?,
-    onOpenSettings: () -> Unit,
     onRefine: () -> Unit,
 ) {
-    val local = backend == AiBackend.LOCAL
-    val localStateLabel = when (localState) {
-        LocalModelState.NOT_DOWNLOADED -> "モデル未準備"
-        LocalModelState.DOWNLOADING -> "ダウンロード中"
-        LocalModelState.NEEDS_VERIFICATION -> "検証待ち"
-        LocalModelState.VERIFYING -> "検証中"
-        LocalModelState.READY -> "端末内 / CPU"
-        LocalModelState.ERROR -> "モデルエラー"
-    }
-    val title = if (local) LocalModelSpec.DISPLAY_NAME else "OpenRouter"
-    val status = when {
-        local -> localStateLabel
-        !hasApiKey -> "APIキー未設定"
-        else -> model
-    }
-
-    PaperCard {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = Ink,
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        OutlinedButton(
+            onClick = onRefine,
+            enabled = !loading,
+            modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp),
+            shape = RoundedCornerShape(12.dp),
+            border = BorderStroke(1.dp, Ink),
+            colors = ButtonDefaults.outlinedButtonColors(contentColor = Ink),
+        ) {
+            if (loading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(18.dp),
+                    strokeWidth = 2.dp,
+                    color = Terracotta,
                 )
-                Spacer(Modifier.height(2.dp))
-                Text(
-                    text = status,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MutedInk,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-            Spacer(Modifier.width(12.dp))
-            when {
-                local && !localReady -> {
-                    OutlinedButton(
-                        onClick = onOpenSettings,
-                        shape = RoundedCornerShape(10.dp),
-                        border = BorderStroke(1.dp, Ink),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Ink),
-                    ) {
-                        Text("準備", style = MaterialTheme.typography.labelLarge)
-                    }
-                }
-                !local && !hasApiKey -> {
-                    OutlinedButton(
-                        onClick = onOpenSettings,
-                        shape = RoundedCornerShape(10.dp),
-                        border = BorderStroke(1.dp, Ink),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Ink),
-                    ) {
-                        Text("キー設定", style = MaterialTheme.typography.labelLarge)
-                    }
-                }
-                else -> {
-                    OutlinedButton(
-                        onClick = onRefine,
-                        enabled = !loading,
-                        shape = RoundedCornerShape(10.dp),
-                        border = BorderStroke(1.dp, Ink),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Ink),
-                        contentPadding = PaddingValues(horizontal = 16.dp),
-                    ) {
-                        if (loading) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(14.dp),
-                                strokeWidth = 2.dp,
-                                color = Ink,
-                            )
-                            Spacer(Modifier.width(8.dp))
-                            Text("整え中", style = MaterialTheme.typography.labelLarge)
-                        } else {
-                            Text("整える", style = MaterialTheme.typography.labelLarge)
-                        }
-                    }
-                }
+                Spacer(Modifier.width(10.dp))
+                Text("AIで整えています…", style = MaterialTheme.typography.labelLarge)
+            } else {
+                SparkleMark(Modifier.size(18.dp))
+                Spacer(Modifier.width(10.dp))
+                Text("AIで整える", style = MaterialTheme.typography.labelLarge)
             }
         }
+        if (needsSetup) {
+            Text("AIの準備が必要です。タップして設定してください。",
+                style = MaterialTheme.typography.bodySmall, color = MutedInk)
+        }
         if (loading) {
-            Spacer(Modifier.height(10.dp))
             LinearProgressIndicator(
                 modifier = Modifier.fillMaxWidth(),
                 color = Terracotta,
@@ -1357,6 +1137,36 @@ private fun AiRefineBlock(
                 style = MaterialTheme.typography.labelSmall,
             )
         }
+    }
+}
+
+@Composable
+private fun SparkleMark(modifier: Modifier = Modifier) {
+    androidx.compose.foundation.Canvas(modifier) {
+        val primary = Path().apply {
+            moveTo(size.width * 0.5f, 0f)
+            lineTo(size.width * 0.64f, size.height * 0.36f)
+            lineTo(size.width, size.height * 0.5f)
+            lineTo(size.width * 0.64f, size.height * 0.64f)
+            lineTo(size.width * 0.5f, size.height)
+            lineTo(size.width * 0.36f, size.height * 0.64f)
+            lineTo(0f, size.height * 0.5f)
+            lineTo(size.width * 0.36f, size.height * 0.36f)
+            close()
+        }
+        drawPath(primary, color = Terracotta)
+        val secondary = Path().apply {
+            moveTo(size.width * 0.88f, size.height * 0.02f)
+            lineTo(size.width * 0.94f, size.height * 0.18f)
+            lineTo(size.width, size.height * 0.24f)
+            lineTo(size.width * 0.94f, size.height * 0.30f)
+            lineTo(size.width * 0.88f, size.height * 0.46f)
+            lineTo(size.width * 0.82f, size.height * 0.30f)
+            lineTo(size.width * 0.76f, size.height * 0.24f)
+            lineTo(size.width * 0.82f, size.height * 0.18f)
+            close()
+        }
+        drawPath(secondary, color = Terracotta)
     }
 }
 

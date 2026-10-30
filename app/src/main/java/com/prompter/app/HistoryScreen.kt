@@ -108,7 +108,7 @@ fun HistoryScreen(
                             }
                             Text(item.input, style = MaterialTheme.typography.bodyLarge, color = Ink,
                                 maxLines = 3, overflow = TextOverflow.Ellipsis)
-                            val preview = item.pixaiPrompt.ifBlank { item.tagText }
+                            val preview = item.pixaiPrompt
                             if (preview.isNotBlank()) Text(preview,
                                 style = MaterialTheme.typography.bodyMedium, color = MutedInk,
                                 maxLines = 2, overflow = TextOverflow.Ellipsis)

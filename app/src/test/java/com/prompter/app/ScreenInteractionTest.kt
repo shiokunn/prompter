@@ -50,6 +50,10 @@ class ScreenInteractionTest {
                 onEnglishChange = { confirmed = it },
             )
         } }
+        compose.onNodeWithText("キャラクター名").assertIsDisplayed()
+        compose.onNodeWithText("初音ミク").assertIsDisplayed()
+        compose.onNodeWithText("登場作品・ゲーム・サービス名（任意）").assertIsDisplayed()
+        compose.onNodeWithText("VOCALOID").assertIsDisplayed()
         compose.onNodeWithText("英語名").performTextInput("Example Name")
         assertEquals("", confirmed)
         compose.onNodeWithText("この英語名を使う").performClick()

@@ -19,7 +19,7 @@ import java.io.File
  * if the Hugging Face repository receives a newer upload.
  */
 object LocalModelSpec {
-    const val DISPLAY_NAME = "Gemma 4 E2B"
+    const val DISPLAY_NAME = "端末内AI"
     const val FILE_NAME = "gemma-4-E2B-it.litertlm"
     const val SIZE_BYTES = 2_588_147_712L
     const val SHA256 = "181938105e0eefd105961417e8da75903eacda102c4fce9ce90f50b97139a63c"

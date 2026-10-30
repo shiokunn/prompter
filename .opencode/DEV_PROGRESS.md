@@ -3,10 +3,10 @@
 Updated: 2026-10-30
 
 ## Todo
-- [ ] Verify DB-only character search changes in GitHub Actions and install the resulting APK (no ADB test without approval).
+- [ ] Add character work/service context, simplify output to natural-language prompts, and refine the AI action UI.
   - Status: in progress
-  - Implementation: removed AniList/Wikidata catalog search and DuckDuckGo lookup, including UI controls and dedicated client/tests. Character-name suggestions now come from the bundled/local DB; manual English-name entry remains. Updated `ScreenInteractionTest` for the reduced `CharacterPanel` API.
-  - Verification: first pushed build `41041631377` passed M1 but failed test compilation because `ScreenInteractionTest` still used the old panel parameters; fixed locally, pending second push/build. No ADB actions performed.
+  - Implementation: expanded the existing work field's label/placeholder for works, games, and services; added confirmed work context to offline and AI prompts. Removed output mode switching, visible tag output/editing, and model names from the main AI action; added an authored sparkle mark. Retained tags internally for prompt generation and history compatibility.
+  - Verification: unit tests/build pending via GitHub Actions. No ADB or device test per user instruction.
 - [ ] Diagnose DuckDuckGo transport/markup, improve work-aware character lookup, and finish history/settings.
   - Status: implementation complete; final post-polish CI and emulator pass pending.
   - Implementation: public reproduction confirmed HTML endpoint HTTP 202 challenge versus Lite HTTP 200 results; added `research/duckduckgo/diagnosis.md`, Lite/result selectors, ad filtering, challenge/no-results/markup/error distinctions and browser escape hatch. `CharacterCatalogSearch` now normalizes JP/Kana/EN work titles, ranks canonical/alternative names, filters candidates by requested work and falls back to Wikidata after AniList transport failure while rejecting apparent non-fictional people. Local `CharacterDb` now shares NFKC/kana normalization, safely matches literal query text and filters with work synonyms. Search requests have explicit consent, cancellation guards and ignore stale response generations. History is searchable, presents input/prompt/character details, asks before deletes and has safe-area padding; settings are grouped with sticky save, leave-with-unsaved-changes confirmation, safe model/key deletion, and loading/error feedback. Shared selection/tap semantics and touch targets were improved without touching stored history.
@@ -47,10 +47,13 @@ Updated: 2026-10-30
   - Verification: not run
 
 ## Completed
+- [x] Make character lookup local-DB-first and remove external search; build and install APK.
+  - Implementation: removed AniList/Wikidata and DuckDuckGo clients/UI/tests; local DB suggestions and explicit manual English-name confirmation remain. Updated `ScreenInteractionTest` for the simplified panel API. Commits `a5f66b8` and `a617bc3` are pushed to `main`.
+  - Verification: CI run `41042089838` passed M1 tests, Kotlin unit tests, and debug APK build. Installed the 86,662,021-byte APK with `adb install -r` on `127.0.0.1:5555`. No launch or interaction test was performed; a second attached device was not modified.
 - [x] Cloud build and Android baseline smoke test for existing v13.1
   - Implementation: GitHub Actions workflow dispatch `40671369534` built `main` at `c5b6a05`; installed debug APK with `adb install -r` on `127.0.0.1:5555`.
   - Verification: M1 matcher tests, Kotlin unit tests, and APK build passed in CI. On device, history → conversion → local refine succeeded for cases 20, 24 and 27; outputs were 232, 216 and 230 words, with no detected refusal or Japanese. All three refinements used existing cached results; fresh local model generation and M8 UI were not tested. Test created history rows 156–158.
 
 ## Next session
-- Next action: run the Android unit tests and debug APK build via GitHub Actions for the DB-only character-search change.
+- Next action: await user approval before running any ADB-based device test.
 - Blockers: the history DB was upgraded to v2: the pre-redesign v1 APK does not support DB downgrade, so do not clear app data or install the old APK as a rollback without a data-preserving migration plan.
