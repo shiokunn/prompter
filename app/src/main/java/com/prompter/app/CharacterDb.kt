@@ -76,6 +76,64 @@ object CharacterDb {
         }
     }
 
+    internal data class DetectionAlias(
+        val characterId: Long,
+        val text: String,
+        val lang: String,
+        val kind: String,
+        val detectTier: Int,
+        val nameJa: String,
+        val nameEn: String,
+        val series: String,
+        val category: String,
+        val note: String,
+    )
+
+    /**
+     * Aliases that may be suggested from a scene. One-character and reading
+     * aliases are excluded by the generated `detect_tier`; two-character
+     * aliases still require a matching work name in the detector.
+     */
+    internal fun detectionAliases(context: Context): List<DetectionAlias> {
+        val db = try {
+            open(context.applicationContext)
+        } catch (failure: Exception) {
+            return emptyList()
+        }
+        val sql = """
+            SELECT a.character_id, a.text, a.lang, a.kind, a.detect_tier,
+                c.name_ja, c.name_en, s.name_ja, c.category, c.note
+            FROM aliases a
+            JOIN characters c ON c.id = a.character_id
+            JOIN series s ON s.id = c.series_id
+            WHERE a.detect_tier > 0
+        """.trimIndent()
+        return try {
+            db.rawQuery(sql, null).use { cursor ->
+                buildList {
+                    while (cursor.moveToNext()) {
+                        add(
+                            DetectionAlias(
+                                characterId = cursor.getLong(0),
+                                text = cursor.getString(1),
+                                lang = cursor.getString(2),
+                                kind = cursor.getString(3),
+                                detectTier = cursor.getInt(4),
+                                nameJa = cursor.getString(5),
+                                nameEn = cursor.getString(6),
+                                series = cursor.getString(7),
+                                category = cursor.getString(8),
+                                note = cursor.getString(9),
+                            ),
+                        )
+                    }
+                }
+            }
+        } catch (failure: Exception) {
+            emptyList()
+        }
+    }
+
     internal fun normalize(text: String): String = CharacterNames.normalize(text)
 
     @Synchronized

@@ -44,6 +44,11 @@ class CharacterDbTest {
     }
 
     @Test
+    fun noteTextIsNotStoredAsAnAlias() {
+        assertTrue(CharacterDb.search(context, "二次資料").isEmpty())
+    }
+
+    @Test
     fun keepsAlternateFormsSeparateFromBaseCharacter() {
         val results = CharacterDb.search(context, "シンデレラ")
         val base = results.filter { it.category == "base" }

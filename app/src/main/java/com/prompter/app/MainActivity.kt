@@ -88,6 +88,7 @@ private fun PrompterApp() {
     var characterSeries by rememberSaveable { mutableStateOf("") }
     var characterEnglish by rememberSaveable { mutableStateOf("") }
     var characterDbResults by remember { mutableStateOf<List<CharacterEntry>>(emptyList()) }
+    var characterMentionResults by remember { mutableStateOf<List<CharacterEntry>>(emptyList()) }
     var characterVariant by remember { mutableStateOf(false) }
     var dictionaryVersion by remember { mutableStateOf(0L) }
     var dictionaryAliasCount by remember { mutableStateOf(0) }
@@ -131,6 +132,19 @@ private fun PrompterApp() {
             delay(120)
             characterDbResults = withContext(Dispatchers.IO) {
                 CharacterDb.search(context, characterName)
+            }
+        }
+    }
+
+    LaunchedEffect(characterMode, input, characterName, characterEnglish) {
+        characterMentionResults = emptyList()
+        if (characterMode && characterEnglish.isBlank() && characterName.isBlank() &&
+            input.isNotBlank()
+        ) {
+            delay(180)
+            characterMentionResults = withContext(Dispatchers.IO) {
+                runCatching { CharacterMentionDetector.detect(context, input) }
+                    .getOrDefault(emptyList<CharacterEntry>())
             }
         }
     }
@@ -865,6 +879,7 @@ private fun PrompterApp() {
                             characterEnglish = ""
                             characterVariant = false
                             characterDbResults = emptyList()
+                            characterMentionResults = emptyList()
                         }
                     },
                     name = characterName,
@@ -872,6 +887,7 @@ private fun PrompterApp() {
                     english = characterEnglish,
                     variant = characterVariant,
                     dbResults = characterDbResults,
+                    mentionResults = characterMentionResults,
                     onNameChange = {
                         characterName = it
                         characterSeries = ""

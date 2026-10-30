@@ -42,6 +42,7 @@ fun CharacterPanel(
     english: String,
     variant: Boolean,
     dbResults: List<CharacterEntry>,
+    mentionResults: List<CharacterEntry>,
     onNameChange: (String) -> Unit,
     onSelect: (CharacterEntry) -> Unit,
     onClearSelection: () -> Unit,
@@ -72,6 +73,7 @@ fun CharacterPanel(
                 CharacterSearch(
                     name = name,
                     dbResults = dbResults,
+                    mentionResults = mentionResults,
                     onNameChange = onNameChange,
                     onSelect = onSelect,
                 )
@@ -84,6 +86,7 @@ fun CharacterPanel(
 private fun CharacterSearch(
     name: String,
     dbResults: List<CharacterEntry>,
+    mentionResults: List<CharacterEntry>,
     onNameChange: (String) -> Unit,
     onSelect: (CharacterEntry) -> Unit,
 ) {
@@ -97,24 +100,40 @@ private fun CharacterSearch(
             shape = RoundedCornerShape(12.dp),
             modifier = Modifier.fillMaxWidth(),
         )
+        if (name.isBlank() && mentionResults.isNotEmpty()) {
+            Text(
+                text = "情景の候補",
+                style = MaterialTheme.typography.labelMedium,
+                color = MutedInk,
+            )
+            CandidateList(mentionResults, onSelect)
+        }
         if (dbResults.isNotEmpty()) {
-            CandidateCard {
-                dbResults.forEachIndexed { index, entry ->
-                    CandidateRow(
-                        title = entry.nameJa,
-                        detail = "${entry.series} · ${entry.nameEn}",
-                        badge = if (entry.category == "variant") "別形態" else null,
-                        onClick = { onSelect(entry) },
-                    )
-                    if (index < dbResults.lastIndex) {
-                        HorizontalDivider(thickness = 1.dp, color = Hairline)
-                    }
-                }
-            }
+            CandidateList(dbResults, onSelect)
         }
 
         if (name.isNotBlank() && dbResults.isEmpty()) {
             Text("候補が見つかりません", style = MaterialTheme.typography.bodyMedium, color = MutedInk)
+        }
+    }
+}
+
+@Composable
+private fun CandidateList(
+    results: List<CharacterEntry>,
+    onSelect: (CharacterEntry) -> Unit,
+) {
+    CandidateCard {
+        results.forEachIndexed { index, entry ->
+            CandidateRow(
+                title = entry.nameJa,
+                detail = "${entry.series} · ${entry.nameEn}",
+                badge = if (entry.category == "variant") "別形態" else null,
+                onClick = { onSelect(entry) },
+            )
+            if (index < results.lastIndex) {
+                HorizontalDivider(thickness = 1.dp, color = Hairline)
+            }
         }
     }
 }

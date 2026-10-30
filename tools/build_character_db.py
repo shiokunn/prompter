@@ -110,6 +110,26 @@ def parse(md: str):
     return series_rows, characters
 
 
+def detect_tier(text: str, lang: str, kind: str) -> int:
+    """How safely an alias can be used for scene mention detection.
+
+    0: never auto-suggest (one character, reading, or a single Latin letter)
+    1: suggest only when the same work is named nearby (two characters)
+    2: suggest as a candidate (three or more characters)
+    """
+    if kind == "reading":
+        return 0
+    normalized = normalize(text)
+    if lang == "en":
+        letters = re.sub(r"[^a-z0-9]", "", normalized)
+        if len(letters) <= 1:
+            return 0
+        return 1 if len(letters) == 2 else 2
+    if len(normalized) <= 1:
+        return 0
+    return 1 if len(normalized) == 2 else 2
+
+
 def aliases_for(row) -> list[tuple[str, str, str]]:
     out: list[tuple[str, str, str]] = []
 
@@ -138,9 +158,12 @@ def aliases_for(row) -> list[tuple[str, str, str]]:
 
     marker = "は別名"
     if marker in note:
-        for token in re.split(r"[、,／/]", note.split(marker)[0]):
+        # Only the final sentence fragment before "は別名" is the alias list.
+        # Older ledger notes start with text such as "二次資料。うまる、…は別名".
+        prefix = note.split(marker)[0].rsplit("。", 1)[-1]
+        for token in re.split(r"[、,／/]", prefix):
             token = token.strip().strip("。")
-            if token and len(token) <= 20:
+            if token and len(token) <= 20 and "。" not in token and "別名" not in token:
                 add(token, "ja" if re.search(r"[ぁ-んァ-ヶ一-龠]", token) else "en", "alias")
 
     for extra in EXTRA_ALIASES.get(ja, []):
@@ -179,7 +202,8 @@ def build():
             text TEXT NOT NULL,
             text_norm TEXT NOT NULL,
             lang TEXT NOT NULL,
-            kind TEXT NOT NULL
+            kind TEXT NOT NULL,
+            detect_tier INTEGER NOT NULL
         );
         CREATE INDEX aliases_norm ON aliases(text_norm);
         CREATE TABLE meta(key TEXT PRIMARY KEY, value TEXT NOT NULL);
@@ -207,14 +231,16 @@ def build():
         cid = db.execute("SELECT last_insert_rowid()").fetchone()[0]
         for text, lang, kind in aliases_for(row):
             db.execute(
-                "INSERT INTO aliases(character_id,text,text_norm,lang,kind) VALUES(?,?,?,?,?)",
-                (cid, text, normalize(text), lang, kind),
+                "INSERT INTO aliases(character_id,text,text_norm,lang,kind,detect_tier)"
+                " VALUES(?,?,?,?,?,?)",
+                (cid, text, normalize(text), lang, kind, detect_tier(text, lang, kind)),
             )
 
     meta = {
         "built_at": date.today().isoformat(),
         "source": "character.md",
         "policy": "alternate forms, costumes and units are separate records",
+        "detection_policy": "alias detect_tier: 0 never, 1 work context, 2 candidate",
         "series_count": str(len(series_rows)),
         "character_count": str(len(characters)),
     }

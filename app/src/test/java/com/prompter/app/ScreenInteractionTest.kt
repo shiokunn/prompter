@@ -44,6 +44,7 @@ class ScreenInteractionTest {
                 english = "",
                 variant = false,
                 dbResults = listOf(entry),
+                mentionResults = emptyList(),
                 onNameChange = {},
                 onSelect = { selected = it },
                 onClearSelection = {},
@@ -54,6 +55,31 @@ class ScreenInteractionTest {
         compose.onNodeWithText("英語名").assertDoesNotExist()
         assertNull(selected)
         compose.onNodeWithText("初音ミク").performClick()
+        assertEquals(entry, selected)
+    }
+
+    @Test
+    fun sceneMentionCandidateRequiresTap() {
+        val entry = CharacterEntry(2, "胡桃", "Hu Tao", "原神", "base", "")
+        var selected: CharacterEntry? = null
+        compose.setContent { PrompterTheme {
+            CharacterPanel(
+                active = true,
+                onActiveChange = {},
+                name = "",
+                series = "",
+                english = "",
+                variant = false,
+                dbResults = emptyList(),
+                mentionResults = listOf(entry),
+                onNameChange = {},
+                onSelect = { selected = it },
+                onClearSelection = {},
+            )
+        } }
+        compose.onNodeWithText("情景の候補").assertIsDisplayed()
+        assertNull(selected)
+        compose.onNodeWithText("胡桃").performClick()
         assertEquals(entry, selected)
     }
 
