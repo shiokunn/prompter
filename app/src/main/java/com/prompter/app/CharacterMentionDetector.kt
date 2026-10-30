@@ -74,7 +74,26 @@ object CharacterMentionDetector {
                 best[hit.alias.characterId] = hit
             }
         }
-        return best.values
+        val source = Normalizer.normalize(trimmed, Normalizer.Form.NFKC).lowercase(Locale.ROOT)
+        val resolved = best.values.groupBy { hit ->
+            hit.alias.series to CharacterNames.normalize(hit.alias.nameJa)
+        }.values.flatMap { group ->
+            val base = group.firstOrNull { it.alias.category == "base" }
+            val variants = group.filter { it.alias.category == "variant" }
+            if (base == null || variants.isEmpty()) {
+                group
+            } else {
+                // 銀狼LV.999 and 銀狼 LV.999 normalize to the same name. Keep
+                // the spelling the scene actually used; otherwise prefer base.
+                val exactVariant = variants.firstOrNull { variant ->
+                    val exact = Normalizer.normalize(variant.alias.nameJa, Normalizer.Form.NFKC)
+                        .lowercase(Locale.ROOT)
+                    source.contains(exact)
+                }
+                listOf(exactVariant ?: base)
+            }
+        }
+        return resolved
             .sortedWith(
                 compareByDescending<Hit> { it.surface.length }
                     .thenByDescending { it.canonical }

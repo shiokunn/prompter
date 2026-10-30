@@ -1,5 +1,6 @@
 package com.prompter.app
 
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -93,5 +94,16 @@ class CharacterMentionDetectorTest {
         val results = detect("Cinderella: Crystal Wave is dancing")
         assertTrue(results.any { it.nameEn == "Cinderella: Crystal Wave" })
         assertTrue(results.none { it.nameEn == "Cinderella" })
+    }
+
+    @Test
+    fun duplicateBaseAndVariantUseTheExactSpelling() {
+        val spaced = detect("崩壊：スターレイルの銀狼 LV.999")
+        assertEquals(1, spaced.count { it.nameJa.contains("銀狼") })
+        assertTrue(spaced.any { it.nameJa == "銀狼 LV.999" && it.category == "variant" })
+
+        val compact = detect("崩壊：スターレイルの銀狼LV.999")
+        assertEquals(1, compact.count { it.nameJa.contains("銀狼") })
+        assertTrue(compact.any { it.nameJa == "銀狼LV.999" && it.category == "base" })
     }
 }
