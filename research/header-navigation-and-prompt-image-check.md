@@ -67,3 +67,9 @@ An anime-style illustration of a solo girl with grey hair. The character is wear
 - 回帰確認: Python M1 17件成功。DBのタグ集合がソースの上位10,000件と完全一致すること、木製椅子6表記、独立した木の保持、元の入力の未一致部分が空になることを確認。Kotlinは同じ入力の自然文出力、英語残り文、視覚的な未知語の保持をテストに追加。
 - CI初回 `41071768825` は、ランキングテストがGit管理外の元CSVを参照したため失敗。`465e323` で選定したタグ名・カテゴリ・投稿数のハッシュを `research/m1_stats.json` に記録し、CIではDBとそのハッシュを照合、元CSVのある手元では直接集合も比較するよう修正。CSVなし相当のテストも17件成功。
 - 再CI run: [41072431550](https://github.com/shiokunn/prompter/actions/runs/41072431550) 成功（M1 17件、Kotlin 128件、失敗/エラー/スキップ0、debug APKビルド）。実機インストール・PixAI再生成は未実施。保存済み履歴の旧プロンプトは自動書き換えせず、新規変換に修正が適用される。
+
+## 新APKでの実機・PixAI確認
+
+- `41072431550` のAPKを `adb install -r` で `127.0.0.1:5555` に更新インストールし、成功。アプリデータは保持。`emulator-5554` は操作していない。
+- 履歴に保存されていた同じ情景を再利用して新APKで再変換。出力の主要部分は `The scene is set in a city, on a wooden chair, and at night.`。以前の `Additional visual details: tree` と `Additional context from the input: Of / in / / / / / /.` は出力に含まれない。
+- ユーザーがPixAIで作成した画像を端末画面で確認。銀髪寄りの少女、赤いドレス、木製の椅子に座る姿、夜の街並みが確認でき、前回のような大きな木は描かれていない。変更目的に合致し、追加生成は不要と判断。
