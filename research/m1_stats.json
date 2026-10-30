@@ -1,34 +1,34 @@
 {
   "output": "/data/data/com.termux/files/home/prompter/app/src/main/assets/promptdb.sqlite",
-  "size_bytes": 2289664,
-  "build_seconds": 1.27,
-  "tags": 5003,
-  "aliases": 14592,
-  "tags_with_japanese_alias": 3857,
-  "japanese_coverage": 0.7709,
+  "size_bytes": 4063232,
+  "build_seconds": 1.55,
+  "tags": 10000,
+  "aliases": 25205,
+  "tags_with_japanese_alias": 6986,
+  "japanese_coverage": 0.6986,
   "by_source": {
-    "canonical": 4977,
-    "curated": 751,
-    "generated": 1786,
-    "machine": 3363,
-    "manual": 264,
-    "official": 3451
+    "canonical": 9969,
+    "curated": 783,
+    "generated": 2122,
+    "machine": 6448,
+    "manual": 266,
+    "official": 5617
   },
   "by_lang": {
-    "en": 8428,
-    "ja": 6164
+    "en": 15586,
+    "ja": 9619
   },
   "by_tier": {
-    "A": 5992,
-    "B": 5237,
-    "C": 3363
+    "A": 11018,
+    "B": 7739,
+    "C": 6448
   },
   "collisions": {
-    "input_aliases": 20880,
-    "kept_aliases": 14592,
-    "dropped_aliases": 6288,
-    "collision_groups": 14650,
-    "ambiguous_groups": 58,
+    "input_aliases": 36900,
+    "kept_aliases": 25205,
+    "dropped_aliases": 11695,
+    "collision_groups": 25299,
+    "ambiguous_groups": 94,
     "dropped_examples": [
       {
         "norm": "thighhigh",
@@ -90,7 +90,17 @@
         "surface": ":o",
         "tags": [
           ":o",
-          ";o"
+          ";o",
+          "\\o/"
+        ],
+        "reason": "ambiguous_same_tier"
+      },
+      {
+        "norm": "descensored",
+        "surface": "descensored",
+        "tags": [
+          "uncensored",
+          "decensored"
         ],
         "reason": "ambiguous_same_tier"
       },
@@ -99,7 +109,26 @@
         "surface": ":3",
         "tags": [
           ":3",
-          "3:"
+          "3:",
+          ";3"
+        ],
+        "reason": "ambiguous_same_tier"
+      },
+      {
+        "norm": "cumonleg",
+        "surface": "cum_on_leg",
+        "tags": [
+          "cum_on_body",
+          "cum_on_legs"
+        ],
+        "reason": "ambiguous_same_tier"
+      },
+      {
+        "norm": "cumonthighs",
+        "surface": "cum_on_thighs",
+        "tags": [
+          "cum_on_body",
+          "cum_on_legs"
         ],
         "reason": "ambiguous_same_tier"
       },
@@ -177,38 +206,11 @@
         "reason": "ambiguous_same_tier"
       },
       {
-        "norm": "saberextra",
-        "surface": "saber_extra",
+        "norm": "wip",
+        "surface": "wip",
         "tags": [
-          "nero_claudius_(fate)",
-          "nero_claudius_(fate/extra)"
-        ],
-        "reason": "ambiguous_same_tier"
-      },
-      {
-        "norm": "rulerfateapocrypha",
-        "surface": "ruler_(fate/apocrypha)",
-        "tags": [
-          "jeanne_d'arc_(fate)",
-          "jeanne_d'arc_(ruler)_(fate)"
-        ],
-        "reason": "ambiguous_same_tier"
-      },
-      {
-        "norm": "sakurasaber",
-        "surface": "sakura_saber",
-        "tags": [
-          "okita_souji_(fate)",
-          "okita_souji_(koha-ace)"
-        ],
-        "reason": "ambiguous_same_tier"
-      },
-      {
-        "norm": "saberofred",
-        "surface": "saber_of_red",
-        "tags": [
-          "mordred_(fate)",
-          "mordred_(fate/apocrypha)"
+          "unfinished",
+          "making-of"
         ],
         "reason": "ambiguous_same_tier"
       }
@@ -223,21 +225,16 @@
     "covering_mouth",
     "creampie",
     "cum_on_face",
-    "doctor",
     "flame",
-    "garden",
     "hand_on_hip",
     "hand_to_mouth",
     "hands_on_hips",
     "lifting",
     "open_umbrella",
-    "pirate",
     "plaid",
-    "samurai",
     "sheet",
     "star_background",
     "striped",
-    "swing",
     "tracksuit",
     "wizard"
   ],
@@ -245,6 +242,6 @@
     "danbooru.csv": "f936684fa0b041e9a55d35f2052588e28d95eef8672be6829241f8b1a7214732",
     "danbooru-jp.csv": "d7523b81e3c62219fc12f2d5a99b4be76e89c7a96d08e70fc30cedea3e058d24",
     "danbooru-only-machine-jp.csv": "b6183b0b5cf15bfce0ddb01ead2a2d3f4ce7efd03477cfca5eafe53a29f9b2f4",
-    "ja_lexicon.tsv": "534c284ee3375152b901e110228038a88ea2cb24582acf0a45b4091966c8bf22"
+    "ja_lexicon.tsv": "e7a1e677f0b999ea75b707eb5e37f7ee780ef8e4f27036e1a6ead6c4afe6358c"
   }
 }

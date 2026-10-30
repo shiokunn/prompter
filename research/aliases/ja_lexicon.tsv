@@ -593,6 +593,12 @@ Vサイン	v	curated	1.0
 拘束	bondage	curated	0.9
 # Objects / setting / style
 椅子	chair	curated	1.0
+木の椅子	wooden_chair	curated	1.0
+木製の椅子	wooden_chair	curated	1.0
+木製椅子	wooden_chair	curated	1.0
+木のいす	wooden_chair	curated	1.0
+木製のいす	wooden_chair	curated	1.0
+木製いす	wooden_chair	curated	1.0
 チェア	chair	curated	0.9
 オフィスチェア	office_chair	curated	1.0
 椅子に座	on_chair	curated	1.0

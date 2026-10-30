@@ -277,7 +277,7 @@ class M1Matcher private constructor(
             pos = maxOf(pos, end)
         }
         if (pos < normalized.length) out.append(normalized, pos, normalized.length)
-        return out.toString().trim().trimEnd('/').trim()
+        return PromptContext.cleanUnmatched(out.toString())
     }
 
     companion object {
@@ -650,6 +650,7 @@ class M1Matcher private constructor(
             "shoulder_armor" to listOf("armor"),
             "on_chair" to listOf("chair", "sitting"),
             "office_chair" to listOf("chair"),
+            "wooden_chair" to listOf("chair"),
             "on_bed" to listOf("bed"),
             "bikini" to listOf("swimsuit"),
             "one-piece_swimsuit" to listOf("swimsuit"),

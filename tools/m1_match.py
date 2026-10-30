@@ -165,6 +165,7 @@ PARENT_OF: dict[str, tuple[str, ...]] = {
     "shoulder_armor": ("armor",),
     "on_chair": ("chair", "sitting"),
     "office_chair": ("chair",),
+    "wooden_chair": ("chair",),
     "on_bed": ("bed",),
     # Parent categories that are commonly present alongside the specific tag
     # in Danbooru's summary tags.
@@ -492,7 +493,9 @@ class Matcher:
             pos = max(pos, end)
         if pos < len(text):
             out.append(text[pos:])
-        return " / ".join(x for x in out if x)
+        return " / ".join(x for x in out if x and not re.fullmatch(
+            r"(?:の|が|は|を|に|で|と|へ|も|や|から|まで|より|です|ます|いる|ある|た|て)+", x
+        ))
 
 
 def main() -> None:

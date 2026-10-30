@@ -11,6 +11,27 @@ import org.robolectric.annotation.Config
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [35])
 class M1MatcherTest {
+    @Test
+    fun woodenChairRetainsMaterialWithoutAddingATreeOrParticleContext() {
+        val engine = engine()
+        try {
+            assertTrue(engine.tagCount == 10000)
+            for (chair in listOf("木の椅子", "木製の椅子", "木製椅子", "木のいす", "木製のいす", "木製いす")) {
+                val result = engine.convert("銀髪の少女が、赤いドレスで、夜の街の${chair}に座っている")
+                assertTrue(result.tags.containsAll(listOf("wooden_chair", "chair", "sitting", "night", "city", "red_dress")))
+                assertTrue("$chair: ${result.tags}", "tree" !in result.tags)
+                assertTrue(result.pixaiPrompt.contains("on a wooden chair"))
+                assertTrue("$chair: ${result.unmatched}", result.unmatched.isBlank())
+                assertTrue(!result.pixaiPrompt.contains("Additional context"))
+                val translated = engine.applyTranslation(result, "Of / in / / / / / /.", listOf("tree"))
+                assertTrue(translated == result)
+            }
+            assertTrue("tree" in engine.convert("大きな木と木の椅子に座っている").tags)
+        } finally {
+            engine.close()
+        }
+    }
+
     private fun engine(): PromptEngine {
         val context = RuntimeEnvironment.getApplication() as Context
         return onBackgroundThread { PromptEngine(context) }

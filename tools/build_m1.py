@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build the M1 top-5,000 Danbooru alias database.
+"""Build the M1 top-10,000 Danbooru alias database.
 
 Sources:
   - danbooru.csv (tag names, categories, post counts, official aliases)
@@ -43,8 +43,8 @@ from m1_common import (
     top_tags,
 )
 
-# A few scene tags sit just outside the top 5,000 but are common in prompts.
-# Keep the core at 5,000 and add these explicitly.
+# Former top-5,000 supplements, retained for evaluation-tool compatibility.
+# These are now all inside the ranked top 10,000; the builder adds no extras.
 SUPPLEMENT_TAGS = {
     "park",
     "morning",
@@ -356,10 +356,8 @@ def build(output: Path) -> dict:
     tags = load_tags()
     top = top_tags(tags)
     top_names = {t.name for t in top}
-    for name in sorted(SUPPLEMENT_TAGS):
-        if name in tags and name not in top_names:
-            top.append(tags[name])
-            top_names.add(name)
+    # All former supplements are inside the top 10,000. Keep the asset exactly
+    # ranked rather than silently appending tags beyond the requested total.
     top.sort(key=lambda t: (-t.post_count, t.name))
     manual, machine = load_translations()
     lexicon = load_lexicon()

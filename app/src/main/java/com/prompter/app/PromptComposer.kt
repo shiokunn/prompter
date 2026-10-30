@@ -82,7 +82,7 @@ object PromptComposer {
         "classroom", "school", "park", "garden", "forest", "city", "street",
         "beach", "ocean", "sky", "night", "day", "sunset", "sunrise", "rain",
         "snow", "starry_sky", "star_(sky)", "moon", "sun", "window",
-        "curtains", "bookshelf", "desk", "table", "bed", "chair", "couch",
+        "curtains", "bookshelf", "desk", "table", "bed", "chair", "wooden_chair", "couch",
         "mirror", "bathroom", "kitchen", "pool", "onsen", "shrine", "temple",
         "church", "castle", "ruins", "laboratory", "stage", "concert",
         "simple_background", "white_background", "black_background",
@@ -130,7 +130,7 @@ object PromptComposer {
     )
 
     fun compose(tags: List<String>, extraContext: String? = null): String {
-        val context = extraContext
+        val context = extraContext?.let(PromptContext::cleanTranslation)
             ?.trim()
             ?.trimEnd('.', '。', '!', '?')
             ?.takeIf { it.isNotBlank() }
@@ -373,7 +373,8 @@ object PromptComposer {
         val all = ordered.filter { it in SCENE }
         val selected = all.filter { tag ->
             when (tag) {
-                "chair" -> "on_chair" !in set
+                "chair" -> "on_chair" !in set && "wooden_chair" !in set
+                "on_chair" -> "wooden_chair" !in set
                 "bed" -> "on_bed" !in set
                 "star_(sky)" -> "starry_sky" !in set
                 "sky" -> "starry_sky" !in set
@@ -531,6 +532,7 @@ object PromptComposer {
         "table" -> "at a table"
         "bed" -> "in a bedroom"
         "chair" -> "on a chair"
+        "wooden_chair" -> "on a wooden chair"
         "couch" -> "on a couch"
         "mirror" -> "in front of a mirror"
         "bathroom" -> "in a bathroom"

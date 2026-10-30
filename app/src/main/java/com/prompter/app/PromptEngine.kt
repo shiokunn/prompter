@@ -57,10 +57,11 @@ class PromptEngine(context: Context) {
         translatedText: String,
         normalizedTags: List<String>,
     ): ConversionResult {
-        if (translatedText.isBlank()) return offline
+        val context = PromptContext.cleanTranslation(translatedText)
+        if (context.isBlank()) return offline
         val tags = (normalizedTags + offline.tags).distinct()
         return ConversionResult(
-            pixaiPrompt = PromptComposer.compose(tags, translatedText),
+            pixaiPrompt = PromptComposer.compose(tags, context),
             tagText = tags.joinToString(", "),
             tags = tags,
             unmatched = offline.unmatched,
@@ -69,7 +70,7 @@ class PromptEngine(context: Context) {
 
     /**
      * Returns short Japanese aliases for the tag chips. The query is limited to
-     * the tags currently on screen, so it stays cheap even with a 5,000-tag DB.
+     * the tags currently on screen, so it stays cheap even with a 10,000-tag DB.
      */
     fun japaneseMeanings(tags: List<String>): Map<String, String> {
         val unique = tags.distinct()

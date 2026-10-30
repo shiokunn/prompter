@@ -6,6 +6,18 @@ import org.junit.Test
 
 class PromptComposerTest {
     @Test
+    fun woodenChairConsumesGenericChairAndGrammarOnlyContext() {
+        val prompt = PromptComposer.compose(
+            listOf("1girl", "sitting", "on_chair", "chair", "wooden_chair", "night", "city"),
+            "Of / in / / / / / /.",
+        )
+        assertTrue(prompt.contains("on a wooden chair"))
+        assertTrue(!prompt.contains("on a chair"))
+        assertTrue(!prompt.contains("Additional context"))
+        assertTrue(!prompt.contains("Additional visual details: chair"))
+    }
+
+    @Test
     fun keepsThePlannedWordRange() {
         val prompt = PromptComposer.compose(
             listOf(

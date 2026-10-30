@@ -298,7 +298,7 @@ private fun PrompterApp() {
                     try {
                         val english = withContext(Dispatchers.IO) {
                             currentTranslator.translateJapaneseToEnglish(converted.unmatched)
-                        }
+                        }.let(PromptContext::cleanTranslation)
                         if (english.isNotBlank()) {
                             val normalized = withContext(Dispatchers.Default) {
                                 current.normalizeEnglishTags(english)

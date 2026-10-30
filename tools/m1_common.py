@@ -17,7 +17,7 @@ DATA = ROOT / "research" / "data"
 ALIASES = ROOT / "research" / "aliases"
 ASSETS = ROOT / "app" / "src" / "main" / "assets"
 
-TOP_N = 5000
+TOP_N = 10000
 TERM = "\0"
 
 # Priority is used when the same surface form maps to multiple tags.
