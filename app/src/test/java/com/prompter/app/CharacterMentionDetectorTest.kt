@@ -36,6 +36,8 @@ class CharacterMentionDetectorTest {
     fun twoCharacterNamesRequireTheirWork() {
         assertTrue(detect("胡桃を食べた").none { it.nameJa == "胡桃" })
         assertTrue(detect("原神の胡桃が笑う").any { it.nameJa == "胡桃" })
+        assertTrue(detect("原神：胡桃が笑う").any { it.nameJa == "胡桃" })
+        assertTrue(detect("原神 胡桃が笑う").any { it.nameJa == "胡桃" })
     }
 
     @Test

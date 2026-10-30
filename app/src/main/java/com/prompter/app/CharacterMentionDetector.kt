@@ -22,6 +22,12 @@ object CharacterMentionDetector {
         val canonical: Boolean,
     )
 
+    private data class CompactText(
+        val source: String,
+        val value: String,
+        val positions: IntArray,
+    )
+
     fun detect(context: Context, text: String): List<CharacterEntry> {
         val trimmed = text.trim()
         if (trimmed.length < 2) return emptyList()
@@ -30,7 +36,7 @@ object CharacterMentionDetector {
 
         val works = CharacterNames.worksIn(trimmed)
         val latinText = latinForm(trimmed)
-        val japaneseText = compactForm(trimmed)
+        val japaneseText = compactWithPositions(trimmed)
         val hits = buildList {
             aliases.forEach { alias ->
                 val surface = when (alias.lang) {
@@ -102,19 +108,32 @@ object CharacterMentionDetector {
         .lowercase(Locale.ROOT)
         .filterNot { it.isWhitespace() || it in SEPARATORS }
 
+    private fun compactWithPositions(text: String): CompactText {
+        val source = Normalizer.normalize(text, Normalizer.Form.NFKC).lowercase(Locale.ROOT)
+        val value = StringBuilder(source.length)
+        val positions = ArrayList<Int>(source.length)
+        source.forEachIndexed { index, character ->
+            if (!character.isWhitespace() && character !in SEPARATORS) {
+                value.append(character)
+                positions.add(index)
+            }
+        }
+        return CompactText(source, value.toString(), positions.toIntArray())
+    }
+
     private fun findJapanese(
-        haystack: String,
+        haystack: CompactText,
         alias: String,
         requireNameBoundary: Boolean,
     ): String? {
         val needle = compactForm(alias)
         if (needle.length < 2) return null
-        var start = haystack.indexOf(needle)
+        var start = haystack.value.indexOf(needle)
         while (start >= 0) {
             if (!requireNameBoundary || hasNameBoundary(haystack, start, needle.length)) {
                 return needle
             }
-            start = haystack.indexOf(needle, start + 1)
+            start = haystack.value.indexOf(needle, start + 1)
         }
         return null
     }
@@ -122,10 +141,14 @@ object CharacterMentionDetector {
     /**
      * Reject a two-character alias that is part of a longer compound, such as
      * 花火 in 花火大会. Particles and punctuation still count as boundaries.
+     * Positions point back into the un-compacted text so separators such as
+     * ・, ： and spaces remain real boundaries.
      */
-    private fun hasNameBoundary(haystack: String, start: Int, length: Int): Boolean {
-        val before = haystack.getOrNull(start - 1)
-        val after = haystack.getOrNull(start + length)
+    private fun hasNameBoundary(haystack: CompactText, start: Int, length: Int): Boolean {
+        val first = haystack.positions.getOrNull(start) ?: return true
+        val last = haystack.positions.getOrNull(start + length - 1) ?: return true
+        val before = haystack.source.getOrNull(first - 1)
+        val after = haystack.source.getOrNull(last + 1)
         return before?.isKanjiOrKatakana() != true && after?.isKanjiOrKatakana() != true
     }
 
