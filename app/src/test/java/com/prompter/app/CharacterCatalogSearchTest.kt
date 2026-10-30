@@ -20,6 +20,9 @@ class CharacterCatalogSearchTest {
         assertEquals(listOf("1"), CharacterCatalogSearch.rank(items, "シンデレラ", "ニケ").map { it.url })
         assertEquals("3", CharacterCatalogSearch.rank(items, "UMR", "").first().url)
         assertTrue(CharacterCatalogSearch.rank(items, "Unrelated", "").isEmpty())
+        val rezero = CharacterCandidate("Emilia", "エミリア", "Re:Zero kara Hajimeru Isekai Seikatsu", "AniList", "4",
+            workTitles = listOf("Re:Zero kara Hajimeru Isekai Seikatsu"))
+        assertEquals(listOf(rezero), CharacterCatalogSearch.rank(listOf(rezero), "Emilia", "Re:ゼロから始める異世界生活"))
     }
 
     @Test

@@ -27,7 +27,8 @@ object CharacterNames {
     fun workMatches(query: String, titles: List<String>): Boolean {
         val q = normalize(query)
         if (q.isEmpty()) return true
-        val equivalents = works.firstOrNull { q in it } ?: listOf(q)
+        val equivalents = works.firstOrNull { aliases -> aliases.any { alias -> alias == q || alias.contains(q) || q.contains(alias) } }
+            ?: listOf(q)
         return titles.any { title ->
             val normalized = normalize(title)
             equivalents.any { alias -> normalized.contains(alias) }
