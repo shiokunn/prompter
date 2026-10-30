@@ -1,8 +1,9 @@
 # Development Progress
 
-Updated: 2026-10-30
+Updated: 2026-10-31
 
 ## Todo
+- (none)
 - [x] Remove header back buttons and verify prompt-to-image alignment with PixAI.
   - Implementation: removed the `onBack` parameter and visible「戻る」button from `ScreenHeader`; kept `BackHandler` in history/settings so Android system back closes them. `ScreenInteractionTest` now asserts the settings header has no「戻る」and save remains available. Generated a prompt from「銀髪の少女が、赤いドレスで、夜の街の木の椅子に座っている」and pasted it into PixAI `4.25.7` for image generation.
   - Verification: commit `04aadcd`; CI `41065666386` passed M1, Kotlin unit tests, and debug APK. ADB on `127.0.0.1:5555`: installed with `adb install -r`; settings and history show no header「戻る」and system back returned to the main screen without a crash. With unsaved settings changes, system back showed the discard dialog; cancel stayed and discard returned without saving. PixAI generated an anime image matching silver/grey hair, red dress, seated pose, night city, chair, and tree; regeneration not required. Prompt-quality issues found but not fixed: `木の椅子` became `chair` + `tree`, and `Additional context from the input: Of / in / / / / / /.` remained. Report: `research/header-navigation-and-prompt-image-check.md`.
@@ -62,6 +63,9 @@ Updated: 2026-10-30
   - Verification: not run
 
 ## Completed
+- [x] Fix wooden-chair parsing and residual particle noise; expand ranked tags to 10,000.
+  - Implementation: `wooden_chair` Japanese aliases, priority/longest match and natural-language composition; grammar-only unmatched and translated fragments are filtered while unknown descriptive text remains. Rebuilt `promptdb.sqlite` with exactly the source's top 10,000 tags. Changes: `d168c7b`, CI portability fix: `465e323`.
+  - Verification: Python M1 17 tests passed; DB integrity passed, 10,000 tags and 25,205 aliases. CI `41072431550` passed M1 17, Kotlin 128 (0 failures/errors/skips), and debug APK. Android device install and PixAI regeneration were not performed.
 - [x] Make character lookup local-DB-first and remove external search; build and install APK.
   - Implementation: removed AniList/Wikidata and DuckDuckGo clients/UI/tests; local DB suggestions and explicit manual English-name confirmation remain. Updated `ScreenInteractionTest` for the simplified panel API. Commits `a5f66b8` and `a617bc3` are pushed to `main`.
   - Verification: CI run `41042089838` passed M1 tests, Kotlin unit tests, and debug APK build. Installed the 86,662,021-byte APK with `adb install -r` on `127.0.0.1:5555`. No launch or interaction test was performed; a second attached device was not modified.
