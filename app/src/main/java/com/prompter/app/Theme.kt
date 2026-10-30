@@ -18,6 +18,8 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.sizeIn
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
@@ -298,7 +300,8 @@ fun <T> SegmentedControl(
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
             .background(PaperDeep)
-            .padding(3.dp),
+            .padding(3.dp)
+            .selectableGroup(),
         horizontalArrangement = Arrangement.spacedBy(3.dp),
     ) {
         options.forEach { option ->
@@ -316,7 +319,7 @@ fun <T> SegmentedControl(
                             Modifier
                         },
                     )
-                    .selectable(selected = active, role = Role.Tab, onClick = { onSelect(option) })
+                    .selectable(selected = active, role = Role.RadioButton, onClick = { onSelect(option) })
                     .heightIn(min = 48.dp)
                     .padding(vertical = 9.dp),
                 contentAlignment = Alignment.Center,
@@ -341,7 +344,7 @@ fun MiniAction(
 ) {
     Box(
         modifier = modifier
-            .size(36.dp)
+            .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
             .clip(CircleShape)
             .clickable(enabled = enabled, onClick = onClick),
         contentAlignment = Alignment.Center,

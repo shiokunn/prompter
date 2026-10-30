@@ -55,7 +55,7 @@ fun HistoryScreen(
     ) { padding ->
         Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.TopCenter) {
             LazyColumn(
-                modifier = Modifier.widthIn(max = 720.dp).fillMaxSize().imePadding(),
+                modifier = Modifier.widthIn(max = 720.dp).fillMaxSize().navigationBarsPadding().imePadding(),
                 contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 32.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
