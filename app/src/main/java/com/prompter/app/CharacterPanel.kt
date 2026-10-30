@@ -20,7 +20,6 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -44,10 +43,8 @@ fun CharacterPanel(
     variant: Boolean,
     dbResults: List<CharacterEntry>,
     onNameChange: (String) -> Unit,
-    onSeriesChange: (String) -> Unit,
     onSelect: (CharacterEntry) -> Unit,
     onClearSelection: () -> Unit,
-    onEnglishChange: (String) -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         EditorialLabel(
@@ -69,18 +66,14 @@ fun CharacterPanel(
                     series = series,
                     english = english,
                     variant = variant,
-                    onEnglishChange = onEnglishChange,
                     onClearSelection = onClearSelection,
                 )
             } else {
                 CharacterSearch(
                     name = name,
-                    series = series,
                     dbResults = dbResults,
                     onNameChange = onNameChange,
-                    onSeriesChange = onSeriesChange,
                     onSelect = onSelect,
-                    onEnglishChange = onEnglishChange,
                 )
             }
         }
@@ -90,14 +83,10 @@ fun CharacterPanel(
 @Composable
 private fun CharacterSearch(
     name: String,
-    series: String,
     dbResults: List<CharacterEntry>,
     onNameChange: (String) -> Unit,
-    onSeriesChange: (String) -> Unit,
     onSelect: (CharacterEntry) -> Unit,
-    onEnglishChange: (String) -> Unit,
 ) {
-    var manualEnglish by rememberSaveable(name, series) { mutableStateOf("") }
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         OutlinedTextField(
             value = name,
@@ -108,16 +97,6 @@ private fun CharacterSearch(
             shape = RoundedCornerShape(12.dp),
             modifier = Modifier.fillMaxWidth(),
         )
-        OutlinedTextField(
-            value = series,
-            onValueChange = onSeriesChange,
-            label = { Text("登場作品・ゲーム・サービス名（任意）") },
-            placeholder = { Text("VOCALOID") },
-            singleLine = true,
-            shape = RoundedCornerShape(12.dp),
-            modifier = Modifier.fillMaxWidth(),
-        )
-
         if (dbResults.isNotEmpty()) {
             CandidateCard {
                 dbResults.forEachIndexed { index, entry ->
@@ -135,22 +114,7 @@ private fun CharacterSearch(
         }
 
         if (name.isNotBlank() && dbResults.isEmpty()) {
-            Text("登録済みの候補はありません。英語名を入力できます。",
-                color = MutedInk, style = MaterialTheme.typography.bodySmall)
-        }
-
-        if (name.isNotBlank() || series.isNotBlank()) {
-            OutlinedTextField(
-                value = manualEnglish,
-                onValueChange = { manualEnglish = it },
-                label = { Text("英語名") },
-                singleLine = true,
-                shape = RoundedCornerShape(12.dp),
-                modifier = Modifier.fillMaxWidth(),
-            )
-            TextButton(onClick = { onEnglishChange(manualEnglish.trim()) }, enabled = manualEnglish.isNotBlank()) {
-                Text("この英語名を使う")
-            }
+            Text("候補が見つかりません", style = MaterialTheme.typography.bodyMedium, color = MutedInk)
         }
     }
 }
@@ -161,7 +125,6 @@ private fun SelectedCharacter(
     series: String,
     english: String,
     variant: Boolean,
-    onEnglishChange: (String) -> Unit,
     onClearSelection: () -> Unit,
 ) {
     PaperCard {
@@ -205,14 +168,7 @@ private fun SelectedCharacter(
             }
         }
         Spacer(Modifier.height(12.dp))
-        OutlinedTextField(
-            value = english,
-            onValueChange = onEnglishChange,
-            label = { Text("英語名") },
-            singleLine = true,
-            shape = RoundedCornerShape(12.dp),
-            modifier = Modifier.fillMaxWidth(),
-        )
+        Text(english, style = MaterialTheme.typography.bodyLarge, color = Ink)
         Row(verticalAlignment = Alignment.CenterVertically) {
             TextButton(onClick = onClearSelection) { Text("変更") }
         }

@@ -130,7 +130,7 @@ private fun PrompterApp() {
         if (characterMode && characterName.isNotBlank() && characterEnglish.isBlank()) {
             delay(120)
             characterDbResults = withContext(Dispatchers.IO) {
-                CharacterDb.search(context, characterName, series = characterSeries)
+                CharacterDb.search(context, characterName)
             }
         }
     }
@@ -262,7 +262,7 @@ private fun PrompterApp() {
         val current = engine ?: return
         if (input.isBlank()) return
         if (characterMode && characterEnglish.isBlank()) {
-            error = "キャラクターの英語名を確認して入力してください。"
+            error = "キャラクターの候補を選択してください。"
             return
         }
         val confirmedName = if (characterMode) characterEnglish.trim() else ""
@@ -540,7 +540,7 @@ private fun PrompterApp() {
         val confirmedName = if (characterMode) characterEnglish.trim() else ""
         val confirmedSeries = if (characterMode) characterSeries.trim() else ""
         if (characterMode && confirmedName.isEmpty()) {
-            aiError = "キャラクターの英語名を確認して入力してください。"
+            aiError = "キャラクターの候補を選択してください。"
             return
         }
         val identityDetails = listOf(confirmedName, confirmedSeries)
@@ -874,11 +874,7 @@ private fun PrompterApp() {
                     dbResults = characterDbResults,
                     onNameChange = {
                         characterName = it
-                        characterEnglish = ""
-                        characterVariant = false
-                    },
-                    onSeriesChange = {
-                        characterSeries = it
+                        characterSeries = ""
                         characterEnglish = ""
                         characterVariant = false
                     },
@@ -891,10 +887,6 @@ private fun PrompterApp() {
                     onClearSelection = {
                         characterEnglish = ""
                         characterVariant = false
-                    },
-                    onEnglishChange = {
-                        characterEnglish = it
-                        if (it.isBlank()) characterVariant = false
                     },
                 )
             }
@@ -984,8 +976,6 @@ private fun PrompterApp() {
 
                 item {
                     AiRefineBlock(
-                        needsSetup = (aiBackend == AiBackend.CLOUD && !apiKeyConfigured) ||
-                            (aiBackend == AiBackend.LOCAL && !localModelStatus.isReady),
                         loading = aiLoading,
                         error = aiError,
                         notice = aiNotice,
@@ -1082,7 +1072,6 @@ private fun NaturalPromptBlock(text: String, onCopy: () -> Unit) {
 
 @Composable
 private fun AiRefineBlock(
-    needsSetup: Boolean,
     loading: Boolean,
     error: String?,
     notice: String?,
@@ -1110,10 +1099,6 @@ private fun AiRefineBlock(
                 Spacer(Modifier.width(10.dp))
                 Text("AIで整える", style = MaterialTheme.typography.labelLarge)
             }
-        }
-        if (needsSetup) {
-            Text("AIの準備が必要です。タップして設定してください。",
-                style = MaterialTheme.typography.bodySmall, color = MutedInk)
         }
         if (loading) {
             LinearProgressIndicator(

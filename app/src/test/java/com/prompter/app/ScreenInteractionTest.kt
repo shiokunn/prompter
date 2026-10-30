@@ -32,30 +32,29 @@ class ScreenInteractionTest {
     }
 
     @Test
-    fun typingManualEnglishRequiresExplicitConfirmation() {
-        var confirmed = ""
+    fun characterCandidateMustBeSelected() {
+        val entry = CharacterEntry(1, "初音ミク", "Hatsune Miku", "VOCALOID", "character", "")
+        var selected: CharacterEntry? = null
         compose.setContent { PrompterTheme {
             CharacterPanel(
                 active = true,
                 onActiveChange = {},
-                name = "人物",
-                series = "作品",
+                name = "ミク",
+                series = "",
                 english = "",
                 variant = false,
-                dbResults = emptyList(),
+                dbResults = listOf(entry),
                 onNameChange = {},
-                onSeriesChange = {},
-                onSelect = {},
+                onSelect = { selected = it },
                 onClearSelection = {},
-                onEnglishChange = { confirmed = it },
             )
         } }
         compose.onNodeWithText("キャラクター名").assertIsDisplayed()
-        compose.onNodeWithText("登場作品・ゲーム・サービス名（任意）").assertIsDisplayed()
-        compose.onNodeWithText("英語名").performTextInput("Example Name")
-        assertEquals("", confirmed)
-        compose.onNodeWithText("この英語名を使う").performClick()
-        assertEquals("Example Name", confirmed)
+        compose.onNodeWithText("登場作品・ゲーム・サービス名（任意）").assertDoesNotExist()
+        compose.onNodeWithText("英語名").assertDoesNotExist()
+        assertNull(selected)
+        compose.onNodeWithText("初音ミク").performClick()
+        assertEquals(entry, selected)
     }
 
     @Test
