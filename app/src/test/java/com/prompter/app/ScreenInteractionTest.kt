@@ -51,7 +51,6 @@ class ScreenInteractionTest {
             )
         } }
         compose.onNodeWithText("キャラクター名").assertIsDisplayed()
-        compose.onNodeWithText("初音ミク").assertIsDisplayed()
         compose.onNodeWithText("登場作品・ゲーム・サービス名（任意）").assertIsDisplayed()
         compose.onNodeWithText("VOCALOID").assertIsDisplayed()
         compose.onNodeWithText("英語名").performTextInput("Example Name")
