@@ -10,11 +10,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -46,23 +43,11 @@ fun CharacterPanel(
     english: String,
     variant: Boolean,
     dbResults: List<CharacterEntry>,
-    webResults: List<CharacterCandidate>,
-    searching: Boolean,
-    error: String?,
     onNameChange: (String) -> Unit,
     onSeriesChange: (String) -> Unit,
     onSelect: (CharacterEntry) -> Unit,
-    onSelectWeb: (CharacterCandidate) -> Unit,
-    onSearchWeb: () -> Unit,
     onClearSelection: () -> Unit,
     onEnglishChange: (String) -> Unit,
-    sourceUrl: String?,
-    onOpenSource: (String) -> Unit,
-    evidence: List<CharacterSearchResult> = emptyList(),
-    evidenceSearching: Boolean = false,
-    evidenceError: String? = null,
-    onSearchEvidence: () -> Unit = {},
-    onBrowserSearch: () -> Unit = {},
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         EditorialLabel(
@@ -86,30 +71,16 @@ fun CharacterPanel(
                     variant = variant,
                     onEnglishChange = onEnglishChange,
                     onClearSelection = onClearSelection,
-                    sourceUrl = sourceUrl,
-                    onOpenSource = onOpenSource,
                 )
             } else {
                 CharacterSearch(
                     name = name,
                     series = series,
-                    english = english,
                     dbResults = dbResults,
-                    webResults = webResults,
-                    searching = searching,
-                    error = error,
                     onNameChange = onNameChange,
                     onSeriesChange = onSeriesChange,
                     onSelect = onSelect,
-                    onSelectWeb = onSelectWeb,
-                    onSearchWeb = onSearchWeb,
                     onEnglishChange = onEnglishChange,
-                    evidence = evidence,
-                    evidenceSearching = evidenceSearching,
-                    evidenceError = evidenceError,
-                    onSearchEvidence = onSearchEvidence,
-                    onBrowserSearch = onBrowserSearch,
-                    onOpenSource = onOpenSource,
                 )
             }
         }
@@ -120,26 +91,13 @@ fun CharacterPanel(
 private fun CharacterSearch(
     name: String,
     series: String,
-    english: String,
     dbResults: List<CharacterEntry>,
-    webResults: List<CharacterCandidate>,
-    searching: Boolean,
-    error: String?,
     onNameChange: (String) -> Unit,
     onSeriesChange: (String) -> Unit,
     onSelect: (CharacterEntry) -> Unit,
-    onSelectWeb: (CharacterCandidate) -> Unit,
-    onSearchWeb: () -> Unit,
     onEnglishChange: (String) -> Unit,
-    evidence: List<CharacterSearchResult>,
-    evidenceSearching: Boolean,
-    evidenceError: String?,
-    onSearchEvidence: () -> Unit,
-    onBrowserSearch: () -> Unit,
-    onOpenSource: (String) -> Unit,
 ) {
     var manualEnglish by rememberSaveable(name, series) { mutableStateOf("") }
-    var externalConfirmation by remember { mutableStateOf<String?>(null) }
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         OutlinedTextField(
             value = name,
@@ -159,30 +117,6 @@ private fun CharacterSearch(
             modifier = Modifier.fillMaxWidth(),
         )
 
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Spacer(Modifier.weight(1f))
-            TextButton(
-                onClick = { externalConfirmation = "catalog" },
-                enabled = name.isNotBlank() && !searching,
-            ) {
-                if (searching) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(14.dp),
-                        strokeWidth = 2.dp,
-                        color = Ink,
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Text("検索中")
-                } else {
-                    Text("外部候補")
-                }
-            }
-            TextButton(onClick = { externalConfirmation = "evidence" },
-                enabled = name.isNotBlank() && !evidenceSearching) {
-                Text(if (evidenceSearching) "資料を検索中…" else "関連資料")
-            }
-        }
-
         if (dbResults.isNotEmpty()) {
             CandidateCard {
                 dbResults.forEachIndexed { index, entry ->
@@ -199,35 +133,9 @@ private fun CharacterSearch(
             }
         }
 
-        if (webResults.isNotEmpty()) {
-            CandidateCard {
-                webResults.forEachIndexed { index, found ->
-                    CandidateRow(
-                        title = found.name,
-                        detail = buildString {
-                            if (found.nativeName.isNotBlank()) append(found.nativeName).append(" · ")
-                            if (found.series.isNotBlank()) append(found.series).append(" · ")
-                            append(found.source)
-                        },
-                        badge = null,
-                        onClick = { onSelectWeb(found) },
-                    )
-                    if (index < webResults.lastIndex) {
-                        HorizontalDivider(thickness = 1.dp, color = Hairline)
-                    }
-                }
-            }
-        }
-
-        error?.let { Text(it, color = ErrorRed, style = MaterialTheme.typography.bodySmall) }
-        evidenceError?.let { Text(it, color = ErrorRed, style = MaterialTheme.typography.bodyMedium) }
-        evidence.forEach { result ->
-            TextButton(onClick = { onOpenSource(result.url) }) {
-                Text(result.title, maxLines = 3, overflow = TextOverflow.Ellipsis)
-            }
-        }
-        if (evidenceError != null || evidence.isNotEmpty()) {
-            TextButton(onClick = onBrowserSearch) { Text("DuckDuckGoをブラウザで開く") }
+        if (name.isNotBlank() && dbResults.isEmpty()) {
+            Text("登録済みの候補はありません。英語名を入力できます。",
+                color = MutedInk, style = MaterialTheme.typography.bodySmall)
         }
 
         if (name.isNotBlank() || series.isNotBlank()) {
@@ -244,18 +152,6 @@ private fun CharacterSearch(
             }
         }
     }
-    externalConfirmation?.let { target ->
-        AlertDialog(onDismissRequest = { externalConfirmation = null },
-            title = { Text(if (target == "catalog") "外部候補を検索" else "関連資料を検索") },
-            text = { Text(if (target == "catalog") "名前をAniList・Wikidataへ送信します。作品名で候補を絞り込みます。候補は正式表記を保証しません。"
-                else "名前と作品名をDuckDuckGoへ送信します。検索結果のページ名をキャラクター名として自動採用しません。") },
-            confirmButton = { TextButton(onClick = {
-                externalConfirmation = null
-                if (target == "catalog") onSearchWeb() else onSearchEvidence()
-            }) { Text("検索") } },
-            dismissButton = { TextButton(onClick = { externalConfirmation = null }) { Text("キャンセル") } },
-        )
-    }
 }
 
 @Composable
@@ -266,8 +162,6 @@ private fun SelectedCharacter(
     variant: Boolean,
     onEnglishChange: (String) -> Unit,
     onClearSelection: () -> Unit,
-    sourceUrl: String?,
-    onOpenSource: (String) -> Unit,
 ) {
     PaperCard {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -320,9 +214,6 @@ private fun SelectedCharacter(
         )
         Row(verticalAlignment = Alignment.CenterVertically) {
             TextButton(onClick = onClearSelection) { Text("変更") }
-            if (sourceUrl != null) {
-                TextButton(onClick = { onOpenSource(sourceUrl) }) { Text("出典") }
-            }
         }
     }
 }

@@ -3,8 +3,6 @@ package com.prompter.app
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
-import android.content.Intent
-import android.net.Uri
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -96,18 +94,8 @@ private fun PrompterApp() {
     var characterName by rememberSaveable { mutableStateOf("") }
     var characterSeries by rememberSaveable { mutableStateOf("") }
     var characterEnglish by rememberSaveable { mutableStateOf("") }
-    var characterResults by remember { mutableStateOf<List<CharacterCandidate>>(emptyList()) }
     var characterDbResults by remember { mutableStateOf<List<CharacterEntry>>(emptyList()) }
     var characterVariant by remember { mutableStateOf(false) }
-    var characterSourceUrl by remember { mutableStateOf<String?>(null) }
-    var characterSearching by remember { mutableStateOf(false) }
-    var characterSearchError by remember { mutableStateOf<String?>(null) }
-    var characterEvidence by remember { mutableStateOf<List<CharacterSearchResult>>(emptyList()) }
-    var characterEvidenceError by remember { mutableStateOf<String?>(null) }
-    var characterEvidenceSearching by remember { mutableStateOf(false) }
-    var lookupGeneration by remember { mutableStateOf(0L) }
-    var catalogJob by remember { mutableStateOf<Job?>(null) }
-    var evidenceJob by remember { mutableStateOf<Job?>(null) }
     var dictionaryVersion by remember { mutableStateOf(0L) }
     var dictionaryAliasCount by remember { mutableStateOf(0) }
     var modeName by rememberSaveable { mutableStateOf(OutputMode.BOTH.name) }
@@ -147,15 +135,6 @@ private fun PrompterApp() {
     var translationNotice by remember { mutableStateOf<String?>(null) }
     var tagMeanings by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
     var mlTagMeanings by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
-
-    fun invalidateCharacterLookup() {
-        lookupGeneration++
-        catalogJob?.cancel(); evidenceJob?.cancel()
-        characterResults = emptyList(); characterDbResults = emptyList()
-        characterEvidence = emptyList()
-        characterSearchError = null; characterEvidenceError = null
-        characterSearching = false; characterEvidenceSearching = false
-    }
 
     LaunchedEffect(characterMode, characterName, characterSeries, characterEnglish) {
         characterDbResults = emptyList()
@@ -398,17 +377,14 @@ private fun PrompterApp() {
     }
 
     fun loadHistory(item: HistoryItem) {
-        invalidateCharacterLookup()
         val tags = parseTagText(item.tagText)
         input = item.input
         characterName = item.characterName
         characterSeries = item.characterSeries
         characterEnglish = item.characterEnglish
         characterMode = item.characterEnglish.isNotBlank()
-        characterResults = emptyList()
         characterDbResults = emptyList()
         characterVariant = false
-        characterSourceUrl = null
         result = ConversionResult(
             pixaiPrompt = item.pixaiPrompt,
             tagText = item.tagText,
@@ -944,17 +920,13 @@ private fun PrompterApp() {
                 CharacterPanel(
                     active = characterMode,
                     onActiveChange = { enabled ->
-                        invalidateCharacterLookup()
                         characterMode = enabled
                         if (!enabled) {
                             characterName = ""
                             characterSeries = ""
                             characterEnglish = ""
                             characterVariant = false
-                            characterResults = emptyList()
                             characterDbResults = emptyList()
-                            characterSearchError = null
-                            characterSourceUrl = null
                         }
                     },
                     name = characterName,
@@ -962,115 +934,29 @@ private fun PrompterApp() {
                     english = characterEnglish,
                     variant = characterVariant,
                     dbResults = characterDbResults,
-                    webResults = characterResults,
-                    searching = characterSearching,
-                    error = characterSearchError,
                     onNameChange = {
-                        invalidateCharacterLookup()
                         characterName = it
                         characterEnglish = ""
                         characterVariant = false
-                        characterResults = emptyList()
-                        characterSearchError = null
-                        characterSourceUrl = null
                     },
                     onSeriesChange = {
-                        invalidateCharacterLookup()
                         characterSeries = it
                         characterEnglish = ""
                         characterVariant = false
-                        characterResults = emptyList()
-                        characterSearchError = null
                     },
                     onSelect = { entry ->
-                        invalidateCharacterLookup()
                         characterName = entry.nameJa
                         characterSeries = entry.series
                         characterEnglish = entry.nameEn
                         characterVariant = entry.category == "variant"
-                        characterResults = emptyList()
-                        characterSearchError = null
-                        characterSourceUrl = null
-                    },
-                    onSelectWeb = { found ->
-                        invalidateCharacterLookup()
-                        characterName = found.nativeName.ifBlank { found.name }
-                        val requestedWork = characterSeries
-                        found.workTitles.firstOrNull { CharacterNames.workMatches(requestedWork, listOf(it)) }
-                            ?.let { characterSeries = it }
-                        characterEnglish = found.name
-                        characterVariant = false
-                        characterSearchError = null
-                        characterSourceUrl = found.url
-                    },
-                    onSearchWeb = {
-                        val name = characterName
-                        val series = characterSeries
-                        val generation = lookupGeneration
-                        characterSearching = true
-                        characterSearchError = null
-                        characterResults = emptyList()
-                        catalogJob = scope.launch {
-                            try {
-                                val found = withContext(Dispatchers.IO) { CharacterCatalogSearch.search(name, series) }
-                                if (generation == lookupGeneration && characterMode && characterEnglish.isBlank()) {
-                                    characterResults = found
-                                    if (found.isEmpty()) characterSearchError = "候補が見つかりませんでした。"
-                                }
-                            } catch (cancelled: CancellationException) {
-                                throw cancelled
-                            } catch (failure: Exception) {
-                                if (generation == lookupGeneration) {
-                                    characterSearchError = failure.message ?: "検索できませんでした。"
-                                }
-                            } finally {
-                                if (generation == lookupGeneration) characterSearching = false
-                            }
-                        }
                     },
                     onClearSelection = {
-                        invalidateCharacterLookup()
                         characterEnglish = ""
                         characterVariant = false
                     },
                     onEnglishChange = {
-                        invalidateCharacterLookup()
                         characterEnglish = it
                         if (it.isBlank()) characterVariant = false
-                    },
-                    sourceUrl = characterSourceUrl,
-                    onOpenSource = { url ->
-                        runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
-                            .onFailure { characterSearchError = "リンクを開けませんでした。" }
-                    },
-                    evidence = characterEvidence,
-                    evidenceSearching = characterEvidenceSearching,
-                    evidenceError = characterEvidenceError,
-                    onSearchEvidence = {
-                        val name = characterName
-                        val series = characterSeries
-                        val generation = lookupGeneration
-                        characterEvidenceSearching = true
-                        characterEvidenceError = null
-                        characterEvidence = emptyList()
-                        evidenceJob = scope.launch {
-                            try {
-                                val found = withContext(Dispatchers.IO) { CharacterSearch.search(name, series) }
-                                if (generation == lookupGeneration) characterEvidence = found
-                            } catch (cancelled: CancellationException) { throw cancelled
-                            } catch (failure: Exception) {
-                                if (generation == lookupGeneration) characterEvidenceError =
-                                    failure.message ?: "資料を取得できませんでした。ブラウザで開いてください。"
-                            } finally {
-                                if (generation == lookupGeneration) characterEvidenceSearching = false
-                            }
-                        }
-                    },
-                    onBrowserSearch = {
-                        runCatching {
-                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(
-                                CharacterSearch.searchUrl(characterName, characterSeries))))
-                        }.onFailure { characterEvidenceError = "ブラウザを開けませんでした。" }
                     },
                 )
             }

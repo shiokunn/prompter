@@ -1,8 +1,12 @@
 # Development Progress
 
-Updated: 2026-10-29
+Updated: 2026-10-30
 
 ## Todo
+- [ ] Verify DB-only character search changes in GitHub Actions and inspect any remaining external character-search references.
+  - Status: in progress
+  - Implementation: removed AniList/Wikidata catalog search and DuckDuckGo lookup, including their UI controls and dedicated client/tests. Character-name suggestions now come from the bundled/local character DB as the primary lookup; manual English-name entry remains.
+  - Verification: not run
 - [ ] Diagnose DuckDuckGo transport/markup, improve work-aware character lookup, and finish history/settings.
   - Status: implementation complete; final post-polish CI and emulator pass pending.
   - Implementation: public reproduction confirmed HTML endpoint HTTP 202 challenge versus Lite HTTP 200 results; added `research/duckduckgo/diagnosis.md`, Lite/result selectors, ad filtering, challenge/no-results/markup/error distinctions and browser escape hatch. `CharacterCatalogSearch` now normalizes JP/Kana/EN work titles, ranks canonical/alternative names, filters candidates by requested work and falls back to Wikidata after AniList transport failure while rejecting apparent non-fictional people. Local `CharacterDb` now shares NFKC/kana normalization, safely matches literal query text and filters with work synonyms. Search requests have explicit consent, cancellation guards and ignore stale response generations. History is searchable, presents input/prompt/character details, asks before deletes and has safe-area padding; settings are grouped with sticky save, leave-with-unsaved-changes confirmation, safe model/key deletion, and loading/error feedback. Shared selection/tap semantics and touch targets were improved without touching stored history.
@@ -48,5 +52,5 @@ Updated: 2026-10-29
   - Verification: M1 matcher tests, Kotlin unit tests, and APK build passed in CI. On device, history → conversion → local refine succeeded for cases 20, 24 and 27; outputs were 232, 216 and 230 words, with no detected refusal or Japanese. All three refinements used existing cached results; fresh local model generation and M8 UI were not tested. Test created history rows 156–158.
 
 ## Next session
-- Next action: diagnose DuckDuckGo's empty/challenge response on Android, improve character identification and complete the history/settings UI redesign.
-- Blockers: live search success unverified; Japanese alias catalog incomplete. The history DB was upgraded to v2: the pre-redesign v1 APK does not support DB downgrade, so do not clear app data or install the old APK as a rollback without a data-preserving migration plan.
+- Next action: run the Android unit tests and debug APK build via GitHub Actions for the DB-only character-search change.
+- Blockers: the history DB was upgraded to v2: the pre-redesign v1 APK does not support DB downgrade, so do not clear app data or install the old APK as a rollback without a data-preserving migration plan.
