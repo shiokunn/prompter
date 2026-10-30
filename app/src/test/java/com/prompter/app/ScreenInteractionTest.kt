@@ -35,8 +35,20 @@ class ScreenInteractionTest {
     fun typingManualEnglishRequiresExplicitConfirmation() {
         var confirmed = ""
         compose.setContent { PrompterTheme {
-            CharacterPanel(true, {}, "人物", "作品", "", false, emptyList(), emptyList(), false, null,
-                {}, {}, {}, {}, {}, {}, { confirmed = it }, null, {})
+            CharacterPanel(
+                active = true,
+                onActiveChange = {},
+                name = "人物",
+                series = "作品",
+                english = "",
+                variant = false,
+                dbResults = emptyList(),
+                onNameChange = {},
+                onSeriesChange = {},
+                onSelect = {},
+                onClearSelection = {},
+                onEnglishChange = { confirmed = it },
+            )
         } }
         compose.onNodeWithText("英語名").performTextInput("Example Name")
         assertEquals("", confirmed)

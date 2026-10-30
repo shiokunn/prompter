@@ -3,10 +3,10 @@
 Updated: 2026-10-30
 
 ## Todo
-- [ ] Verify DB-only character search changes in GitHub Actions and inspect any remaining external character-search references.
+- [ ] Verify DB-only character search changes in GitHub Actions and install the resulting APK (no ADB test without approval).
   - Status: in progress
-  - Implementation: removed AniList/Wikidata catalog search and DuckDuckGo lookup, including their UI controls and dedicated client/tests. Character-name suggestions now come from the bundled/local character DB as the primary lookup; manual English-name entry remains.
-  - Verification: not run
+  - Implementation: removed AniList/Wikidata catalog search and DuckDuckGo lookup, including UI controls and dedicated client/tests. Character-name suggestions now come from the bundled/local DB; manual English-name entry remains. Updated `ScreenInteractionTest` for the reduced `CharacterPanel` API.
+  - Verification: first pushed build `41041631377` passed M1 but failed test compilation because `ScreenInteractionTest` still used the old panel parameters; fixed locally, pending second push/build. No ADB actions performed.
 - [ ] Diagnose DuckDuckGo transport/markup, improve work-aware character lookup, and finish history/settings.
   - Status: implementation complete; final post-polish CI and emulator pass pending.
   - Implementation: public reproduction confirmed HTML endpoint HTTP 202 challenge versus Lite HTTP 200 results; added `research/duckduckgo/diagnosis.md`, Lite/result selectors, ad filtering, challenge/no-results/markup/error distinctions and browser escape hatch. `CharacterCatalogSearch` now normalizes JP/Kana/EN work titles, ranks canonical/alternative names, filters candidates by requested work and falls back to Wikidata after AniList transport failure while rejecting apparent non-fictional people. Local `CharacterDb` now shares NFKC/kana normalization, safely matches literal query text and filters with work synonyms. Search requests have explicit consent, cancellation guards and ignore stale response generations. History is searchable, presents input/prompt/character details, asks before deletes and has safe-area padding; settings are grouped with sticky save, leave-with-unsaved-changes confirmation, safe model/key deletion, and loading/error feedback. Shared selection/tap semantics and touch targets were improved without touching stored history.
