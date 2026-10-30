@@ -141,7 +141,11 @@ fun SettingsScreen(
                         Text("生成方法", style = MaterialTheme.typography.titleLarge, color = Ink)
                         SegmentedControl(AiBackend.entries, backend,
                             { backendName = it.name; clearTest() },
-                            { if (it == AiBackend.LOCAL) "端末内" else "クラウド" })
+                            { when (it) {
+                                AiBackend.CLOUD -> "クラウド"
+                                AiBackend.LOCAL -> "CPU"
+                                AiBackend.LOCAL_GPU -> "GPU"
+                            } })
                     }
                 }
                 if (backend == AiBackend.CLOUD) {

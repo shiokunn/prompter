@@ -42,7 +42,8 @@ object LocalModelSpec {
 /** The two user-selectable AI backends. */
 enum class AiBackend(val label: String) {
     CLOUD("OpenRouter（クラウド）"),
-    LOCAL("ローカルLLM（端末内）"),
+    LOCAL("端末内 CPU"),
+    LOCAL_GPU("端末内 GPU"),
     ;
 
     companion object {
@@ -308,6 +309,7 @@ class LocalLlmEngine(context: Context) : AutoCloseable {
     private val appContext = context.applicationContext
     private val lock = Any()
     private var engine: Engine? = null
+    private var engineBackend: AiBackend? = null
 
     val isLoaded: Boolean
         get() = synchronized(lock) { engine?.isInitialized() == true }
@@ -316,6 +318,7 @@ class LocalLlmEngine(context: Context) : AutoCloseable {
         input: String,
         offlineTags: List<String>,
         unmatched: String,
+        backend: AiBackend = AiBackend.LOCAL,
     ): LocalLlmGeneration {
         return synchronized(lock) {
             val model = LocalModelSpec.modelFile(appContext)
@@ -325,9 +328,10 @@ class LocalLlmEngine(context: Context) : AutoCloseable {
                 )
             }
 
-            val wasLoaded = engine?.isInitialized() == true
+            require(backend != AiBackend.CLOUD)
+            val wasLoaded = engine?.isInitialized() == true && engineBackend == backend
             val loadStart = SystemClock.elapsedRealtime()
-            val current = ensureEngine(model)
+            val current = ensureEngine(model, backend)
             val loadMillis = if (wasLoaded) 0L else SystemClock.elapsedRealtime() - loadStart
 
             val generateStart = SystemClock.elapsedRealtime()
@@ -363,19 +367,20 @@ class LocalLlmEngine(context: Context) : AutoCloseable {
         }
     }
 
-    private fun ensureEngine(model: File): Engine {
+    private fun ensureEngine(model: File, backend: AiBackend): Engine {
         val existing = engine
-        if (existing != null && existing.isInitialized()) return existing
+        if (existing != null && existing.isInitialized() && engineBackend == backend) return existing
         existing?.let {
             runCatching { if (it.isInitialized()) it.close() }
             engine = null
+            engineBackend = null
         }
 
         val cacheDir = File(appContext.cacheDir, "litertlm").apply { mkdirs() }
         val created = Engine(
             EngineConfig(
                 modelPath = model.absolutePath,
-                backend = Backend.CPU(threadCount = 4),
+                backend = if (backend == AiBackend.LOCAL_GPU) Backend.GPU() else Backend.CPU(threadCount = 4),
                 cacheDir = cacheDir.absolutePath,
                 maxNumTokens = 4096,
             ),
@@ -385,11 +390,12 @@ class LocalLlmEngine(context: Context) : AutoCloseable {
         } catch (error: Throwable) {
             runCatching { if (created.isInitialized()) created.close() }
             throw LocalLlmException(
-                "ローカルLLMの読み込みに失敗しました: ${error.message ?: "不明なエラー"}",
+                "${if (backend == AiBackend.LOCAL_GPU) "GPU" else "CPU"}の読み込みに失敗しました: ${error.message ?: "不明なエラー"}",
                 error,
             )
         }
         engine = created
+        engineBackend = backend
         return created
     }
 
@@ -399,6 +405,7 @@ class LocalLlmEngine(context: Context) : AutoCloseable {
                 runCatching { if (current.isInitialized()) current.close() }
             }
             engine = null
+            engineBackend = null
         }
     }
 

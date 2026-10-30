@@ -67,6 +67,8 @@ class AiSettingsTest {
 
             settings.backend = AiBackend.LOCAL
             assertEquals(AiBackend.LOCAL, AiSettings(context).backend)
+            settings.backend = AiBackend.LOCAL_GPU
+            assertEquals(AiBackend.LOCAL_GPU, AiSettings(context).backend)
         } finally {
             prefs.edit().clear().commit()
         }

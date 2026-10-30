@@ -531,7 +531,7 @@ private fun PrompterApp() {
             showSettings = true
             return
         }
-        if (backend == AiBackend.LOCAL && !localModelStatus.isReady) {
+        if (backend != AiBackend.CLOUD && !localModelStatus.isReady) {
             showSettings = true
             return
         }
@@ -563,13 +563,13 @@ private fun PrompterApp() {
                     null
                 }
                 val cache = aiCache
-                val cacheBase = if (backend == AiBackend.LOCAL) {
+                val cacheBase = if (backend != AiBackend.CLOUD) {
                     "local://litertlm"
                 } else {
                     checkNotNull(cloud).third
                 }
-                val cacheModel = if (backend == AiBackend.LOCAL) {
-                    LocalModelSpec.CACHE_KEY
+                val cacheModel = if (backend != AiBackend.CLOUD) {
+                    LocalModelSpec.CACHE_KEY + if (backend == AiBackend.LOCAL_GPU) ":gpu" else ""
                 } else {
                     checkNotNull(cloud).second
                 }
@@ -588,9 +588,9 @@ private fun PrompterApp() {
                 val fromCache = cached != null
                 var loadMillis = 0L
                 var generateMillis = 0L
-                val aiResult = cached ?: if (backend == AiBackend.LOCAL) {
+                val aiResult = cached ?: if (backend != AiBackend.CLOUD) {
                     val generation = withContext(Dispatchers.IO) {
-                        localLlm.generate(generationInput, offlineTags, current.unmatched)
+                        localLlm.generate(generationInput, offlineTags, current.unmatched, backend)
                     }
                     localEngineLoaded = localLlm.isLoaded
                     loadMillis = generation.loadMillis
@@ -618,7 +618,7 @@ private fun PrompterApp() {
                     withContext(Dispatchers.IO) { cache.put(cacheKey, aiResult) }
                 }
 
-                val local = backend == AiBackend.LOCAL
+                val local = backend != AiBackend.CLOUD
                 val minWords = if (local) {
                     LocalLlmPrompt.MIN_WORDS
                 } else {
@@ -651,7 +651,7 @@ private fun PrompterApp() {
                     currentEngine.isKnownTag(tag)
                 }
                 if (validation.prompt.isBlank()) {
-                    if (backend == AiBackend.LOCAL) {
+                    if (backend != AiBackend.CLOUD) {
                         throw LocalLlmException("ローカルLLMが空の自然文を返しました。")
                     }
                     throw OpenRouterException("AIが空の自然文を返しました。")
@@ -675,7 +675,7 @@ private fun PrompterApp() {
                     append(
                         when {
                             fromCache -> "キャッシュから反映"
-                            backend == AiBackend.LOCAL -> "端末内AIで更新"
+                            backend != AiBackend.CLOUD -> "端末内AIで更新"
                             else -> "AIで更新"
                         },
                     )
@@ -688,7 +688,7 @@ private fun PrompterApp() {
                         }
                         append("（目標${target}）")
                     }
-                    if (backend == AiBackend.LOCAL && !fromCache) {
+                    if (backend != AiBackend.CLOUD && !fromCache) {
                         append(" / 生成${formatDuration(generateMillis)}")
                         if (loadMillis > 0L) {
                             append("（読み込み${formatDuration(loadMillis)}）")
@@ -729,7 +729,7 @@ private fun PrompterApp() {
                     }
                 }
             } catch (t: Throwable) {
-                aiError = if (backend == AiBackend.LOCAL) {
+                aiError = if (backend != AiBackend.CLOUD) {
                     "端末内AIで整えられませんでした: ${t.message ?: "不明なエラー"}"
                 } else {
                     t.message ?: "AI補完に失敗しました。"
