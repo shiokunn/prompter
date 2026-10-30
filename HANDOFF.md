@@ -3,7 +3,7 @@
 - 更新日: 2026-10-30
 - リポジトリ: <https://github.com/shiokunn/prompter>（private）
 - 作業ブランチ: `main`
-- 最新コードコミット: `b44789e`（情景候補検出。詳細は `git log -1 --oneline` で確認）
+- 最新コードコミット: `04aadcd`（設定・履歴のヘッダー戻るボタン削除。詳細は `git log -1 --oneline` で確認）
 - 現在の作業ツリー: クリーン（この引き継ぎ記録を含むコミット後）
 - アプリ: versionName `0.9.1-m9`, versionCode `23`
 - 実機: arrows Alpha。ADB端末が複数表示される場合、対象を明示して操作する。
@@ -16,6 +16,8 @@ M1〜M9相当の機能実装が進み、版権キャラクターの手動確認�
 
 ## 検証記録
 
+- GitHub Actions run [41065666386](https://github.com/shiokunn/prompter/actions/runs/41065666386) は `04aadcd` に対して成功。M1 15件、Kotlin 124件（失敗0・エラー0・スキップ0、19 XMLファイル）、debug APKビルド成功。設定・履歴のヘッダー「戻る」を削除し、Androidのシステム戻る操作のみで閉じる変更を実機 `127.0.0.1:5555` で確認。両画面ともヘッダーに「戻る」は表示されず、システム戻るでメイン画面へ戻った。クラッシュ・アプリ例外なし。
+- プロンプト→画像確認: 情景「銀髪の少女が、赤いドレスで、夜の街の木の椅子に座っている」から生成したプロンプトをPixAI `4.25.7` で画像化。銀髪・赤いドレス・椅子に座る・夜の街・木が反映され、再生成不要と判断。ただし `木の椅子` が `chair` と `tree` に分解され、`Additional context from the input: Of / in / / / / / /.` が残るプロンプト品質の問題を確認。詳細は `research/header-navigation-and-prompt-image-check.md`。コード修正は未実施。
 - GitHub Actions run [41062349076](https://github.com/shiokunn/prompter/actions/runs/41062349076) は `b44789e` に対して成功。M1 15件、Kotlin 124件（失敗0・エラー0・スキップ0、19 XMLファイル）、debug APKビルド成功。情景候補の実機表示・タップ操作は未検証。
 - ADB UI確認: CI run `41062349076` のAPKを `adb install -r` で `127.0.0.1:5555` にインストール。キャラクターモードをONにし、情景 `Cinderella is dancing` から「シンデレラ / 勝利の女神：NIKKE · Cinderella」の候補ブロックが表示されることを確認。候補表示前は未選択、候補をタップすると「確認済み」カードに切り替わった。プロンプト生成は実行していない。Prompterのクラッシュやアプリ例外は観測されず、MainActivityが前面に残った。アプリデータは消去せず、`emulator-5554` は操作していない。
 - GitHub Actions run [41028250624](https://github.com/shiokunn/prompter/actions/runs/41028250624) は `a366d12` に対して成功。
@@ -30,6 +32,8 @@ M1〜M9相当の機能実装が進み、版権キャラクターの手動確認�
 
 ## 現在の作業
 
+- 設定・履歴のヘッダーから「戻る」ボタンを削除し、Androidのシステム戻る操作で閉じるよう変更（`04aadcd`）。CI `41065666386` 成功、実機確認済み。テストは設定画面に戻るボタンがないことを確認する形へ更新。
+- 実プロンプトをPixAIで画像化し、入力との一致を確認。画像は再生成不要。`木の椅子` の `tree` 分解と助詞だけの `Of / in / /.` 混入は未修正のプロンプト品質問題。
 - キャラクター検索はローカルDB中心。AniList/WikidataとDuckDuckGoの検索導線を削除済み。コミット `a5f66b8`・`a617bc3`、CI run [41042089838](https://github.com/shiokunn/prompter/actions/runs/41042089838) 成功。
 - `46bddb9` までpush済み。作品・ゲーム・サービス名入力、キラキラアイコン付き「AIで整える」操作、モデル名を表に出さない表示、自然文出力一本化を実装。
 - GitHub Actions run [41048459142](https://github.com/shiokunn/prompter/actions/runs/41048459142) はM1テスト、Kotlinユニットテスト、debug APKビルド成功。
