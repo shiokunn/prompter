@@ -17,6 +17,7 @@ M1〜M9相当の機能実装が進み、版権キャラクターの手動確認�
 ## 検証記録
 
 - GitHub Actions run [41062349076](https://github.com/shiokunn/prompter/actions/runs/41062349076) は `b44789e` に対して成功。M1 15件、Kotlin 124件（失敗0・エラー0・スキップ0、19 XMLファイル）、debug APKビルド成功。情景候補の実機表示・タップ操作は未検証。
+- ADB UI確認: CI run `41062349076` のAPKを `adb install -r` で `127.0.0.1:5555` にインストール。キャラクターモードをONにし、情景 `Cinderella is dancing` から「シンデレラ / 勝利の女神：NIKKE · Cinderella」の候補ブロックが表示されることを確認。候補表示前は未選択、候補をタップすると「確認済み」カードに切り替わった。プロンプト生成は実行していない。Prompterのクラッシュやアプリ例外は観測されず、MainActivityが前面に残った。アプリデータは消去せず、`emulator-5554` は操作していない。
 - GitHub Actions run [41028250624](https://github.com/shiokunn/prompter/actions/runs/41028250624) は `a366d12` に対して成功。
   - Kotlin/JUnit: 115件、失敗0・エラー0・スキップ0（JUnit XML 20ファイル）。
   - `python3 -m unittest tools.test_m1 -q`: 15件成功。
@@ -40,7 +41,7 @@ M1〜M9相当の機能実装が進み、版権キャラクターの手動確認�
   - `CharacterMentionDetector`: 日本語はカタカナ→ひらがな変換をせず、空白・区切りを保った位置情報で境界を判定。1文字除外、2文字は作品名必須、英語は単語境界必須、最長一致、正式名優先、作品名による同名絞り込み。最大8件を候補として返し、自動確定はしない。
   - `CharacterPanel`: 名前欄の下に「情景の候補」を既存の候補ブロックで表示。タップするまで名前・作品・英語名へ反映しない。
   - `MainActivity`: キャラクターモードON・名前欄が空・未確定のときだけ180msデバウンスで検出。
-  - テスト: `CharacterMentionDetectorTest`（一般語、1/2文字、複合語、英語境界、カタカナ/ひらがな境界、作品絞り込み、同名複数候補、最長一致、別形態優先、空白表記によるbase/variant解決）、`ScreenInteractionTest`（候補タップ必須）、`CharacterDbTest`（注記混入なし）。Python M1 15件成功。GitHub Actions run `41062349076` は M1 15件、Kotlin 124件（失敗0・エラー0・スキップ0）、debug APKビルドが成功。実機テストは未実施（許可待ち）。
+  - テスト: `CharacterMentionDetectorTest`（一般語、1/2文字、複合語、英語境界、カタカナ/ひらがな境界、作品絞り込み、同名複数候補、最長一致、別形態優先、空白表記によるbase/variant解決）、`ScreenInteractionTest`（候補タップ必須）、`CharacterDbTest`（注記混入なし）。Python M1 15件成功。GitHub Actions run `41062349076` は M1 15件、Kotlin 124件（失敗0・エラー0・スキップ0）、debug APKビルドが成功。実機では `127.0.0.1:5555` で候補表示とタップ後の確認状態を確認。プロンプト生成・出力確認は未実施。
   - 未解決: `銀狼LV.999` と `銀狼 LV.999` は台帳の「別名統合禁止」に従い別レコードのまま保持する。検出時は入力の空白表記に合わせて片方だけ候補表示し、データ統合はしない。DB外キャラクター（初音ミク等）は検出できない。
 
 ## 作業時の注意
