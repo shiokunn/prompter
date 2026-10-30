@@ -16,7 +16,7 @@ M1〜M9相当の機能実装が進み、版権キャラクターの手動確認�
 
 ## 検証記録
 
-- GitHub Actions run [41065666386](https://github.com/shiokunn/prompter/actions/runs/41065666386) は `04aadcd` に対して成功。M1 15件、Kotlin 124件（失敗0・エラー0・スキップ0、19 XMLファイル）、debug APKビルド成功。設定・履歴のヘッダー「戻る」を削除し、Androidのシステム戻る操作のみで閉じる変更を実機 `127.0.0.1:5555` で確認。両画面ともヘッダーに「戻る」は表示されず、システム戻るでメイン画面へ戻った。クラッシュ・アプリ例外なし。
+- GitHub Actions run [41065666386](https://github.com/shiokunn/prompter/actions/runs/41065666386) は `04aadcd` に対して成功。M1 15件、Kotlin 124件（失敗0・エラー0・スキップ0、19 XMLファイル）、debug APKビルド成功。設定・履歴のヘッダー「戻る」を削除し、Androidのシステム戻る操作のみで閉じる変更を実機 `127.0.0.1:5555` で確認。両画面ともヘッダーに「戻る」は表示されず、システム戻るでメイン画面へ戻った。設定の未保存変更がある状態でシステム戻るを押すと「変更を破棄しますか？」が表示され、キャンセルと破棄の両方を確認。クラッシュ・アプリ例外なし。
 - プロンプト→画像確認: 情景「銀髪の少女が、赤いドレスで、夜の街の木の椅子に座っている」から生成したプロンプトをPixAI `4.25.7` で画像化。銀髪・赤いドレス・椅子に座る・夜の街・木が反映され、再生成不要と判断。ただし `木の椅子` が `chair` と `tree` に分解され、`Additional context from the input: Of / in / / / / / /.` が残るプロンプト品質の問題を確認。詳細は `research/header-navigation-and-prompt-image-check.md`。コード修正は未実施。
 - GitHub Actions run [41062349076](https://github.com/shiokunn/prompter/actions/runs/41062349076) は `b44789e` に対して成功。M1 15件、Kotlin 124件（失敗0・エラー0・スキップ0、19 XMLファイル）、debug APKビルド成功。情景候補の実機表示・タップ操作は未検証。
 - ADB UI確認: CI run `41062349076` のAPKを `adb install -r` で `127.0.0.1:5555` にインストール。キャラクターモードをONにし、情景 `Cinderella is dancing` から「シンデレラ / 勝利の女神：NIKKE · Cinderella」の候補ブロックが表示されることを確認。候補表示前は未選択、候補をタップすると「確認済み」カードに切り替わった。プロンプト生成は実行していない。Prompterのクラッシュやアプリ例外は観測されず、MainActivityが前面に残った。アプリデータは消去せず、`emulator-5554` は操作していない。
