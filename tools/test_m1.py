@@ -3,13 +3,15 @@
 from __future__ import annotations
 
 import sqlite3
+import hashlib
+import json
 import sys
 import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from m1_common import boundary_ok, db_path, normalize, load_tags, top_tags
+from m1_common import boundary_ok, db_path, normalize, load_tags, top_tags, DATA, ROOT
 from m1_match import Matcher
 
 
@@ -23,9 +25,15 @@ class M1Test(unittest.TestCase):
 
     def test_exact_top_10000(self) -> None:
         with sqlite3.connect(db_path()) as con:
-            names = {row[0] for row in con.execute("SELECT name FROM tags")}
+            rows = con.execute("SELECT name, category, post_count FROM tags ORDER BY post_count DESC, name").fetchall()
+        names = {row[0] for row in rows}
         self.assertEqual(len(names), 10000)
-        self.assertEqual(names, {tag.name for tag in top_tags(load_tags(), 10000)})
+        stats = json.loads((ROOT / "research/m1_stats.json").read_text(encoding="utf-8"))
+        digest = hashlib.sha256("".join(f"{name}\t{category}\t{count}\n" for name, category, count in rows).encode("utf-8")).hexdigest()
+        self.assertEqual(digest, stats["ranked_tags_sha256"])
+        # Raw upstream CSVs are local build inputs, not committed to Git.
+        if (DATA / "danbooru.csv").exists():
+            self.assertEqual(names, {tag.name for tag in top_tags(load_tags(), 10000)})
 
     def test_wooden_chair_and_particle_gaps(self) -> None:
         text = "銀髪の少女が、赤いドレスで、夜の街の木の椅子に座っている"

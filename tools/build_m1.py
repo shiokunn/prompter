@@ -515,6 +515,9 @@ def build(output: Path) -> dict:
         "size_bytes": output.stat().st_size,
         "build_seconds": round(time.time() - t0, 2),
         "tags": len(top),
+        "ranked_tags_sha256": hashlib.sha256(
+            "".join(f"{t.name}\t{t.category}\t{t.post_count}\n" for t in top).encode("utf-8")
+        ).hexdigest(),
         "aliases": len(kept),
         "tags_with_japanese_alias": len(jp_tags),
         "japanese_coverage": round(len(jp_tags) / len(top), 4),

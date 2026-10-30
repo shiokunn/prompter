@@ -1,8 +1,9 @@
 {
   "output": "/data/data/com.termux/files/home/prompter/app/src/main/assets/promptdb.sqlite",
   "size_bytes": 4063232,
-  "build_seconds": 1.55,
+  "build_seconds": 1.62,
   "tags": 10000,
+  "ranked_tags_sha256": "3a28514e44b87ddac30864221de1cf0cfe49d8b04024904981b732e37e840a4d",
   "aliases": 25205,
   "tags_with_japanese_alias": 6986,
   "japanese_coverage": 0.6986,
