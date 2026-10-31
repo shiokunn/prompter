@@ -60,6 +60,13 @@ jobs:
           chmod +x gradlew
           ./gradlew assembleDebug --stacktrace
 
+      - name: Verify APK package, ABIs and 16KB alignment
+        run: |
+          python3 tools/verify_apk.py \
+            app/build/outputs/apk/debug/app-debug.apk \
+            --package com.prompter.app \
+            --abis arm64-v8a,x86_64
+
       - name: Upload unit test results
         if: always()
         uses: actions/upload-artifact@v6

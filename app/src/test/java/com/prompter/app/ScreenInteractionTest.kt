@@ -2,6 +2,7 @@ package com.prompter.app
 
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.runtime.mutableStateOf
 import org.junit.Assert.*
 import org.junit.Rule
 import org.junit.Test
@@ -13,6 +14,22 @@ import org.robolectric.annotation.Config
 @Config(sdk = [35])
 class ScreenInteractionTest {
     @get:Rule val compose = createComposeRule()
+
+    @Test
+    fun circularCharacterToggleCanEnableAndDisableThePanel() {
+        val active = mutableStateOf(false)
+        compose.setContent { PrompterTheme {
+            CharacterPanel(active.value, { active.value = it }, "", "", "", false,
+                emptyList(), emptyList(), {}, {}, {})
+        } }
+        val toggle = compose.onNodeWithContentDescription("版権キャラクターモード")
+        toggle.assertIsOff()
+        compose.onNodeWithText("キャラクター名").assertDoesNotExist()
+        toggle.performClick().assertIsOn()
+        compose.onNodeWithText("キャラクター名").assertIsDisplayed()
+        toggle.performClick().assertIsOff()
+        compose.onNodeWithText("キャラクター名").assertDoesNotExist()
+    }
 
     @Test
     fun historyDeleteRequiresConfirmationAndReuseDoesNotDelete() {

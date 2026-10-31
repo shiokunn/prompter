@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Distinguishes the development build from the published app. -->
+    <string name="app_name">Prompter Dev</string>
+</resources>

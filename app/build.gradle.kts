@@ -12,13 +12,13 @@ android {
         applicationId = "com.prompter.app"
         minSdk = 29
         targetSdk = 36
-        versionCode = 23
-        versionName = "0.9.1-m9"
+        versionCode = 24
+        versionName = "0.10.0"
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        // arrows Alpha is arm64-v8a. ML Kit ships a large JNI library for
-        // every ABI; keeping only the target ABI cuts the APK roughly in half.
+        // LiteRT-LM 0.18.1 ships native code for these two 64-bit ABIs.
         ndk {
-            abiFilters += "arm64-v8a"
+            abiFilters += listOf("arm64-v8a", "x86_64")
         }
     }
 
@@ -31,6 +31,17 @@ android {
             keyAlias = "prompterdebug"
             keyPassword = "prompterdebug"
         }
+        // Release keys are injected by CI from GitHub Secrets and never
+        // committed. Without them assembleRelease produces an unsigned APK.
+        val releaseKeystore = providers.environmentVariable("PROMPTER_KEYSTORE_PATH").orNull
+        if (releaseKeystore != null) {
+            create("publicRelease") {
+                storeFile = file(releaseKeystore)
+                storePassword = providers.environmentVariable("PROMPTER_STORE_PASSWORD").orNull
+                keyAlias = providers.environmentVariable("PROMPTER_KEY_ALIAS").orNull
+                keyPassword = providers.environmentVariable("PROMPTER_KEY_PASSWORD").orNull
+            }
+        }
     }
 
     buildTypes {
@@ -39,6 +50,9 @@ android {
         }
         release {
             isMinifyEnabled = false
+            // Coexists with the development build on the same device.
+            applicationIdSuffix = ".release"
+            signingConfig = signingConfigs.findByName("publicRelease")
         }
     }
 
@@ -74,5 +88,9 @@ dependencies {
     testImplementation("org.robolectric:robolectric:4.17")
     testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
     testImplementation("androidx.compose.ui:ui-test-junit4")
+    androidTestImplementation(platform("androidx.compose:compose-bom:2026.09.00"))
+    androidTestImplementation("androidx.compose.ui:ui-test-junit4")
+    androidTestImplementation("androidx.test:runner:1.7.0")
+    androidTestImplementation("androidx.test.ext:junit:1.3.0")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
 }
