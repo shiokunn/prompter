@@ -29,6 +29,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
+      - name: Free disk space for the emulator
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android/sdk/ndk \
+            /opt/ghc /usr/local/.ghcup /opt/hostedtoolcache/CodeQL /usr/share/swift
+          df -h /home/runner
+
       - name: Set up JDK 21
         uses: actions/setup-java@v5
         with:
@@ -63,6 +69,8 @@ jobs:
           api-level: ${{ matrix.api }}
           target: ${{ matrix.target }}
           arch: x86_64
+          cores: 4
+          emulator-boot-timeout: 900
           disable-animations: true
           script: |
             chmod +x gradlew

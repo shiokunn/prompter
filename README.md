@@ -26,7 +26,7 @@ The scene is set in a city, on a wooden chair, and at night. ...
 | CPU | arm64-v8a（64bit ARM）または x86_64（エミュレータ・ChromeOS など） |
 | メモリ | 通常の利用は 3GB 以上を推奨 |
 | 端末内 AI | 8GB 以上の RAM と約 2.6GB の空き容量 |
-| ストレージ | APK 約 100MB（AI モデルと翻訳モデルは別途） |
+| ストレージ | APK 約 125MB（AI モデルと翻訳モデルは別途） |
 
 32bit 端末（armeabi-v7a / x86）には対応していません。端末内 AI を使わなくても、辞書変換と翻訳は利用できます。
 
