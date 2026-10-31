@@ -84,4 +84,4 @@ run [41155081899](https://github.com/shiokunn/prompter/actions/runs/41155081899)
 - x86_64 の ChromeOS 実機では未確認（エミュレータのみ）。
 - 8GB RAM 端末での端末内 AI 実行は未確認。
 - 32bit 端末と Android 9 以下は対象外。
-- 公開版 `com.prompter.app.release` の実機インストールは未実施（CI の署名・メタデータ検証まで）。
+- 公開版 `com.prompter.app.release` は `127.0.0.1:5555` にインストールし、開発版と共存したまま起動することを確認済み（2026-10-31）。他メーカー実機での公開版起動は未確認。

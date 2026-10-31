@@ -25,6 +25,7 @@ M1〜M9相当の機能実装が進み、版権キャラクターの手動確認�
   - 互換性CI run [41156886414](https://github.com/shiokunn/prompter/actions/runs/41156886414) 成功。Android 10 / 13 / 14 / 15 / 16 の x86_64 エミュレータで、同梱DBの読み込みと `MainActivity` 起動を確認。
   - 新規のRSA 4096bit署名鍵を作成し、GitHub Secrets 4件に登録。keystoreと控えはリポジトリ外の `~/.prompter-release/` に保管し、リポジトリには含めない。
   - README を一般利用者向けに刷新し、MIT LICENSE を追加。リポジトリは public に変更。
+  - タグ `v0.10.0` で release CI [41158088012](https://github.com/shiokunn/prompter/actions/runs/41158088012) が成功し、GitHub Release を作成。公開APK `Prompter-0.10.0.apk` を `127.0.0.1:5555` にインストールし、`com.prompter.app` と共存したまま起動することを確認。
   - 詳細は `research/public-release-and-device-compatibility.md`。
 
 - GitHub Actions run [41065666386](https://github.com/shiokunn/prompter/actions/runs/41065666386) は `04aadcd` に対して成功。M1 15件、Kotlin 124件（失敗0・エラー0・スキップ0、19 XMLファイル）、debug APKビルド成功。設定・履歴のヘッダー「戻る」を削除し、Androidのシステム戻る操作のみで閉じる変更を実機 `127.0.0.1:5555` で確認。両画面ともヘッダーに「戻る」は表示されず、システム戻るでメイン画面へ戻った。設定の未保存変更がある状態でシステム戻るを押すと「変更を破棄しますか？」が表示され、キャンセルと破棄の両方を確認。クラッシュ・アプリ例外なし。
