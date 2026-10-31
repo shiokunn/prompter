@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Fountain pen: cap, clip, band, and a nib with a slit and breather hole. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Clip, separated from the barrel by a thin gap. -->
+    <path
+        android:fillColor="#F0F4F8"
+        android:pathData="M62.2,27.5h1.1a1.2,1.2 0 0,1 1.2,1.2v13.1a1.2,1.2 0 0,1 -1.2,1.2h-1.1z" />
+    <!-- Barrel -->
+    <path
+        android:fillColor="#F0F4F8"
+        android:pathData="M54,24a7,7 0 0,1 7,7v25h-14v-25a7,7 0 0,1 7,-7z" />
+    <!-- Cap band -->
+    <path
+        android:fillColor="#7FD1C9"
+        android:pathData="M46.4,56h15.2v4h-15.2z" />
+    <!-- Nib with the slit cut out. -->
+    <path
+        android:fillColor="#F0F4F8"
+        android:fillType="evenOdd"
+        android:pathData="M45,60L63,60C62,72 58,80 54,84C50,80 46,72 45,60zM53.2,69h1.6v14.2h-1.6z" />
+    <!-- Breather hole, showing the plate through the nib. -->
+    <path
+        android:fillColor="#176C72"
+        android:pathData="M54,63.1a2.9,2.9 0 1,0 0,5.8a2.9,2.9 0 1,0 0,-5.8z" />
+</vector>
