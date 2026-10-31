@@ -88,7 +88,7 @@ python3 -m unittest tools.test_m1 -v
 | `PROMPTER_KEY_ALIAS` | 鍵のエイリアス |
 | `PROMPTER_KEY_PASSWORD` | 鍵のパスワード |
 
-`v0.10.0` のようなタグを push すると、テスト・署名・APK 検証を経て GitHub Release が作成されます。ワークフローはアプリケーション ID、同梱 ABI、16KB ページ境界への整合、署名を検証します。
+`v0.10.1` のようなタグを push すると、テスト・署名・APK 検証を経て GitHub Release が作成されます。ワークフローはアプリケーション ID、同梱 ABI、16KB ページ境界への整合、署名を検証します。
 
 ## テスト
 

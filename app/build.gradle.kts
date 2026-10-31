@@ -12,8 +12,8 @@ android {
         applicationId = "com.prompter.app"
         minSdk = 29
         targetSdk = 36
-        versionCode = 24
-        versionName = "0.10.0"
+        versionCode = 25
+        versionName = "0.10.1"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         // LiteRT-LM 0.18.1 ships native code for these two 64-bit ABIs.
