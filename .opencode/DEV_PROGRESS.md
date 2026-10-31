@@ -3,6 +3,9 @@
 Updated: 2026-10-31
 
 ## Todo
+- [x] Use the supplied fountain pen artwork as the launcher icon.
+  - Implementation: composed the 1254px artwork into the 72dp adaptive-icon safe area on a 108dp canvas, alpha-masked the outer black corners over `#0B247A`, and generated foreground plus legacy PNGs for mdpi–xxxhdpi. Removed the earlier vector icon; no monochrome layer so the artwork is not tinted.
+  - Verification: debug CI `41159931514` passed; installed on `127.0.0.1:5555` and confirmed the circular app-info icon and app-drawer icon render the pen. Version bumped to `0.10.1` (25) and released via CI `41163411355`.
 - [x] Prepare public distribution: circular character toggle, device compatibility, private release signing, user-facing README.
   - Status: complete except publishing the first GitHub Release.
   - Implementation: replaced the character-mode switch with a 48dp circular toggle; split the public app ID to `com.prompter.app.release`; packaged `arm64-v8a` and `x86_64`; added `tools/verify_apk.py`, `release-apk.yml`, `device-matrix.yml`, `MainActivitySmokeTest`, a general README and MIT LICENSE. Created a new RSA 4096 release key and stored it only in GitHub Secrets and `~/.prompter-release/`.
